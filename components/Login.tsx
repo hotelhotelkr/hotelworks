@@ -158,6 +158,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     
     console.log('🔒 서버 API를 통한 로그인 시도:', loginApiUrl);
     
+    // 🔒 비동기 함수 내에서 await 사용
     try {
       const response = await fetch(loginApiUrl, {
         method: 'POST',
