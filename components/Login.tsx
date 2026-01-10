@@ -225,15 +225,31 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
             inputPassword: trimmedPassword
           });
           
-          // 저장된 비밀번호 확인
+          // 기본 비밀번호 매핑 (먼저 정의)
+          const defaultPasswords: Record<string, string> = {
+            'admin': 'admin',
+            'fd': 'FD',
+            'hk': 'HK',
+            '3': '3',
+            '4': '4',
+          };
+          
+          // 저장된 비밀번호 확인 및 자동 설정
           try {
-            const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+            let saved = localStorage.getItem('hotelflow_user_passwords_v1');
+            let passwords = saved ? JSON.parse(saved) : {};
             console.log('📋 저장된 비밀번호 확인:', saved ? '있음' : '없음');
-            if (saved) {
-              const passwords = JSON.parse(saved);
-              console.log('📋 저장된 비밀번호 목록:', Object.keys(passwords));
-              const savedPassword = passwords[foundUser.id];
-              console.log('🔑 사용자 ID별 저장된 비밀번호:', foundUser.id, savedPassword ? `"${savedPassword}"` : '없음');
+            console.log('📋 저장된 비밀번호 목록:', Object.keys(passwords));
+            
+            // 비밀번호가 없으면 기본값으로 설정
+            if (!passwords[foundUser.id] && defaultPasswords[foundUser.username.toLowerCase()]) {
+              passwords[foundUser.id] = defaultPasswords[foundUser.username.toLowerCase()];
+              localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+              console.log('✅ 기본 비밀번호 자동 설정:', foundUser.username, '→', passwords[foundUser.id]);
+            }
+            
+            const savedPassword = passwords[foundUser.id];
+            console.log('🔑 사용자 ID별 저장된 비밀번호:', foundUser.id, savedPassword ? `"${savedPassword}"` : '없음');
               
               if (savedPassword && trimmedPassword === savedPassword) {
                 console.log('✅ 저장된 비밀번호로 로컬 fallback 인증 성공:', foundUser.username);
@@ -252,15 +268,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           }
           
           // 기본 비밀번호 확인 (로컬 fallback용)
-          // 1. 기본 비밀번호 매핑 확인
-          const defaultPasswords: Record<string, string> = {
-            'admin': 'admin',
-            'fd': 'FD',
-            'hk': 'HK',
-            '3': '3',    // 로미오
-            '4': '4',    // 줄리엣
-          };
-          
           const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
           console.log('🔑 기본 비밀번호 확인:', {
             username: trimmedUsername.toLowerCase(),
@@ -310,15 +317,31 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           inputPassword: trimmedPassword
         });
         
-        // 저장된 비밀번호 확인
+        // 기본 비밀번호 매핑 (먼저 정의)
+        const defaultPasswords: Record<string, string> = {
+          'admin': 'admin',
+          'fd': 'FD',
+          'hk': 'HK',
+          '3': '3',
+          '4': '4',
+        };
+        
+        // 저장된 비밀번호 확인 및 자동 설정
         try {
-          const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+          let saved = localStorage.getItem('hotelflow_user_passwords_v1');
+          let passwords = saved ? JSON.parse(saved) : {};
           console.log('📋 저장된 비밀번호 확인:', saved ? '있음' : '없음');
-          if (saved) {
-            const passwords = JSON.parse(saved);
-            console.log('📋 저장된 비밀번호 목록:', Object.keys(passwords));
-            const savedPassword = passwords[foundUser.id];
-            console.log('🔑 사용자 ID별 저장된 비밀번호:', foundUser.id, savedPassword ? `"${savedPassword}"` : '없음');
+          console.log('📋 저장된 비밀번호 목록:', Object.keys(passwords));
+          
+          // 비밀번호가 없으면 기본값으로 설정
+          if (!passwords[foundUser.id] && defaultPasswords[foundUser.username.toLowerCase()]) {
+            passwords[foundUser.id] = defaultPasswords[foundUser.username.toLowerCase()];
+            localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+            console.log('✅ 기본 비밀번호 자동 설정:', foundUser.username, '→', passwords[foundUser.id]);
+          }
+          
+          const savedPassword = passwords[foundUser.id];
+          console.log('🔑 사용자 ID별 저장된 비밀번호:', foundUser.id, savedPassword ? `"${savedPassword}"` : '없음');
             
             if (savedPassword && trimmedPassword === savedPassword) {
               console.log('✅ 저장된 비밀번호로 로컬 fallback 인증 성공:', foundUser.username);
@@ -337,15 +360,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         }
         
         // 기본 비밀번호 확인 (로컬 fallback용)
-        // 1. 기본 비밀번호 매핑 확인
-        const defaultPasswords: Record<string, string> = {
-          'admin': 'admin',
-          'fd': 'FD',
-          'hk': 'HK',
-          '3': '3',    // 로미오
-          '4': '4',    // 줄리엣
-        };
-        
         const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
         console.log('🔑 기본 비밀번호 확인:', {
           username: trimmedUsername.toLowerCase(),
