@@ -2220,15 +2220,35 @@ const App: React.FC = () => {
     // WebSocket을 통해 다른 모든 사용자에게 동기화
     const socket = socketRef.current;
     const user = currentUserRef.current;
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📤 [USER_ADD] 사용자 추가 메시지 전송 시도');
+    console.log('   사용자 이름:', newUser.name);
+    console.log('   Username:', newUser.username);
+    console.log('   사용자 ID:', newUser.id);
+    console.log('   WebSocket 존재:', !!socket);
+    console.log('   WebSocket 연결 상태:', socket?.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+    console.log('   현재 사용자:', user ? user.name : '없음');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     if (socket?.connected && user) {
       const message = {
         type: 'USER_ADD',
         payload: newUser,
         senderId: user.id,
+        sessionId: SESSION_ID,
         timestamp: new Date().toISOString()
       };
       socket.emit(SYNC_CHANNEL, message);
+      console.log('✅ USER_ADD 메시지 전송 완료:', newUser.name);
       debugLog('📤 사용자 추가:', newUser.name);
+    } else {
+      console.warn('⚠️ USER_ADD 메시지 전송 실패:', {
+        socketExists: !!socket,
+        connected: socket?.connected,
+        userExists: !!user,
+        reason: !socket ? 'socket 없음' : !socket.connected ? 'WebSocket 연결 안 됨' : '사용자 없음'
+      });
     }
   }, [triggerToast]);
 
