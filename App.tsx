@@ -852,6 +852,16 @@ const App: React.FC = () => {
         
         // 로그인 상태와 관계없이 재연결 성공 시 전체 주문 목록 동기화 요청 (실시간 동기화 보장)
         const user = currentUserRef.current;
+        
+        // 로그인 상태와 무관하게 항상 사용자 목록 동기화 요청 (로그인 화면에서도 동기화)
+        setTimeout(() => {
+          socket.emit('request_all_users', {
+            senderId: user?.id || 'anonymous',
+            timestamp: new Date().toISOString()
+          });
+          console.log('📤 WebSocket 메시지 전송 - request_all_users (재연결)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+        }, 500);
+        
         if (user) {
           console.log('📤 WebSocket 재연결 후 전체 주문 목록 동기화 요청');
           
@@ -866,15 +876,6 @@ const App: React.FC = () => {
           console.log('   - 연결 상태:', socket.connected);
           
           socket.emit('request_all_orders', requestData);
-          
-          // 사용자 목록 동기화 요청
-          setTimeout(() => {
-            socket.emit('request_all_users', {
-              senderId: user.id,
-              timestamp: new Date().toISOString()
-            });
-            console.log('📤 WebSocket 메시지 전송 - request_all_users (재연결)');
-          }, 500);
         } else {
           console.log('📤 WebSocket 재연결 성공 (로그아웃 상태) - 실시간 동기화 준비 완료');
         }
