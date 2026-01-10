@@ -123,7 +123,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
   const [error, setError] = useState('');
   const [localUsers, setLocalUsers] = React.useState<any[]>([]);
 
-  // localStorage에서 사용자 목록 동기화
+  // localStorage에서 사용자 목록 동기화 (실시간 동기화를 위해 더 자주 확인)
   React.useEffect(() => {
     const loadUsersFromStorage = () => {
       try {
@@ -131,7 +131,17 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setLocalUsers(parsed);
+            setLocalUsers(prev => {
+              // 이전 목록과 다를 때만 업데이트 (불필요한 리렌더링 방지)
+              const prevIds = new Set(prev.map(u => u.id).sort());
+              const newIds = new Set(parsed.map((u: User) => u.id).sort());
+              const changed = prev.length !== parsed.length || 
+                             !Array.from(prevIds).every(id => newIds.has(id));
+              if (changed) {
+                console.log('🔄 Login: 사용자 목록 업데이트:', parsed.length, '명');
+              }
+              return parsed;
+            });
           }
         }
       } catch (e) {
@@ -140,7 +150,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     };
 
     loadUsersFromStorage();
-    const interval = setInterval(loadUsersFromStorage, 500);
+    // 로그아웃 상태에서도 실시간 동기화를 위해 200ms마다 확인
+    const interval = setInterval(loadUsersFromStorage, 200);
     return () => clearInterval(interval);
   }, []);
 
