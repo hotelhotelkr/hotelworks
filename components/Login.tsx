@@ -177,17 +177,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       if ((savedPassword && trimmedPassword === savedPassword) ||
           (defaultPassword && trimmedPassword === defaultPassword) ||
           isUsernamePasswordMatch) {
-        // username 기반으로 올바른 Department/Role 가져오기
+        // username 기반으로 올바른 Name/Department/Role 가져오기
         const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
         
-        // Department/Role이 없거나 잘못되었으면 올바른 값으로 강제 설정
-        const needsUpdate = !foundUser.dept || !foundUser.role || 
+        // Name/Department/Role이 없거나 잘못되었으면 올바른 값으로 강제 설정
+        const needsUpdate = !foundUser.name || !foundUser.dept || !foundUser.role || 
+                           foundUser.name !== expectedConfig.name ||
                            foundUser.dept !== expectedConfig.dept || 
                            foundUser.role !== expectedConfig.role;
         
         if (needsUpdate) {
           foundUser = { 
             ...foundUser, 
+            name: expectedConfig.name, // username 기반 name 강제 사용
             dept: expectedConfig.dept, 
             role: expectedConfig.role 
           };
@@ -202,7 +204,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
                   u.id === foundUser.id ? foundUser : u
                 );
                 localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
-                console.log('✅ 사용자 Department/Role 수정됨:', foundUser.username, foundUser.dept, foundUser.role);
+                console.log('✅ 사용자 정보 수정됨:', foundUser.username, foundUser.name, foundUser.dept, foundUser.role);
               }
             }
           } catch (e) {
