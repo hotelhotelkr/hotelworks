@@ -7,9 +7,10 @@ import { Order, Department } from '../types';
 interface MemoFeedProps {
   orders: Order[];
   maxItems?: number;
+  onMemoClick?: (order: Order) => void;
 }
 
-const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5 }) => {
+const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5, onMemoClick }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const navigate = useNavigate();
   // 최신 메모들을 시간순으로 정렬
@@ -117,7 +118,8 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5 }) => {
         {recentMemos.map(({ order, memo, timestamp }) => (
           <div
             key={`${order.id}-${memo.id}`}
-            className={`border rounded-xl p-3 transition-all hover:shadow-md ${getDeptColor(memo.senderDept)}`}
+            onClick={() => onMemoClick && onMemoClick(order)}
+            className={`border rounded-xl p-3 transition-all hover:shadow-md cursor-pointer ${getDeptColor(memo.senderDept)}`}
           >
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex items-center gap-2 flex-1 min-w-0">

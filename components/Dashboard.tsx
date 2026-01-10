@@ -148,7 +148,14 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onExport, currentUser, on
         )}
 
         {/* [1.5] 실시간 메모 피드 - 모든 사용자 */}
-        <MemoFeed orders={orders} maxItems={5} />
+        <MemoFeed 
+          orders={orders} 
+          maxItems={5} 
+          onMemoClick={(order) => {
+            navigate('/orders');
+            onOpenMemo(order);
+          }}
+        />
 
         {/* [2nd] Recent Dispatch Activity - ONLY FOR FD/ADMIN */}
         {(!isHousekeeping) && (
