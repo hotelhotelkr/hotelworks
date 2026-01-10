@@ -856,25 +856,46 @@ const App: React.FC = () => {
           debugLog('📤 전체 사용자 목록 응답 전송 to', senderId);
           const currentUsers = usersRef.current;
           
-          // 🔒 보안: 비밀번호 필드 제거
-          const usersWithoutPasswords = currentUsers.map((u: User) => {
-            const { password, ...userWithoutPassword } = u;
-            return userWithoutPassword;
-          });
-          
-          const responseData = {
-            users: usersWithoutPasswords,
-            senderId: user.id,
-            timestamp: new Date().toISOString()
-          };
-          
-          debugLog('📤 WebSocket 메시지 전송 - all_users_response:', {
-            senderId: responseData.senderId,
-            receiverId: senderId,
-            userCount: responseData.users.length
-          });
-          
-          socket.emit('all_users_response', responseData);
+          // 저장된 비밀번호 가져오기
+          try {
+            const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+            const passwords = saved ? JSON.parse(saved) : {};
+            
+            // 사용자 목록에 비밀번호 포함 (동기화 필요)
+            const usersWithPasswords = currentUsers.map((u: User) => {
+              const password = passwords[u.id] || undefined;
+              return { ...u, password };
+            });
+            
+            const responseData = {
+              users: usersWithPasswords,
+              senderId: user.id,
+              timestamp: new Date().toISOString()
+            };
+            
+            debugLog('📤 WebSocket 메시지 전송 - all_users_response:', {
+              senderId: responseData.senderId,
+              receiverId: senderId,
+              userCount: responseData.users.length
+            });
+            
+            socket.emit('all_users_response', responseData);
+          } catch (e) {
+            console.warn('⚠️ 비밀번호 로드 실패:', e);
+            // 비밀번호 없이 전송 (하위 호환성)
+            const usersWithoutPasswords = currentUsers.map((u: User) => {
+              const { password, ...userWithoutPassword } = u;
+              return userWithoutPassword;
+            });
+            
+            const responseData = {
+              users: usersWithoutPasswords,
+              senderId: user.id,
+              timestamp: new Date().toISOString()
+            };
+            
+            socket.emit('all_users_response', responseData);
+          }
         }
       });
 
@@ -898,6 +919,27 @@ const App: React.FC = () => {
           return;
         }
         
+        // 수신한 사용자 목록에서 비밀번호 저장
+        try {
+          const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+          const passwords = saved ? JSON.parse(saved) : {};
+          let passwordsUpdated = false;
+          
+          receivedUsers.forEach((u: any) => {
+            if (u.password && u.id) {
+              passwords[u.id] = u.password;
+              passwordsUpdated = true;
+            }
+          });
+          
+          if (passwordsUpdated) {
+            localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+            console.log('✅ 비밀번호 동기화 완료:', Object.keys(passwords).length, '개');
+          }
+        } catch (e) {
+          console.warn('⚠️ 비밀번호 저장 실패:', e);
+        }
+        
         setUsers(prev => {
           // 현재 사용자 목록과 수신한 사용자 목록 병합
           const userMap = new Map<string, User>();
@@ -909,7 +951,7 @@ const App: React.FC = () => {
           });
           
           // 수신한 사용자 목록 추가/업데이트 (더 최신 데이터로)
-          receivedUsers.forEach((u: User) => {
+          receivedUsers.forEach((u: any) => {
             const { password, ...userWithoutPassword } = u;
             userMap.set(u.id, userWithoutPassword as User);
           });
@@ -1442,9 +1484,22 @@ const App: React.FC = () => {
                 newCount: prev.length + 1
               });
               
-              // 🔒 보안: 비밀번호 필드 제거 (클라이언트에 저장하지 않음)
-            const { password, ...userWithoutPassword } = payload;
-            const updated = [...prev, userWithoutPassword];
+              // 비밀번호 별도 저장
+              if (payload.password) {
+                try {
+                  const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+                  const passwords = saved ? JSON.parse(saved) : {};
+                  passwords[payload.id] = payload.password;
+                  localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+                  console.log('✅ 비밀번호 동기화 완료:', payload.username);
+                } catch (e) {
+                  console.warn('⚠️ 비밀번호 저장 실패:', e);
+                }
+              }
+              
+              // 🔒 보안: users에서는 비밀번호 필드 제거
+              const { password, ...userWithoutPassword } = payload;
+              const updated = [...prev, userWithoutPassword];
               
               // localStorage에 저장 (앱 재시작 시에도 유지) - 비밀번호 제외
               try {
@@ -1477,7 +1532,21 @@ const App: React.FC = () => {
                 return prev;
               }
               console.log('✅ 사용자 정보 업데이트:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
-              // 🔒 보안: 비밀번호 필드 제거 (클라이언트에 저장하지 않음)
+              
+              // 비밀번호 별도 저장 (변경된 경우)
+              if (payload.password) {
+                try {
+                  const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+                  const passwords = saved ? JSON.parse(saved) : {};
+                  passwords[payload.id] = payload.password;
+                  localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+                  console.log('✅ 비밀번호 동기화 완료:', payload.username);
+                } catch (e) {
+                  console.warn('⚠️ 비밀번호 저장 실패:', e);
+                }
+              }
+              
+              // 🔒 보안: users에서는 비밀번호 필드 제거
               const { password, ...userWithoutPassword } = payload;
               const updated = prev.map(u => u.id === payload.id ? userWithoutPassword : u);
               // localStorage에 저장 (앱 재시작 시에도 유지) - 비밀번호 제외
@@ -1509,6 +1578,20 @@ const App: React.FC = () => {
               }
               deletedUserName = exists.name;
               console.log('✅ 사용자 삭제:', payload.userId, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+              
+              // 비밀번호도 삭제
+              try {
+                const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+                if (saved) {
+                  const passwords = JSON.parse(saved);
+                  delete passwords[payload.userId];
+                  localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+                  console.log('✅ 비밀번호 삭제 완료:', payload.userId);
+                }
+              } catch (e) {
+                console.warn('⚠️ 비밀번호 삭제 실패:', e);
+              }
+              
               const updated = prev.filter(u => u.id !== payload.userId);
               // localStorage에 저장 (앱 재시작 시에도 유지)
               try {
@@ -2517,7 +2600,20 @@ const App: React.FC = () => {
   };
 
   const handleAddUser = useCallback((newUser: User) => {
-    // 🔒 보안: 비밀번호 필드 제거 (클라이언트에 저장/전송하지 않음)
+    // 비밀번호 별도 저장 (로그인을 위해 필요)
+    if (newUser.password) {
+      try {
+        const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+        const passwords = saved ? JSON.parse(saved) : {};
+        passwords[newUser.id] = newUser.password;
+        localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+        console.log('✅ 비밀번호 저장 완료:', newUser.username);
+      } catch (e) {
+        console.warn('⚠️ 비밀번호 저장 실패:', e);
+      }
+    }
+    
+    // 🔒 보안: users에서는 비밀번호 필드 제거 (전송 시에만 포함)
     const { password, ...userWithoutPassword } = newUser;
     
     setUsers(prev => {
@@ -2547,9 +2643,13 @@ const App: React.FC = () => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     if (socket?.connected && user) {
+      // 비밀번호도 함께 전송 (다른 기기에서 로그인 가능하도록)
       const message = {
         type: 'USER_ADD',
-        payload: userWithoutPassword, // 비밀번호 제외
+        payload: {
+          ...userWithoutPassword,
+          password: newUser.password // 비밀번호 포함 (동기화 필요)
+        },
         senderId: user.id,
         sessionId: SESSION_ID,
         timestamp: new Date().toISOString()
@@ -2568,7 +2668,20 @@ const App: React.FC = () => {
   }, [triggerToast]);
 
   const handleUpdateUser = useCallback((updatedUser: User) => {
-    // 🔒 보안: 비밀번호 필드 제거 (클라이언트에 저장/전송하지 않음)
+    // 비밀번호 별도 저장 (변경된 경우)
+    if (updatedUser.password) {
+      try {
+        const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+        const passwords = saved ? JSON.parse(saved) : {};
+        passwords[updatedUser.id] = updatedUser.password;
+        localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+        console.log('✅ 비밀번호 업데이트 완료:', updatedUser.username);
+      } catch (e) {
+        console.warn('⚠️ 비밀번호 업데이트 실패:', e);
+      }
+    }
+    
+    // 🔒 보안: users에서는 비밀번호 필드 제거 (전송 시에만 포함)
     const { password, ...userWithoutPassword } = updatedUser;
     
     setUsers(prev => {
@@ -2598,9 +2711,13 @@ const App: React.FC = () => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     if (socket?.connected && user) {
+      // 비밀번호도 함께 전송 (변경된 경우)
       const message = {
         type: 'USER_UPDATE',
-        payload: userWithoutPassword, // 비밀번호 제외
+        payload: {
+          ...userWithoutPassword,
+          password: updatedUser.password // 비밀번호 포함 (변경 시 동기화)
+        },
         senderId: user.id,
         sessionId: SESSION_ID,
         timestamp: new Date().toISOString()
@@ -2619,6 +2736,19 @@ const App: React.FC = () => {
   }, [triggerToast]);
 
   const handleDeleteUser = useCallback((userId: string) => {
+    // 비밀번호도 삭제
+    try {
+      const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+      if (saved) {
+        const passwords = JSON.parse(saved);
+        delete passwords[userId];
+        localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+        console.log('✅ 비밀번호 삭제 완료:', userId);
+      }
+    } catch (e) {
+      console.warn('⚠️ 비밀번호 삭제 실패:', e);
+    }
+    
     setUsers(prev => {
       const updated = prev.filter(u => u.id !== userId);
       // localStorage에 저장 (앱 재시작 시에도 유지)

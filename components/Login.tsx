@@ -219,6 +219,22 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         );
         
         if (foundUser) {
+          // 저장된 비밀번호 확인
+          try {
+            const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+            if (saved) {
+              const passwords = JSON.parse(saved);
+              const savedPassword = passwords[foundUser.id];
+              if (savedPassword && trimmedPassword === savedPassword) {
+                console.log('✅ 저장된 비밀번호로 로컬 fallback 인증 성공:', foundUser.username);
+                onLogin(foundUser);
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ 저장된 비밀번호 확인 실패:', e);
+          }
+          
           // 기본 비밀번호 확인 (로컬 fallback용)
           // 1. 기본 비밀번호 매핑 확인
           const defaultPasswords: Record<string, string> = {
@@ -255,6 +271,22 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       );
       
       if (foundUser) {
+        // 저장된 비밀번호 확인
+        try {
+          const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+          if (saved) {
+            const passwords = JSON.parse(saved);
+            const savedPassword = passwords[foundUser.id];
+            if (savedPassword && trimmedPassword === savedPassword) {
+              console.log('✅ 저장된 비밀번호로 로컬 fallback 인증 성공:', foundUser.username);
+              onLogin(foundUser);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ 저장된 비밀번호 확인 실패:', e);
+        }
+        
         // 기본 비밀번호 확인 (로컬 fallback용)
         // 1. 기본 비밀번호 매핑 확인
         const defaultPasswords: Record<string, string> = {
