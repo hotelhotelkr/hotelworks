@@ -156,7 +156,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
                   onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
-              <p className="text-[10px] text-slate-400 px-1">⚠️ 이름이 아닌 LOGIN ID를 입력하세요 (예: FD, HK, admin)</p>
+              <p className="text-[10px] text-slate-400 px-1">⚠️ 이름이 아닌 LOGIN ID를 입력하세요 (예: FD, HK)</p>
             </div>
 
             <div className="space-y-2">
