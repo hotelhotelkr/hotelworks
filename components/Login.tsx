@@ -150,7 +150,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
                   type="text" 
                   autoFocus
                   required
-                  placeholder="Enter your LOGIN ID (e.g. FD, HK)"
+                  placeholder="LOGIN ID (e.g. FD, HK)"
                   className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-950 font-bold focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
