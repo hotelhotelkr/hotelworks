@@ -18,7 +18,9 @@ import {
   Zap,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Upload,
+  Cloud
 } from 'lucide-react';
 import { User, Department, Role } from '../types';
 
@@ -339,6 +341,13 @@ const Settings: React.FC<SettingsProps> = ({
 
   // 고급 설정 표시 상태
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  
+  // 주문 동기화 상태
+  const [syncStatus, setSyncStatus] = useState<{
+    status: 'idle' | 'syncing' | 'success' | 'error';
+    message: string;
+    results?: { created: number; skipped: number; total: number; errors: number };
+  }>({ status: 'idle', message: '' });
 
   return (
     <div className="space-y-6 pb-12">
