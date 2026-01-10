@@ -161,67 +161,63 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     return Array.from(userMap.values());
   }, [availableUsers, localUsers]);
 
-  // 로컬 인증 fallback (Staff Management 데이터 우선 사용)
+  // 로컬 인증 fallback (보안: Staff Management에 등록된 사용자만 허용)
   const attemptLocalAuth = (trimmedUsername: string, trimmedPassword: string): User | null => {
-    // Staff Management에 저장된 사용자 찾기
-    let foundUser = findUser(allAvailableUsers, trimmedUsername);
+    // 🔒 보안: Staff Management에 등록된 사용자만 찾기 (임시 사용자 생성 금지)
+    const foundUser = findUser(allAvailableUsers, trimmedUsername);
     
-    if (foundUser) {
-      // 저장된 비밀번호 확인
-      const savedPassword = verifyAndSavePassword(foundUser.id, foundUser.username || trimmedUsername, trimmedPassword);
-      
-      // 비밀번호 확인
-      const defaultPassword = DEFAULT_PASSWORDS[trimmedUsername.toLowerCase()];
-      const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
-      
-      if ((savedPassword && trimmedPassword === savedPassword) ||
-          (defaultPassword && trimmedPassword === defaultPassword) ||
-          isUsernamePasswordMatch) {
-        // Staff Management에 저장된 사용자 정보가 있으면 그대로 사용
-        // Name/Department/Role이 없는 경우에만 기본값 설정
-        if (!foundUser.name || !foundUser.dept || !foundUser.role) {
-          const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
-          foundUser = { 
-            ...foundUser, 
-            name: foundUser.name || expectedConfig.name,
-            dept: foundUser.dept || expectedConfig.dept, 
-            role: foundUser.role || expectedConfig.role 
-          };
-          
-          // localStorage에 수정된 사용자 정보 저장
-          try {
-            const saved = localStorage.getItem('hotelflow_users_v1');
-            if (saved) {
-              const parsed = JSON.parse(saved);
-              if (Array.isArray(parsed)) {
-                const updated = parsed.map((u: User) => 
-                  u.id === foundUser.id ? foundUser : u
-                );
-                localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
-                console.log('✅ 사용자 정보 보완됨:', foundUser.username, foundUser.name, foundUser.dept, foundUser.role);
-              }
-            }
-          } catch (e) {
-            console.warn('⚠️ 사용자 정보 저장 실패:', e);
-          }
-        }
-        
-        console.log('✅ Staff Management 데이터로 로그인:', foundUser.username, foundUser.name, foundUser.dept, foundUser.role);
-        return foundUser;
-      }
-    } else {
-      // 사용자를 찾지 못한 경우 임시 사용자 생성 (기본 매핑 사용)
-      const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
-      const defaultPassword = DEFAULT_PASSWORDS[trimmedUsername.toLowerCase()];
-      
-      if (isUsernamePasswordMatch || (defaultPassword && trimmedPassword === defaultPassword)) {
-        const tempUser = createTemporaryUser(trimmedUsername, trimmedPassword);
-        saveTemporaryUser(tempUser, trimmedPassword);
-        console.log('✅ 임시 사용자 생성:', tempUser.username, tempUser.name, tempUser.dept, tempUser.role);
-        return tempUser;
-      }
+    if (!foundUser) {
+      // Staff Management에 등록되지 않은 사용자는 로그인 불가
+      console.warn('🚫 로그인 거부: Staff Management에 등록되지 않은 사용자:', trimmedUsername);
+      return null;
     }
     
+    // 저장된 비밀번호 확인
+    const savedPassword = verifyAndSavePassword(foundUser.id, foundUser.username || trimmedUsername, trimmedPassword);
+    
+    // 비밀번호 확인
+    const defaultPassword = DEFAULT_PASSWORDS[trimmedUsername.toLowerCase()];
+    const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
+    
+    if ((savedPassword && trimmedPassword === savedPassword) ||
+        (defaultPassword && trimmedPassword === defaultPassword) ||
+        isUsernamePasswordMatch) {
+      // Staff Management에 저장된 사용자 정보 사용
+      // Name/Department/Role이 없는 경우에만 기본값 설정
+      if (!foundUser.name || !foundUser.dept || !foundUser.role) {
+        const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
+        const updatedUser = { 
+          ...foundUser, 
+          name: foundUser.name || expectedConfig.name,
+          dept: foundUser.dept || expectedConfig.dept, 
+          role: foundUser.role || expectedConfig.role 
+        };
+        
+        // localStorage에 수정된 사용자 정보 저장
+        try {
+          const saved = localStorage.getItem('hotelflow_users_v1');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              const updated = parsed.map((u: User) => 
+                u.id === foundUser.id ? updatedUser : u
+              );
+              localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+              console.log('✅ 사용자 정보 보완됨:', updatedUser.username, updatedUser.name, updatedUser.dept, updatedUser.role);
+              return updatedUser;
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ 사용자 정보 저장 실패:', e);
+        }
+      }
+      
+      console.log('✅ Staff Management 등록 사용자 로그인:', foundUser.username, foundUser.name, foundUser.dept, foundUser.role);
+      return foundUser;
+    }
+    
+    // 비밀번호가 틀린 경우
+    console.warn('🚫 로그인 거부: 비밀번호 불일치:', trimmedUsername);
     return null;
   };
 
@@ -285,23 +281,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       if (response.ok) {
         const userData = await response.json();
         
-        // Staff Management에 저장된 사용자 정보 우선 확인
+        // 🔒 보안: Staff Management에 등록된 사용자인지 확인
         const savedUser = allAvailableUsers.find(
           u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
         );
         
-        // 저장된 사용자 정보가 있으면 우선 사용, 없으면 서버 응답 또는 username 기반 매핑 사용
+        if (!savedUser) {
+          // Staff Management에 등록되지 않은 사용자는 로그인 불가
+          console.warn('🚫 로그인 거부: Staff Management에 등록되지 않은 사용자:', trimmedUsername);
+          setError('등록되지 않은 사용자입니다. 관리자에게 문의하세요.');
+          return;
+        }
+        
+        // Staff Management에 등록된 사용자 정보 사용
         const authenticatedUser: User = {
-          id: userData.id || savedUser?.id || `user-${trimmedUsername}`,
-          username: userData.username || trimmedUsername,
-          name: savedUser?.name || userData.name || createTemporaryUser(trimmedUsername, trimmedPassword).name,
-          dept: savedUser?.dept || userData.dept || createTemporaryUser(trimmedUsername, trimmedPassword).dept,
-          role: savedUser?.role || userData.role || createTemporaryUser(trimmedUsername, trimmedPassword).role,
+          id: userData.id || savedUser.id,
+          username: userData.username || savedUser.username || trimmedUsername,
+          name: savedUser.name || userData.name,
+          dept: savedUser.dept || userData.dept,
+          role: savedUser.role || userData.role,
         };
         
-        console.log('✅ 로그인 사용자 정보:', {
+        console.log('✅ Staff Management 등록 사용자 로그인:', {
           username: trimmedUsername,
-          source: savedUser ? 'Staff Management 저장 데이터' : userData.id ? '서버 응답' : '기본 매핑',
           user: { name: authenticatedUser.name, dept: authenticatedUser.dept, role: authenticatedUser.role }
         });
         
@@ -312,14 +314,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       // 서버 API 실패 시 로컬 인증으로 fallback
     }
 
-    // 로컬 인증 fallback
+    // 로컬 인증 fallback (보안: Staff Management 등록 사용자만 허용)
     const authenticatedUser = attemptLocalAuth(trimmedUsername, trimmedPassword);
     if (authenticatedUser) {
       onLogin(authenticatedUser);
       return;
     }
 
-    setError('Invalid username or password. Please try again.');
+    // 에러 메시지 설정 (사용자가 등록되지 않았거나 비밀번호가 틀린 경우)
+    if (!allAvailableUsers.find(u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase())) {
+      setError('등록되지 않은 사용자입니다. 관리자에게 문의하세요.');
+    } else {
+      setError('아이디 또는 비밀번호가 올바르지 않습니다. 다시 시도해주세요.');
+    }
   };
 
   return (
