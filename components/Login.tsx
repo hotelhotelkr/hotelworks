@@ -287,25 +287,25 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       if (response.ok) {
         const userData = await response.json();
         
-        // 서버에서 받은 Department/Role 정보가 있으면 우선 사용
+        // username 기반으로 올바른 Department/Role 가져오기
+        const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
+        
+        // 서버에서 받은 Department/Role 정보를 확인하되, username 기반 매핑이 우선
         const authenticatedUser: User = {
-          id: userData.id,
+          id: userData.id || `user-${trimmedUsername}`,
           username: userData.username || trimmedUsername,
-          name: userData.name || trimmedUsername,
-          dept: userData.dept || Department.FRONT_DESK, // 기본값
-          role: userData.role || Role.FD_STAFF, // 기본값
+          name: userData.name || expectedConfig.name,
+          dept: userData.dept || expectedConfig.dept, // username 기반 매핑 사용
+          role: userData.role || expectedConfig.role, // username 기반 매핑 사용
         };
         
-        // 기존 사용자 정보와 병합 (Department/Role 우선)
-        const foundUser = allAvailableUsers.find(
-          u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
-        );
-        
-        if (foundUser) {
-          // 기존 사용자 정보를 사용하되, 서버에서 받은 정보가 있으면 우선
-          authenticatedUser.dept = userData.dept || foundUser.dept;
-          authenticatedUser.role = userData.role || foundUser.role;
-          authenticatedUser.name = userData.name || foundUser.name;
+        // username 기반 매핑이 올바른지 확인하고 필요시 수정
+        if (authenticatedUser.dept !== expectedConfig.dept || 
+            authenticatedUser.role !== expectedConfig.role) {
+          authenticatedUser.dept = expectedConfig.dept;
+          authenticatedUser.role = expectedConfig.role;
+          console.log('✅ 서버 응답의 Department/Role을 username 기반으로 수정:', 
+                     trimmedUsername, authenticatedUser.dept, authenticatedUser.role);
         }
         
         onLogin(authenticatedUser);
