@@ -2302,25 +2302,58 @@ const App: React.FC = () => {
             try {
               const parsed = JSON.parse(saved);
               if (Array.isArray(parsed) && parsed.length > 0) {
-                // localStorage의 users와 현재 상태가 다르면 업데이트
+                // localStorage의 users와 현재 상태 비교하여 업데이트
                 setUsers(prev => {
-                  const savedIds = new Set(parsed.map((u: User) => u.id));
-                  const currentIds = new Set(prev.map(u => u.id));
-                  // localStorage에 더 많은 사용자가 있으면 업데이트
-                  if (savedIds.size !== currentIds.size || 
-                      !Array.from(savedIds).every(id => currentIds.has(id))) {
+                  // 현재 상태의 사용자 목록 (id 기준)
+                  const currentUsersMap = new Map<string, User>(prev.map(u => [u.id, u]));
+                  // localStorage의 사용자 목록 (id 기준)
+                  const savedUsersMap = new Map<string, User>(parsed.map((u: User) => [u.id, u]));
+                  
+                  // 두 맵을 비교
+                  let needsUpdate = false;
+                  
+                  // 저장된 사용자가 더 많거나
+                  if (savedUsersMap.size > currentUsersMap.size) {
+                    needsUpdate = true;
+                  }
+                  
+                  // 저장된 사용자가 현재 상태에 없거나
+                  for (const [id, savedUser] of Array.from(savedUsersMap.entries())) {
+                    const current = currentUsersMap.get(id);
+                    if (!current) {
+                      needsUpdate = true;
+                      break;
+                    }
+                    // 저장된 사용자 정보가 다르면 업데이트 (username, password, name 등)
+                    if (current.username !== savedUser.username || 
+                        current.password !== savedUser.password || 
+                        current.name !== savedUser.name ||
+                        current.dept !== savedUser.dept ||
+                        current.role !== savedUser.role) {
+                      needsUpdate = true;
+                      break;
+                    }
+                  }
+                  
+                  if (needsUpdate) {
                     console.log('🔄 로그인 화면: localStorage에서 users 동기화', {
                       localStorageCount: parsed.length,
-                      currentStateCount: prev.length
+                      currentStateCount: prev.length,
+                      localStorageUsers: parsed.map((u: User) => ({ id: u.id, username: u.username, name: u.name }))
                     });
                     return parsed;
                   }
+                  
                   return prev;
                 });
+              } else {
+                console.warn('⚠️ localStorage users가 빈 배열:', saved);
               }
             } catch (e) {
-              console.warn('⚠️ localStorage users 파싱 실패:', e);
+              console.warn('⚠️ localStorage users 파싱 실패:', e, saved);
             }
+          } else {
+            console.log('ℹ️ localStorage에 users 데이터 없음 (초기 상태)');
           }
         } catch (e) {
           console.warn('⚠️ localStorage users 접근 실패:', e);
@@ -2330,8 +2363,8 @@ const App: React.FC = () => {
       // 즉시 한 번 확인
       syncUsersFromStorage();
 
-      // 2초마다 localStorage 확인 (WebSocket 연결 문제 대비)
-      const interval = setInterval(syncUsersFromStorage, 2000);
+      // 1초마다 localStorage 확인 (더 빠른 동기화)
+      const interval = setInterval(syncUsersFromStorage, 1000);
 
       return () => {
         clearInterval(interval);

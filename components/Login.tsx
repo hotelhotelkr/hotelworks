@@ -13,6 +13,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  // 컴포넌트 마운트 시 availableUsers 확인 (디버깅)
+  React.useEffect(() => {
+    console.log('📋 Login 컴포넌트 마운트:', {
+      availableUsersCount: availableUsers.length,
+      availableUsers: availableUsers.map(u => ({ 
+        username: u.username, 
+        name: u.name, 
+        dept: u.dept,
+        id: u.id 
+      }))
+    });
+  }, [availableUsers]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
