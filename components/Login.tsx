@@ -161,32 +161,55 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     return Array.from(userMap.values());
   }, [availableUsers, localUsers]);
 
-  // 로컬 인증 fallback (보안: Staff Management에 등록된 사용자만 허용)
+  // 로컬 인증 (보안: Staff Management에 등록된 사용자만 허용)
   const attemptLocalAuth = (trimmedUsername: string, trimmedPassword: string): User | null => {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 로컬 인증 시작:', {
+      입력username: trimmedUsername,
+      사용가능한사용자수: allAvailableUsers.length,
+      사용자목록: allAvailableUsers.map(u => ({ username: u.username, name: u.name, dept: u.dept, role: u.role }))
+    });
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     // 🔒 보안: Staff Management에 등록된 사용자만 찾기 (username 정확히 매칭)
     // username으로 먼저 찾기 (가장 정확한 방법)
     let foundUser = allAvailableUsers.find(
       u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
     );
     
+    console.log('1차 검색 결과:', foundUser ? {
+      username: foundUser.username,
+      name: foundUser.name,
+      dept: foundUser.dept,
+      role: foundUser.role
+    } : '없음');
+    
     // username으로 못 찾았으면 findUser 함수 사용 (3, 4번 사용자용)
     if (!foundUser) {
       foundUser = findUser(allAvailableUsers, trimmedUsername);
+      console.log('2차 검색 결과 (findUser):', foundUser ? {
+        username: foundUser.username,
+        name: foundUser.name,
+        dept: foundUser.dept,
+        role: foundUser.role
+      } : '없음');
     }
     
     if (!foundUser) {
       // Staff Management에 등록되지 않은 사용자는 로그인 불가
-      console.warn('🚫 로그인 거부: Staff Management에 등록되지 않은 사용자:', trimmedUsername);
-      console.warn('   등록된 사용자 목록:', allAvailableUsers.map(u => ({ username: u.username, name: u.name })));
+      console.error('🚫 로그인 거부: Staff Management에 등록되지 않은 사용자:', trimmedUsername);
+      console.error('   등록된 사용자 목록:', allAvailableUsers.map(u => ({ username: u.username, name: u.name, dept: u.dept, role: u.role })));
       return null;
     }
     
     // 🔒 보안: 찾은 사용자의 username이 입력한 username과 정확히 일치하는지 확인
-    if (foundUser.username?.trim().toLowerCase() !== trimmedUsername.toLowerCase()) {
-      console.warn('🚫 로그인 거부: username 불일치:', {
+    if (!foundUser.username || foundUser.username.trim().toLowerCase() !== trimmedUsername.toLowerCase()) {
+      console.error('🚫 로그인 거부: username 불일치:', {
         입력: trimmedUsername,
-        찾은사용자: foundUser.username,
-        찾은사용자이름: foundUser.name
+        찾은사용자username: foundUser.username,
+        찾은사용자이름: foundUser.name,
+        찾은사용자dept: foundUser.dept,
+        찾은사용자role: foundUser.role
       });
       return null;
     }
