@@ -1,0 +1,30 @@
+services:
+  # WebSocket 백엔드 서버
+  - type: web
+    name: hotelworks-backend
+    runtime: node
+    env: node
+    buildCommand: npm install
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # MySQL 데이터베이스 설정 (Render Dashboard에서 추가 필요)
+      # - key: DB_HOST
+      #   sync: false
+      # - key: DB_PORT
+      #   value: 3306
+      # - key: DB_USER
+      #   sync: false
+      # - key: DB_PASSWORD
+      #   sync: false
+      # - key: DB_NAME
+      #   value: hotelworks
+    
+    # 헬스체크
+    healthCheckPath: /health
+    
+    # 무료 플랜
+    plan: free
