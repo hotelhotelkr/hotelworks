@@ -165,7 +165,40 @@ const App: React.FC = () => {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          return Array.isArray(parsed) && parsed.length > 0 ? parsed : USERS;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // 기존 사용자 정보 마이그레이션 (username/password 업데이트)
+            let needsUpdate = false;
+            const migrated = parsed.map((u: User) => {
+              // u1 (프론트수): username/password를 "1"/"1"에서 "FD"/"FD"로 변경
+              if (u.id === 'u1' && (u.username === '1' || u.password === '1')) {
+                needsUpdate = true;
+                return { ...u, username: 'FD', password: 'FD' };
+              }
+              // u2 (하우스키핑수): username/password를 "2"/"2"에서 "HK"/"HK"로 변경
+              if (u.id === 'u2' && (u.username === '2' || u.password === '2')) {
+                needsUpdate = true;
+                return { ...u, username: 'HK', password: 'HK' };
+              }
+              return u;
+            });
+            
+            // 마이그레이션이 필요한 경우 localStorage에 저장
+            if (needsUpdate) {
+              try {
+                localStorage.setItem('hotelflow_users_v1', JSON.stringify(migrated));
+                console.log('✅ 기존 사용자 정보 마이그레이션 완료:', {
+                  프론트수: migrated.find((u: User) => u.id === 'u1')?.username,
+                  하우스키핑수: migrated.find((u: User) => u.id === 'u2')?.username
+                });
+              } catch (e) {
+                console.warn('⚠️ 마이그레이션된 users 저장 실패:', e);
+              }
+              return migrated;
+            }
+            
+            return parsed;
+          }
+          return USERS;
         } catch (e) {
           console.warn('Failed to parse users from localStorage:', e);
           return USERS;
