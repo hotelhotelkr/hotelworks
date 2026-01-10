@@ -2,8 +2,8 @@
 import { Order, OrderStatus, Priority, Department, Role, User } from '../types';
 
 export const USERS: User[] = [
-  { id: 'u1', username: '1', password: '1', name: '프론트수', dept: Department.FRONT_DESK, role: Role.FD_STAFF },
-  { id: 'u2', username: '2', password: '2', name: '하우스키핑수', dept: Department.HOUSEKEEPING, role: Role.HK_STAFF },
+  { id: 'u1', username: 'FD', password: 'FD', name: '프론트수', dept: Department.FRONT_DESK, role: Role.FD_STAFF },
+  { id: 'u2', username: 'HK', password: 'HK', name: '하우스키핑수', dept: Department.HOUSEKEEPING, role: Role.HK_STAFF },
   { id: 'u4', username: 'admin', password: 'admin', name: 'Admin User', dept: Department.ADMIN, role: Role.ADMIN },
 ];
 
