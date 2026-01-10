@@ -214,7 +214,68 @@ const App: React.FC = () => {
               } catch (e) {
                 console.warn('⚠️ 마이그레이션된 users 저장 실패:', e);
               }
+              
+              // 초기 사용자 비밀번호 설정
+              try {
+                const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+                const passwords = saved ? JSON.parse(saved) : {};
+                let passwordsUpdated = false;
+                
+                migrated.forEach((u: User) => {
+                  // 기본 비밀번호 매핑
+                  const defaultPasswords: Record<string, string> = {
+                    'admin': 'admin',
+                    'FD': 'FD',
+                    'HK': 'HK',
+                    '3': '3',
+                    '4': '4',
+                  };
+                  
+                  // 저장된 비밀번호가 없고 기본 비밀번호가 있으면 설정
+                  if (!passwords[u.id] && defaultPasswords[u.username]) {
+                    passwords[u.id] = defaultPasswords[u.username];
+                    passwordsUpdated = true;
+                  }
+                });
+                
+                if (passwordsUpdated) {
+                  localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+                  console.log('✅ 초기 사용자 비밀번호 설정 완료');
+                }
+              } catch (e) {
+                console.warn('⚠️ 초기 비밀번호 설정 실패:', e);
+              }
+              
               return migrated;
+            }
+            
+            // 마이그레이션이 필요 없어도 초기 비밀번호 확인
+            try {
+              const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+              const passwords = saved ? JSON.parse(saved) : {};
+              let passwordsUpdated = false;
+              
+              parsed.forEach((u: User) => {
+                const defaultPasswords: Record<string, string> = {
+                  'admin': 'admin',
+                  'FD': 'FD',
+                  'HK': 'HK',
+                  '3': '3',
+                  '4': '4',
+                };
+                
+                if (!passwords[u.id] && defaultPasswords[u.username]) {
+                  passwords[u.id] = defaultPasswords[u.username];
+                  passwordsUpdated = true;
+                }
+              });
+              
+              if (passwordsUpdated) {
+                localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+                console.log('✅ 초기 사용자 비밀번호 설정 완료');
+              }
+            } catch (e) {
+              console.warn('⚠️ 초기 비밀번호 설정 실패:', e);
             }
             
             return parsed;
@@ -225,6 +286,35 @@ const App: React.FC = () => {
           return USERS;
         }
       }
+      // USERS가 반환되는 경우도 초기 비밀번호 설정
+      try {
+        const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+        const passwords = saved ? JSON.parse(saved) : {};
+        let passwordsUpdated = false;
+        
+        USERS.forEach((u: User) => {
+          const defaultPasswords: Record<string, string> = {
+            'admin': 'admin',
+            'FD': 'FD',
+            'HK': 'HK',
+            '3': '3',
+            '4': '4',
+          };
+          
+          if (!passwords[u.id] && defaultPasswords[u.username]) {
+            passwords[u.id] = defaultPasswords[u.username];
+            passwordsUpdated = true;
+          }
+        });
+        
+        if (passwordsUpdated) {
+          localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+          console.log('✅ 초기 사용자 비밀번호 설정 완료 (USERS 반환)');
+        }
+      } catch (e) {
+        console.warn('⚠️ 초기 비밀번호 설정 실패:', e);
+      }
+      
       return USERS;
     } catch (e) {
       console.warn('Failed to access localStorage for users:', e);
@@ -919,15 +1009,29 @@ const App: React.FC = () => {
           return;
         }
         
-        // 수신한 사용자 목록에서 비밀번호 저장
+        // 수신한 사용자 목록에서 비밀번호 저장 및 초기 비밀번호 설정
         try {
           const saved = localStorage.getItem('hotelflow_user_passwords_v1');
           const passwords = saved ? JSON.parse(saved) : {};
           let passwordsUpdated = false;
           
+          // 기본 비밀번호 매핑
+          const defaultPasswords: Record<string, string> = {
+            'admin': 'admin',
+            'FD': 'FD',
+            'HK': 'HK',
+            '3': '3',
+            '4': '4',
+          };
+          
           receivedUsers.forEach((u: any) => {
             if (u.password && u.id) {
+              // 수신한 비밀번호 저장
               passwords[u.id] = u.password;
+              passwordsUpdated = true;
+            } else if (!passwords[u.id] && u.username && defaultPasswords[u.username]) {
+              // 비밀번호가 없고 기본 비밀번호가 있으면 설정
+              passwords[u.id] = defaultPasswords[u.username];
               passwordsUpdated = true;
             }
           });
