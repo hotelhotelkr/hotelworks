@@ -82,7 +82,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     });
   }, [availableUsers, localUsers, allAvailableUsers]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -230,36 +230,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       
       setError('Unable to connect to server. Please check your connection and try again.');
       return;
-    }
-
-    if (foundUser) {
-      console.log('✅ 로그인 성공!', {
-        name: foundUser.name,
-        username: foundUser.username,
-        dept: foundUser.dept,
-        role: foundUser.role
-      });
-      onLogin(foundUser);
-    } else {
-      console.error('❌ 로그인 실패: 사용자를 찾을 수 없음');
-      console.error('   최종 입력값:', {
-        username: `"${trimmedUsername}"`,
-        password: trimmedPassword ? '***' : '(empty)'
-      });
-      
-      // 유사한 username이 있는지 확인
-      const similarUsername = availableUsers.find(u => 
-        u.username.trim().toLowerCase() === trimmedUsername.toLowerCase()
-      );
-      if (similarUsername) {
-        console.warn('   ⚠️ 비슷한 username 발견:', {
-          찾은_username: `"${similarUsername.username}"`,
-          입력한_username: `"${trimmedUsername}"`,
-          대소문자_차이: similarUsername.username.trim() !== trimmedUsername
-        });
-      }
-      
-      setError('Invalid username or password. Please try again.');
     }
   };
 
