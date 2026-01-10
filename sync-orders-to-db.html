@@ -240,6 +240,32 @@
         );
       }
     }
+    
+    // 페이지 로드 시 자동으로 실행
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('🔄 자동 동기화 준비...');
+      
+      // localStorage에서 WebSocket URL 가져와서 서버 URL로 변환
+      try {
+        const savedUrl = localStorage.getItem('hotelflow_ws_url');
+        if (savedUrl && savedUrl.trim() !== '') {
+          const serverUrl = savedUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+          document.getElementById('serverUrl').value = serverUrl;
+          console.log('📡 서버 URL 자동 설정:', serverUrl);
+        }
+      } catch (e) {}
+      
+      // 1초 후 자동으로 localStorage 확인
+      setTimeout(async () => {
+        await checkLocalStorage();
+        
+        // 2초 후 자동으로 동기화 시작
+        setTimeout(async () => {
+          console.log('🚀 자동 동기화 시작...');
+          await syncOrders();
+        }, 2000);
+      }, 1000);
+    });
   </script>
 </body>
 </html>
