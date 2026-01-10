@@ -104,8 +104,21 @@ io.on('connection', (socket) => {
     // 데이터베이스 저장
     try {
       if (type === 'NEW_ORDER') {
-        await OrderModel.create(payload);
-        console.log('   💾 DB 저장 완료 (NEW_ORDER)');
+        // 날짜 형식 변환
+        const orderData = {
+          ...payload,
+          requestedAt: payload.requestedAt ? (typeof payload.requestedAt === 'string' ? payload.requestedAt : new Date(payload.requestedAt).toISOString()) : new Date().toISOString(),
+          acceptedAt: payload.acceptedAt ? (typeof payload.acceptedAt === 'string' ? payload.acceptedAt : new Date(payload.acceptedAt).toISOString()) : undefined,
+          inProgressAt: payload.inProgressAt ? (typeof payload.inProgressAt === 'string' ? payload.inProgressAt : new Date(payload.inProgressAt).toISOString()) : undefined,
+          completedAt: payload.completedAt ? (typeof payload.completedAt === 'string' ? payload.completedAt : new Date(payload.completedAt).toISOString()) : undefined,
+          memos: payload.memos ? payload.memos.map((memo: any) => ({
+            ...memo,
+            timestamp: memo.timestamp ? (typeof memo.timestamp === 'string' ? memo.timestamp : new Date(memo.timestamp).toISOString()) : new Date().toISOString()
+          })) : []
+        };
+        
+        await OrderModel.create(orderData);
+        console.log('   💾 DB 저장 완료 (NEW_ORDER):', payload.id);
       } else if (type === 'STATUS_UPDATE') {
         const updateData = {
           status: payload.status,

@@ -169,7 +169,26 @@ class OrderModel {
   static async create(orderData) {
     const connection = await pool.getConnection();
     try {
+      // 이미 존재하는 주문인지 확인
+      const [existing] = await connection.execute(
+        'SELECT id FROM orders WHERE id = ?',
+        [orderData.id]
+      );
+
+      if (existing.length > 0) {
+        console.log('⏭️ 주문 이미 존재 (건너뜀):', orderData.id);
+        connection.release();
+        return await this.findById(orderData.id);
+      }
+
       await connection.beginTransaction();
+      
+      // 날짜 형식 변환
+      const requestedAt = orderData.requestedAt instanceof Date 
+        ? orderData.requestedAt.toISOString().slice(0, 19).replace('T', ' ')
+        : (typeof orderData.requestedAt === 'string' 
+          ? orderData.requestedAt.replace('T', ' ').slice(0, 19)
+          : new Date().toISOString().slice(0, 19).replace('T', ' '));
       
       // 주문 삽입
       await connection.execute(`
@@ -183,30 +202,41 @@ class OrderModel {
         orderData.guestName || null,
         orderData.category,
         orderData.itemName,
-        orderData.quantity,
-        orderData.priority,
-        orderData.status,
-        orderData.requestedAt,
+        orderData.quantity || 1,
+        orderData.priority || 'NORMAL',
+        orderData.status || 'REQUESTED',
+        requestedAt,
         orderData.createdBy,
-        orderData.requestChannel,
+        orderData.requestChannel || 'Phone',
         orderData.requestNote || null
       ]);
       
       // 메모가 있으면 삽입
-      if (orderData.memos && orderData.memos.length > 0) {
+      if (orderData.memos && Array.isArray(orderData.memos) && orderData.memos.length > 0) {
         for (const memo of orderData.memos) {
-          await connection.execute(`
-            INSERT INTO memos (id, order_id, text, sender_id, sender_name, sender_dept, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `, [
-            memo.id,
-            orderData.id,
-            memo.text,
-            memo.senderId,
-            memo.senderName,
-            memo.senderDept,
-            memo.timestamp
-          ]);
+          try {
+            // 날짜 형식 변환
+            const memoTimestamp = memo.timestamp instanceof Date 
+              ? memo.timestamp.toISOString().slice(0, 19).replace('T', ' ')
+              : (typeof memo.timestamp === 'string' 
+                ? memo.timestamp.replace('T', ' ').slice(0, 19)
+                : new Date().toISOString().slice(0, 19).replace('T', ' '));
+            
+            await connection.execute(`
+              INSERT IGNORE INTO memos (id, order_id, text, sender_id, sender_name, sender_dept, timestamp)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `, [
+              memo.id,
+              orderData.id,
+              memo.text,
+              memo.senderId,
+              memo.senderName,
+              memo.senderDept,
+              memoTimestamp
+            ]);
+          } catch (memoError) {
+            console.warn('⚠️ 메모 삽입 실패 (건너뜀):', memo.id, memoError.message);
+          }
         }
       }
       
