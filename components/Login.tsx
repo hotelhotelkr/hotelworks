@@ -373,7 +373,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
               <p className="text-[11px] text-amber-700 leading-relaxed text-center">
                 If forgot your password or cannot sign in,<br />
-                contact the <strong className="font-semibold">HotelHotel@kakao.com</strong> or{' '}
+                contact <strong className="font-semibold">HotelHotel@kakao.com</strong> or{' '}
                 <a 
                   href="https://open.kakao.com/o/s7P3BINh" 
                   target="_blank" 
@@ -381,7 +381,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
                   className="text-amber-900 hover:text-amber-950 underline font-semibold transition-colors"
                 >
                   오픈채팅
-                </a>.
+                </a>
               </p>
             </div>
           </div>
