@@ -143,19 +143,20 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
             )}
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Username</label>
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Username (LOGIN ID)</label>
               <div className="relative">
                 <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input 
                   type="text" 
                   autoFocus
                   required
-                  placeholder="Enter your ID"
+                  placeholder="Enter your LOGIN ID (e.g. FD, HK, admin)"
                   className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-950 font-bold focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
+              <p className="text-[10px] text-slate-400 px-1">⚠️ 이름이 아닌 LOGIN ID를 입력하세요 (예: FD, HK, admin)</p>
             </div>
 
             <div className="space-y-2">
@@ -183,6 +184,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           </form>
 
           <div className="mt-12 pt-6 border-t border-slate-100">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+              <p className="text-[11px] text-amber-800 font-bold mb-2">📌 로그인 안내</p>
+              <p className="text-[10px] text-amber-700 leading-relaxed">
+                • <strong>이름이 아닌 LOGIN ID를 입력하세요</strong><br />
+                • 예: 로미오 → LOGIN ID "FD", 비밀번호 "FD"<br />
+                • 예: 줄리엣 → LOGIN ID "HK", 비밀번호 "HK"
+              </p>
+            </div>
             <p className="text-[11px] text-center text-slate-400 leading-relaxed">
               If forgot your password or cannot sign in,<br />
               contact the <strong>HotelHotel@kakao.com</strong> or{' '}
