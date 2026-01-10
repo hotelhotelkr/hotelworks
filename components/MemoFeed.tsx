@@ -11,8 +11,28 @@ interface MemoFeedProps {
 }
 
 const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5, onMemoClick }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // 메모 피드 펼침/접힘 상태를 localStorage에 저장하여 유지
+  const [isExpanded, setIsExpanded] = useState(() => {
+    try {
+      const saved = localStorage.getItem('hotelflow_memo_feed_expanded');
+      return saved !== null ? saved === 'true' : true; // 기본값은 true (펼침)
+    } catch {
+      return true;
+    }
+  });
+  
   const navigate = useNavigate();
+  
+  // isExpanded 상태가 변경될 때마다 localStorage에 저장
+  const handleToggleExpanded = () => {
+    const newValue = !isExpanded;
+    setIsExpanded(newValue);
+    try {
+      localStorage.setItem('hotelflow_memo_feed_expanded', String(newValue));
+    } catch (e) {
+      console.warn('⚠️ 메모 피드 상태 저장 실패:', e);
+    }
+  };
   // 최신 메모들을 시간순으로 정렬
   const recentMemos = useMemo(() => {
     const allMemos: Array<{ order: Order; memo: any; timestamp: Date }> = [];
@@ -84,7 +104,7 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5, onMemoClick }
     <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
       <div 
         className="flex items-center gap-2 mb-4 cursor-pointer hover:bg-slate-50 rounded-lg p-2 -mx-2 transition-all"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleToggleExpanded}
       >
         <MessageSquare className="w-5 h-5 text-indigo-600" />
         <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm flex-1">메모(실시간)</h3>
