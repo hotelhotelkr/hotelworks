@@ -161,9 +161,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     return Array.from(userMap.values());
   }, [availableUsers, localUsers]);
 
-  // 로컬 인증 fallback (Department/Role 확인 및 수정 포함)
+  // 로컬 인증 fallback (Staff Management 데이터 우선 사용)
   const attemptLocalAuth = (trimmedUsername: string, trimmedPassword: string): User | null => {
-    // 사용자 찾기
+    // Staff Management에 저장된 사용자 찾기
     let foundUser = findUser(allAvailableUsers, trimmedUsername);
     
     if (foundUser) {
@@ -177,21 +177,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       if ((savedPassword && trimmedPassword === savedPassword) ||
           (defaultPassword && trimmedPassword === defaultPassword) ||
           isUsernamePasswordMatch) {
-        // username 기반으로 올바른 Name/Department/Role 가져오기
-        const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
-        
-        // Name/Department/Role이 없거나 잘못되었으면 올바른 값으로 강제 설정
-        const needsUpdate = !foundUser.name || !foundUser.dept || !foundUser.role || 
-                           foundUser.name !== expectedConfig.name ||
-                           foundUser.dept !== expectedConfig.dept || 
-                           foundUser.role !== expectedConfig.role;
-        
-        if (needsUpdate) {
+        // Staff Management에 저장된 사용자 정보가 있으면 그대로 사용
+        // Name/Department/Role이 없는 경우에만 기본값 설정
+        if (!foundUser.name || !foundUser.dept || !foundUser.role) {
+          const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
           foundUser = { 
             ...foundUser, 
-            name: expectedConfig.name, // username 기반 name 강제 사용
-            dept: expectedConfig.dept, 
-            role: expectedConfig.role 
+            name: foundUser.name || expectedConfig.name,
+            dept: foundUser.dept || expectedConfig.dept, 
+            role: foundUser.role || expectedConfig.role 
           };
           
           // localStorage에 수정된 사용자 정보 저장
@@ -204,7 +198,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
                   u.id === foundUser.id ? foundUser : u
                 );
                 localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
-                console.log('✅ 사용자 정보 수정됨:', foundUser.username, foundUser.name, foundUser.dept, foundUser.role);
+                console.log('✅ 사용자 정보 보완됨:', foundUser.username, foundUser.name, foundUser.dept, foundUser.role);
               }
             }
           } catch (e) {
@@ -212,16 +206,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           }
         }
         
+        console.log('✅ Staff Management 데이터로 로그인:', foundUser.username, foundUser.name, foundUser.dept, foundUser.role);
         return foundUser;
       }
     } else {
-      // 사용자를 찾지 못한 경우 임시 사용자 생성
+      // 사용자를 찾지 못한 경우 임시 사용자 생성 (기본 매핑 사용)
       const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
       const defaultPassword = DEFAULT_PASSWORDS[trimmedUsername.toLowerCase()];
       
       if (isUsernamePasswordMatch || (defaultPassword && trimmedPassword === defaultPassword)) {
         const tempUser = createTemporaryUser(trimmedUsername, trimmedPassword);
         saveTemporaryUser(tempUser, trimmedPassword);
+        console.log('✅ 임시 사용자 생성:', tempUser.username, tempUser.name, tempUser.dept, tempUser.role);
         return tempUser;
       }
     }
@@ -289,28 +285,25 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       if (response.ok) {
         const userData = await response.json();
         
-        // username 기반으로 올바른 Department/Role/Name 가져오기
-        const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
+        // Staff Management에 저장된 사용자 정보 우선 확인
+        const savedUser = allAvailableUsers.find(
+          u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
+        );
         
-        // username 기반 매핑이 우선 (서버 응답과 관계없이)
+        // 저장된 사용자 정보가 있으면 우선 사용, 없으면 서버 응답 또는 username 기반 매핑 사용
         const authenticatedUser: User = {
-          id: userData.id || `user-${trimmedUsername}`,
+          id: userData.id || savedUser?.id || `user-${trimmedUsername}`,
           username: userData.username || trimmedUsername,
-          name: expectedConfig.name, // username 기반 name 강제 사용
-          dept: expectedConfig.dept, // username 기반 dept 강제 사용
-          role: expectedConfig.role, // username 기반 role 강제 사용
+          name: savedUser?.name || userData.name || createTemporaryUser(trimmedUsername, trimmedPassword).name,
+          dept: savedUser?.dept || userData.dept || createTemporaryUser(trimmedUsername, trimmedPassword).dept,
+          role: savedUser?.role || userData.role || createTemporaryUser(trimmedUsername, trimmedPassword).role,
         };
         
-        // 서버 응답과 다른 경우 로그 출력
-        if (userData.name !== expectedConfig.name || 
-            userData.dept !== expectedConfig.dept || 
-            userData.role !== expectedConfig.role) {
-          console.log('✅ 서버 응답의 사용자 정보를 username 기반으로 수정:', {
-            username: trimmedUsername,
-            server: { name: userData.name, dept: userData.dept, role: userData.role },
-            correct: { name: authenticatedUser.name, dept: authenticatedUser.dept, role: authenticatedUser.role }
-          });
-        }
+        console.log('✅ 로그인 사용자 정보:', {
+          username: trimmedUsername,
+          source: savedUser ? 'Staff Management 저장 데이터' : userData.id ? '서버 응답' : '기본 매핑',
+          user: { name: authenticatedUser.name, dept: authenticatedUser.dept, role: authenticatedUser.role }
+        });
         
         onLogin(authenticatedUser);
         return;
