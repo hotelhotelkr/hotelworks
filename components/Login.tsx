@@ -163,12 +163,31 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
 
   // 로컬 인증 fallback (보안: Staff Management에 등록된 사용자만 허용)
   const attemptLocalAuth = (trimmedUsername: string, trimmedPassword: string): User | null => {
-    // 🔒 보안: Staff Management에 등록된 사용자만 찾기 (임시 사용자 생성 금지)
-    const foundUser = findUser(allAvailableUsers, trimmedUsername);
+    // 🔒 보안: Staff Management에 등록된 사용자만 찾기 (username 정확히 매칭)
+    // username으로 먼저 찾기 (가장 정확한 방법)
+    let foundUser = allAvailableUsers.find(
+      u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
+    );
+    
+    // username으로 못 찾았으면 findUser 함수 사용 (3, 4번 사용자용)
+    if (!foundUser) {
+      foundUser = findUser(allAvailableUsers, trimmedUsername);
+    }
     
     if (!foundUser) {
       // Staff Management에 등록되지 않은 사용자는 로그인 불가
       console.warn('🚫 로그인 거부: Staff Management에 등록되지 않은 사용자:', trimmedUsername);
+      console.warn('   등록된 사용자 목록:', allAvailableUsers.map(u => ({ username: u.username, name: u.name })));
+      return null;
+    }
+    
+    // 🔒 보안: 찾은 사용자의 username이 입력한 username과 정확히 일치하는지 확인
+    if (foundUser.username?.trim().toLowerCase() !== trimmedUsername.toLowerCase()) {
+      console.warn('🚫 로그인 거부: username 불일치:', {
+        입력: trimmedUsername,
+        찾은사용자: foundUser.username,
+        찾은사용자이름: foundUser.name
+      });
       return null;
     }
     
@@ -182,9 +201,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     if ((savedPassword && trimmedPassword === savedPassword) ||
         (defaultPassword && trimmedPassword === defaultPassword) ||
         isUsernamePasswordMatch) {
-      // Staff Management에 저장된 사용자 정보 사용
+      // 🔒 보안: Staff Management에 저장된 사용자 정보만 사용 (변경하지 않음)
+      console.log('✅ Staff Management 등록 사용자 로그인:', {
+        username: foundUser.username,
+        name: foundUser.name,
+        dept: foundUser.dept,
+        role: foundUser.role,
+        id: foundUser.id
+      });
+      
       // Name/Department/Role이 없는 경우에만 기본값 설정
       if (!foundUser.name || !foundUser.dept || !foundUser.role) {
+        console.warn('⚠️ 사용자 정보가 불완전합니다:', foundUser);
         const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
         const updatedUser = { 
           ...foundUser, 
@@ -212,7 +240,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         }
       }
       
-      console.log('✅ Staff Management 등록 사용자 로그인:', foundUser.username, foundUser.name, foundUser.dept, foundUser.role);
       return foundUser;
     }
     
@@ -281,7 +308,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       if (response.ok) {
         const userData = await response.json();
         
-        // 🔒 보안: Staff Management에 등록된 사용자인지 확인
+        // 🔒 보안: Staff Management에 등록된 사용자인지 확인 (username 정확히 매칭)
         const savedUser = allAvailableUsers.find(
           u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
         );
@@ -293,19 +320,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           return;
         }
         
-        // Staff Management에 등록된 사용자 정보 사용
+        // 🔒 보안: Staff Management에 저장된 사용자 정보만 사용 (서버 응답 무시)
+        // 서버가 잘못된 사용자 정보를 반환할 수 있으므로 항상 Staff Management 데이터 사용
         const authenticatedUser: User = {
-          id: userData.id || savedUser.id,
-          username: userData.username || savedUser.username || trimmedUsername,
-          name: savedUser.name || userData.name,
-          dept: savedUser.dept || userData.dept,
-          role: savedUser.role || userData.role,
+          id: savedUser.id, // Staff Management의 ID만 사용
+          username: savedUser.username || trimmedUsername, // Staff Management의 username만 사용
+          name: savedUser.name, // Staff Management의 name만 사용
+          dept: savedUser.dept, // Staff Management의 dept만 사용
+          role: savedUser.role, // Staff Management의 role만 사용
         };
         
         console.log('✅ Staff Management 등록 사용자 로그인:', {
           username: trimmedUsername,
-          user: { name: authenticatedUser.name, dept: authenticatedUser.dept, role: authenticatedUser.role }
+          staffManagement: { name: savedUser.name, dept: savedUser.dept, role: savedUser.role },
+          serverResponse: { name: userData.name, dept: userData.dept, role: userData.role },
+          finalUser: { name: authenticatedUser.name, dept: authenticatedUser.dept, role: authenticatedUser.role }
         });
+        
+        // 서버 응답과 다를 수 있음을 경고
+        if (userData.name !== savedUser.name || 
+            userData.dept !== savedUser.dept || 
+            userData.role !== savedUser.role) {
+          console.warn('⚠️ 서버 응답과 Staff Management 데이터가 다릅니다. Staff Management 데이터를 사용합니다.');
+        }
         
         onLogin(authenticatedUser);
         return;
