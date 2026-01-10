@@ -96,6 +96,106 @@ router.post('/orders', async (req, res) => {
 });
 
 /**
+ * 주문 일괄 동기화 (localStorage에서 DB로)
+ * POST /api/orders/sync
+ */
+router.post('/orders/sync', async (req, res) => {
+  try {
+    const { orders } = req.body;
+    
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return res.status(400).json({ error: 'Orders array is required' });
+    }
+
+    const results = {
+      total: orders.length,
+      created: 0,
+      skipped: 0,
+      errors: []
+    };
+
+    for (const order of orders) {
+      try {
+        // 이미 존재하는 주문인지 확인
+        const [existing] = await pool.execute(
+          'SELECT id FROM orders WHERE id = ?',
+          [order.id]
+        );
+
+        if (existing.length > 0) {
+          results.skipped++;
+          console.log('⏭️ 주문 건너뛰기 (이미 존재):', order.id);
+          continue;
+        }
+
+        // 주문 삽입
+        await pool.execute(
+          `INSERT INTO orders (
+            id, room_no, guest_name, category, item_name, quantity,
+            priority, status, requested_at, created_by, request_channel, request_note
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            order.id,
+            order.roomNo || order.room_no,
+            order.guestName || order.guest_name || null,
+            order.category,
+            order.itemName || order.item_name,
+            order.quantity || 1,
+            order.priority || 'NORMAL',
+            order.status || 'REQUESTED',
+            order.requestedAt ? (order.requestedAt instanceof Date ? order.requestedAt.toISOString() : order.requestedAt) : new Date().toISOString(),
+            order.createdBy || order.created_by,
+            order.requestChannel || order.request_channel || 'Phone',
+            order.requestNote || order.request_note || null
+          ]
+        );
+
+        // 메모가 있으면 삽입
+        if (order.memos && Array.isArray(order.memos) && order.memos.length > 0) {
+          for (const memo of order.memos) {
+            try {
+              await pool.execute(
+                `INSERT IGNORE INTO memos (id, order_id, text, sender_id, sender_name, sender_dept, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [
+                  memo.id,
+                  order.id,
+                  memo.text,
+                  memo.senderId || memo.sender_id,
+                  memo.senderName || memo.sender_name,
+                  memo.senderDept || memo.sender_dept,
+                  memo.timestamp ? (memo.timestamp instanceof Date ? memo.timestamp.toISOString() : memo.timestamp) : new Date().toISOString()
+                ]
+              );
+            } catch (memoError) {
+              console.warn('⚠️ 메모 삽입 실패 (건너뜀):', memo.id, memoError.message);
+            }
+          }
+        }
+
+        results.created++;
+        console.log('✅ 주문 동기화 완료:', order.id);
+      } catch (error) {
+        results.errors.push({
+          orderId: order.id,
+          error: error.message
+        });
+        console.error('❌ 주문 동기화 실패:', order.id, error.message);
+      }
+    }
+
+    console.log(`📊 동기화 완료: ${results.created}개 생성, ${results.skipped}개 건너뜀, ${results.errors.length}개 오류`);
+    res.json({
+      message: 'Sync completed',
+      results
+    });
+  } catch (error) {
+    console.error('❌ 주문 동기화 실패:', error.message);
+    res.status(500).json({ error: 'Failed to sync orders', message: error.message });
+  }
+});
+
+/**
  * 주문 상태 업데이트
  * PUT /api/orders/:id
  */

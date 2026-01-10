@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>주문 동기화 도구</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .info {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #2196f3;
+    }
+    button {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      background: #4338ca;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .success {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      color: #2e7d32;
+    }
+    .error {
+      background: #ffebee;
+      border-left: 4px solid #f44336;
+      color: #c62828;
+    }
+    .info-box {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      color: #e65100;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📦 주문 동기화 도구</h1>
+    <div class="info">
+      <strong>사용 방법:</strong><br>
+      1. 로컬 스토리지에 저장된 주문들을 데이터베이스로 동기화합니다.<br>
+      2. 이미 존재하는 주문은 건너뜁니다 (중복 방지).<br>
+      3. 서버 URL을 입력하거나 자동 감지합니다.
+    </div>
+    
+    <div>
+      <label>
+        서버 URL (비워두면 자동 감지):
+        <input type="text" id="serverUrl" placeholder="http://localhost:3001" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+      </label>
+    </div>
+    
+    <div style="margin-top: 20px;">
+      <button onclick="checkLocalStorage()">1. localStorage 확인</button>
+      <button onclick="syncOrders()">2. 동기화 시작</button>
+      <button onclick="clearResult()">결과 지우기</button>
+    </div>
+    
+    <div id="result"></div>
+  </div>
+
+  <script>
+    function getApiBaseUrl() {
+      const input = document.getElementById('serverUrl').value.trim();
+      if (input) {
+        return input;
+      }
+      
+      // 자동 감지
+      const host = window.location.hostname;
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      
+      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.')) {
+        return `${protocol}//${host}:3001`;
+      }
+      
+      // Render 등 프로덕션 환경
+      return `${protocol}//${host}:3001`;
+    }
+    
+    function showResult(message, type = 'info') {
+      const result = document.getElementById('result');
+      result.textContent = message;
+      result.className = type;
+      result.style.display = 'block';
+    }
+    
+    function clearResult() {
+      document.getElementById('result').style.display = 'none';
+    }
+    
+    async function checkLocalStorage() {
+      try {
+        const ordersJson = localStorage.getItem('hotelflow_orders_v1');
+        if (!ordersJson) {
+          showResult('❌ localStorage에 주문이 없습니다.\n키: hotelflow_orders_v1', 'error');
+          return;
+        }
+        
+        const orders = JSON.parse(ordersJson);
+        const count = Array.isArray(orders) ? orders.length : 0;
+        
+        if (count === 0) {
+          showResult('❌ 주문이 0개입니다.', 'error');
+          return;
+        }
+        
+        showResult(
+          `✅ localStorage에 ${count}개의 주문이 있습니다.\n\n` +
+          `첫 번째 주문 예시:\n${JSON.stringify(orders[0], null, 2).substring(0, 500)}...`,
+          'success'
+        );
+      } catch (error) {
+        showResult(`❌ localStorage 확인 실패: ${error.message}`, 'error');
+      }
+    }
+    
+    async function syncOrders() {
+      try {
+        showResult('⏳ 동기화 시작...', 'info-box');
+        
+        const ordersJson = localStorage.getItem('hotelflow_orders_v1');
+        if (!ordersJson) {
+          showResult('❌ localStorage에 주문이 없습니다.', 'error');
+          return;
+        }
+        
+        const orders = JSON.parse(ordersJson);
+        if (!Array.isArray(orders) || orders.length === 0) {
+          showResult('❌ 주문이 0개입니다.', 'error');
+          return;
+        }
+        
+        // Date 객체를 ISO 문자열로 변환
+        const formattedOrders = orders.map(order => ({
+          ...order,
+          requestedAt: order.requestedAt instanceof Date 
+            ? order.requestedAt.toISOString() 
+            : (typeof order.requestedAt === 'string' ? order.requestedAt : new Date(order.requestedAt).toISOString()),
+          acceptedAt: order.acceptedAt ? (order.acceptedAt instanceof Date ? order.acceptedAt.toISOString() : order.acceptedAt) : undefined,
+          inProgressAt: order.inProgressAt ? (order.inProgressAt instanceof Date ? order.inProgressAt.toISOString() : order.inProgressAt) : undefined,
+          completedAt: order.completedAt ? (order.completedAt instanceof Date ? order.completedAt.toISOString() : order.completedAt) : undefined,
+          memos: (order.memos || []).map(memo => ({
+            ...memo,
+            timestamp: memo.timestamp instanceof Date 
+              ? memo.timestamp.toISOString() 
+              : (typeof memo.timestamp === 'string' ? memo.timestamp : new Date(memo.timestamp).toISOString())
+          }))
+        }));
+        
+        const apiUrl = `${getApiBaseUrl()}/api/orders/sync`;
+        
+        showResult(`⏳ 서버로 전송 중... (${formattedOrders.length}개 주문)\n서버: ${apiUrl}`, 'info-box');
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ orders: formattedOrders })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: response.statusText }));
+          throw new Error(error.error || `HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        showResult(
+          `✅ 동기화 완료!\n\n` +
+          `총 주문: ${result.results.total}개\n` +
+          `✅ 생성: ${result.results.created}개\n` +
+          `⏭️ 건너뜀: ${result.results.skipped}개\n` +
+          `❌ 오류: ${result.results.errors.length}개\n\n` +
+          (result.results.errors.length > 0 
+            ? `오류 목록:\n${result.results.errors.map(e => `- ${e.orderId}: ${e.error}`).join('\n')}`
+            : '모든 주문이 성공적으로 동기화되었습니다!'),
+          'success'
+        );
+      } catch (error) {
+        showResult(
+          `❌ 동기화 실패: ${error.message}\n\n` +
+          `서버 URL을 확인하거나 서버가 실행 중인지 확인해주세요.\n` +
+          `API URL: ${getApiBaseUrl()}/api/orders/sync`,
+          'error'
+        );
+      }
+    }
+  </script>
+</body>
+</html>
