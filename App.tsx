@@ -52,6 +52,15 @@ const STORAGE_KEY = 'hotelflow_orders_v1';
 const SYNC_CHANNEL = 'hotelflow_sync';
 const OFFLINE_QUEUE_KEY = 'hotelflow_offline_queue'; // 오프라인 상태에서 생성된 메시지 큐
 
+// 기본 비밀번호 매핑 (공통 상수)
+const DEFAULT_PASSWORDS: Record<string, string> = {
+  'admin': 'admin',
+  'FD': 'FD',
+  'HK': 'HK',
+  '3': '3',
+  '4': '4',
+};
+
 /**
  * 세션 ID: 각 브라우저 탭/기기를 고유하게 식별
  * - 페이지 로드 시마다 새로 생성
@@ -1052,23 +1061,14 @@ const App: React.FC = () => {
           const passwords = saved ? JSON.parse(saved) : {};
           let passwordsUpdated = false;
           
-          // 기본 비밀번호 매핑
-          const defaultPasswords: Record<string, string> = {
-            'admin': 'admin',
-            'FD': 'FD',
-            'HK': 'HK',
-            '3': '3',
-            '4': '4',
-          };
-          
           receivedUsers.forEach((u: any) => {
             if (u.password && u.id) {
               // 수신한 비밀번호 저장
               passwords[u.id] = u.password;
               passwordsUpdated = true;
-            } else if (!passwords[u.id] && u.username && defaultPasswords[u.username]) {
+            } else if (!passwords[u.id] && u.username && DEFAULT_PASSWORDS[u.username]) {
               // 비밀번호가 없고 기본 비밀번호가 있으면 설정
-              passwords[u.id] = defaultPasswords[u.username];
+              passwords[u.id] = DEFAULT_PASSWORDS[u.username];
               passwordsUpdated = true;
             }
           });

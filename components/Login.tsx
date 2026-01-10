@@ -8,57 +8,135 @@ interface LoginProps {
   availableUsers: User[];
 }
 
+// 기본 비밀번호 매핑 (상수)
+const DEFAULT_PASSWORDS: Record<string, string> = {
+  'admin': 'admin',
+  'fd': 'FD',
+  'hk': 'HK',
+  '3': '3',
+  '4': '4',
+};
+
+// 사용자 찾기 헬퍼 함수
+const findUser = (users: User[], username: string): User | null => {
+  const trimmed = username.trim().toLowerCase();
+  
+  // 1차: username으로 찾기
+  let found = users.find(u => u.username?.trim().toLowerCase() === trimmed);
+  if (found) return found;
+  
+  // 2차: name 또는 id로 찾기 (3, 4번 사용자용)
+  if (username === '3') {
+    found = users.find(u => 
+      u.username === '3' || 
+      u.name === '로미오' || 
+      (u.name && u.name.includes('로미오')) ||
+      (u.id && u.id.includes('3'))
+    );
+    if (found && found.username !== '3') {
+      return { ...found, username: '3' };
+    }
+  } else if (username === '4') {
+    found = users.find(u => 
+      u.username === '4' || 
+      u.name === '줄리엣' || 
+      (u.name && u.name.includes('줄리엣')) ||
+      (u.id && u.id.includes('4'))
+    );
+    if (found && found.username !== '4') {
+      return { ...found, username: '4' };
+    }
+  }
+  
+  return found || null;
+};
+
+// 임시 사용자 생성 헬퍼 함수
+const createTemporaryUser = (username: string, password: string): User => {
+  const trimmed = username.trim();
+  return {
+    id: `temp-${trimmed}-${Date.now()}`,
+    username: trimmed,
+    name: trimmed === '3' ? '로미오' : trimmed === '4' ? '줄리엣' : trimmed.toUpperCase(),
+    dept: trimmed === '3' || trimmed.toLowerCase() === 'fd' ? Department.FRONT_DESK : Department.HOUSEKEEPING,
+    role: trimmed === '3' || trimmed.toLowerCase() === 'fd' ? Role.FD_STAFF : Role.HK_STAFF
+  };
+};
+
+// 비밀번호 확인 및 저장 헬퍼 함수
+const verifyAndSavePassword = (userId: string, username: string, inputPassword: string): string | null => {
+  try {
+    const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+    const passwords = saved ? JSON.parse(saved) : {};
+    
+    // 기본 비밀번호 자동 설정
+    if (!passwords[userId] && DEFAULT_PASSWORDS[username.toLowerCase()]) {
+      passwords[userId] = DEFAULT_PASSWORDS[username.toLowerCase()];
+      localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+    }
+    
+    return passwords[userId] || null;
+  } catch (e) {
+    console.warn('⚠️ 비밀번호 확인 실패:', e);
+    return null;
+  }
+};
+
+// 임시 사용자 저장 헬퍼 함수
+const saveTemporaryUser = (user: User, password: string): void => {
+  try {
+    // 비밀번호 저장
+    const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+    const passwords = saved ? JSON.parse(saved) : {};
+    passwords[user.id] = password;
+    localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+    
+    // 사용자 목록에 추가
+    const savedUsers = localStorage.getItem('hotelflow_users_v1');
+    const users = savedUsers ? JSON.parse(savedUsers) : [];
+    users.push(user);
+    localStorage.setItem('hotelflow_users_v1', JSON.stringify(users));
+  } catch (e) {
+    console.warn('⚠️ 임시 사용자 저장 실패:', e);
+  }
+};
+
 const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [localUsers, setLocalUsers] = React.useState<any[]>([]);
 
-  // 모바일에서도 최신 users를 확인하기 위해 localStorage 직접 읽기
+  // localStorage에서 사용자 목록 동기화
   React.useEffect(() => {
     const loadUsersFromStorage = () => {
       try {
         const saved = localStorage.getItem('hotelflow_users_v1');
         if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setLocalUsers(parsed);
-              console.log('📱 Login: localStorage에서 users 로드', {
-                count: parsed.length,
-                users: parsed.map((u: any) => ({ username: u.username, name: u.name }))
-              });
-            }
-          } catch (e) {
-            console.warn('⚠️ Login: localStorage users 파싱 실패:', e);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setLocalUsers(parsed);
           }
         }
       } catch (e) {
-        console.warn('⚠️ Login: localStorage 접근 실패:', e);
+        console.warn('⚠️ Login: localStorage users 파싱 실패:', e);
       }
     };
 
-    // 즉시 한 번 로드
     loadUsersFromStorage();
-
-    // 0.5초마다 확인 (모바일에서 빠른 동기화)
     const interval = setInterval(loadUsersFromStorage, 500);
-
     return () => clearInterval(interval);
   }, []);
 
-  // availableUsers와 localStorage users 병합 (최신 데이터 우선)
-  // 🔒 보안: 비밀번호 필드는 제외하고 병합
+  // availableUsers와 localStorage users 병합
   const allAvailableUsers = React.useMemo(() => {
     const userMap = new Map<string, any>();
     
-    // 먼저 availableUsers 추가 (비밀번호 제외)
     availableUsers.forEach(u => {
       const { password, ...userWithoutPassword } = u;
       userMap.set(u.id, userWithoutPassword);
     });
     
-    // localStorage users 추가/업데이트 (더 최신일 수 있음, 비밀번호 제외)
     localUsers.forEach(u => {
       const { password, ...userWithoutPassword } = u;
       userMap.set(u.id, userWithoutPassword);
@@ -67,77 +145,68 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     return Array.from(userMap.values());
   }, [availableUsers, localUsers]);
 
-  // 컴포넌트 마운트 시 availableUsers 확인 (디버깅)
-  React.useEffect(() => {
-    console.log('📋 Login 컴포넌트 마운트:', {
-      availableUsersCount: availableUsers.length,
-      localUsersCount: localUsers.length,
-      mergedUsersCount: allAvailableUsers.length,
-      allUsers: allAvailableUsers.map(u => ({ 
-        username: u.username, 
-        name: u.name, 
-        dept: u.dept,
-        id: u.id 
-      }))
-    });
-  }, [availableUsers, localUsers, allAvailableUsers]);
+  // 로컬 인증 fallback
+  const attemptLocalAuth = (trimmedUsername: string, trimmedPassword: string): User | null => {
+    // 사용자 찾기
+    const foundUser = findUser(allAvailableUsers, trimmedUsername);
+    
+    if (foundUser) {
+      // 저장된 비밀번호 확인
+      const savedPassword = verifyAndSavePassword(foundUser.id, foundUser.username || trimmedUsername, trimmedPassword);
+      
+      // 비밀번호 확인
+      const defaultPassword = DEFAULT_PASSWORDS[trimmedUsername.toLowerCase()];
+      const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
+      
+      if ((savedPassword && trimmedPassword === savedPassword) ||
+          (defaultPassword && trimmedPassword === defaultPassword) ||
+          isUsernamePasswordMatch) {
+        return foundUser;
+      }
+    } else {
+      // 사용자를 찾지 못한 경우 임시 사용자 생성
+      const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
+      const defaultPassword = DEFAULT_PASSWORDS[trimmedUsername.toLowerCase()];
+      
+      if (isUsernamePasswordMatch || (defaultPassword && trimmedPassword === defaultPassword)) {
+        const tempUser = createTemporaryUser(trimmedUsername, trimmedPassword);
+        saveTemporaryUser(tempUser, trimmedPassword);
+        return tempUser;
+      }
+    }
+    
+    return null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // 입력값 정리 (공백 제거)
     const trimmedUsername = username.trim();
     const trimmedPassword = password.trim();
 
-    // 로그인 시도 전에 localStorage에서 최신 users 확인
+    // localStorage 최신화
     try {
       const saved = localStorage.getItem('hotelflow_users_v1');
       if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setLocalUsers(parsed);
-            console.log('🔄 로그인 시도 전 localStorage 확인:', parsed.length, '명');
-          }
-        } catch (e) {
-          console.warn('⚠️ localStorage 파싱 실패:', e);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setLocalUsers(parsed);
         }
       }
     } catch (e) {
-      console.warn('⚠️ localStorage 접근 실패:', e);
+      // 무시
     }
 
-    // 디버깅: availableUsers 확인
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🔍 로그인 시도 시작');
-    console.log('   입력한 username:', `"${trimmedUsername}"`, `(길이: ${trimmedUsername.length})`);
-    console.log('   입력한 password:', trimmedPassword ? `"***" (길이: ${trimmedPassword.length})` : '(empty)');
-    console.log('   availableUsers 개수:', availableUsers.length);
-    console.log('   localUsers 개수:', localUsers.length);
-    console.log('   병합된 사용자 개수:', allAvailableUsers.length);
-    console.log('   병합된 사용자 목록:', allAvailableUsers.map(u => ({
-      id: u.id,
-      username: u.username,
-      name: u.name,
-      username_lower: u.username?.toLowerCase(),
-      찾는값: trimmedUsername.toLowerCase()
-    })));
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
-    // 🔒 보안: 서버 API를 통한 인증 (비밀번호는 서버에서만 검증)
-    // 클라이언트에는 비밀번호가 없으므로 서버 API 호출 필요
+    // API URL 가져오기
     const getApiBaseUrl = (): string => {
-      // WebSocket URL에서 HTTP API URL 추출
       try {
         const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
         if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
-          // ws:// 또는 wss://를 http:// 또는 https://로 변환
           return envUrl.replace('ws://', 'http://').replace('wss://', 'https://');
         }
       } catch (e) {}
       
-      // localStorage에서 WebSocket URL 가져오기
       try {
         const savedUrl = localStorage.getItem('hotelflow_ws_url');
         if (savedUrl && savedUrl.trim() !== '') {
@@ -145,7 +214,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         }
       } catch (e) {}
       
-      // 로컬 환경 감지
       if (typeof window !== 'undefined' && window.location) {
         const host = window.location.hostname;
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
@@ -155,587 +223,44 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         }
       }
       
-      // 기본값
       return 'http://localhost:3001';
     };
-    
+
     // 서버 API를 통한 로그인 시도
-    const apiBaseUrl = getApiBaseUrl();
-    const loginApiUrl = `${apiBaseUrl}/api/login`;
-    
-    console.log('🔒 서버 API를 통한 로그인 시도:', loginApiUrl);
-    
-    // 🔒 비동기 함수 내에서 await 사용
     try {
-      const response = await fetch(loginApiUrl, {
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/api/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: trimmedUsername,
-          password: trimmedPassword,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: trimmedUsername, password: trimmedPassword }),
       });
-      
+
       if (response.ok) {
         const userData = await response.json();
-        console.log('✅ 서버 인증 성공:', userData);
-        
-        // username으로 사용자 정보 찾기 (비밀번호 제외)
         const foundUser = allAvailableUsers.find(
           u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
         );
         
         if (foundUser) {
-          // 서버에서 받은 사용자 정보로 로그인
-          const authenticatedUser = {
-            ...foundUser,
-            id: userData.id || foundUser.id,
-            name: userData.name || foundUser.name,
-            dept: userData.dept || foundUser.dept,
-            role: userData.role || foundUser.role,
-          };
-          
-          console.log('✅ 로그인 성공!', authenticatedUser);
-          onLogin(authenticatedUser);
-          return;
+          onLogin({ ...foundUser, ...userData });
         } else {
-          // 서버 인증은 성공했지만 클라이언트에 사용자 정보가 없는 경우
-          console.warn('⚠️ 서버 인증 성공, 하지만 클라이언트에 사용자 정보 없음');
-          const authenticatedUser = {
-            id: userData.id,
-            username: userData.username,
-            name: userData.name,
-            dept: userData.dept,
-            role: userData.role,
-          };
-          onLogin(authenticatedUser as any);
-          return;
+          onLogin(userData as User);
         }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ 서버 인증 실패:', response.status, errorData);
-        
-        // 서버 인증 실패 시 로컬 인증으로 fallback 시도
-        console.warn('⚠️ 서버 인증 실패, 로컬 인증으로 fallback 시도...');
-        console.log('🔍 로컬 fallback에서 사용자 찾기:', {
-          찾는username: trimmedUsername.toLowerCase(),
-          사용자목록: allAvailableUsers.map(u => ({
-            id: u.id,
-            username: u.username,
-            username_lower: u.username?.trim().toLowerCase(),
-            name: u.name
-          }))
-        });
-        
-        // 로컬 fallback 인증 (하위 호환성)
-        // 1차: username으로 찾기
-        let foundUser = allAvailableUsers.find(
-          u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
-        );
-        
-        // 2차: username이 없거나 다른 경우, name 또는 id로 찾기
-        if (!foundUser) {
-          console.log('🔍 2차 검색 시작 (name/id로 찾기)');
-          
-          // 로미오: username이 "3" 또는 name이 "로미오" 또는 id에 "3"이 포함된 경우
-          if (trimmedUsername === '3') {
-            console.log('🔍 username "3" 찾기 시도');
-            foundUser = allAvailableUsers.find(u => {
-              const matches = u.username === '3' || 
-                             u.username === '3' || 
-                             u.name === '로미오' || 
-                             (u.name && u.name.includes('로미오')) ||
-                             (u.id && u.id.includes('3'));
-              if (matches) {
-                console.log('✅ 매칭된 사용자:', { id: u.id, username: u.username, name: u.name });
-              }
-              return matches;
-            });
-            
-            // 찾았는데 username이 없거나 다르면 "3"으로 설정
-            if (foundUser) {
-              if (!foundUser.username || foundUser.username !== '3') {
-                console.log('🔧 username을 "3"으로 수정:', foundUser.username, '→', '3');
-                foundUser = { ...foundUser, username: '3' };
-              }
-            }
-          }
-          // 줄리엣: username이 "4" 또는 name이 "줄리엣" 또는 id에 "4"가 포함된 경우
-          else if (trimmedUsername === '4') {
-            console.log('🔍 username "4" 찾기 시도');
-            foundUser = allAvailableUsers.find(u => {
-              const matches = u.username === '4' || 
-                             u.name === '줄리엣' || 
-                             (u.name && u.name.includes('줄리엣')) ||
-                             (u.id && u.id.includes('4'));
-              if (matches) {
-                console.log('✅ 매칭된 사용자:', { id: u.id, username: u.username, name: u.name });
-              }
-              return matches;
-            });
-            
-            // 찾았는데 username이 없거나 다르면 "4"로 설정
-            if (foundUser) {
-              if (!foundUser.username || foundUser.username !== '4') {
-                console.log('🔧 username을 "4"로 수정:', foundUser.username, '→', '4');
-                foundUser = { ...foundUser, username: '4' };
-              }
-            }
-          }
-          
-          if (!foundUser) {
-            console.log('❌ 2차 검색에서도 사용자를 찾지 못함');
-          }
-        }
-        
-        console.log('🔍 로컬 fallback 사용자 찾기 결과:', foundUser ? {
-          id: foundUser.id,
-          username: foundUser.username,
-          name: foundUser.name
-        } : '사용자를 찾을 수 없음');
-        
-        if (!foundUser) {
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log('🔍 사용자를 찾지 못함, 임시 사용자 생성 시도');
-          console.log('   입력한 username:', trimmedUsername);
-          console.log('   입력한 password:', trimmedPassword ? '***' : '(empty)');
-          console.log('   username === password:', trimmedUsername.toLowerCase() === trimmedPassword?.toLowerCase());
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          
-          // 사용자를 찾지 못했지만 username과 password가 같으면 임시 사용자 생성하여 로그인 허용
-          const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword?.toLowerCase();
-          
-          if (isUsernamePasswordMatch) {
-            console.log('✅ username과 password가 일치하므로 임시 사용자 생성 시도');
-            
-            // 임시 사용자 생성 (기본 비밀번호 매핑 확인)
-            const defaultPasswords: Record<string, string> = {
-              'admin': 'admin',
-              'fd': 'FD',
-              'hk': 'HK',
-              '3': '3',
-              '4': '4',
-            };
-            
-            const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
-            console.log('🔍 기본 비밀번호 확인:', {
-              username: trimmedUsername.toLowerCase(),
-              기본비밀번호: defaultPassword || '없음',
-              입력한비밀번호: trimmedPassword,
-              일치여부: defaultPassword && trimmedPassword === defaultPassword
-            });
-            
-            // username과 password가 같거나 기본 비밀번호와 일치하면 임시 사용자 생성
-            if (isUsernamePasswordMatch || (defaultPassword && trimmedPassword === defaultPassword)) {
-              console.log('✅ 임시 사용자 생성 조건 충족, 사용자 생성 시작');
-              
-              // 임시 사용자 생성
-              const tempUser: User = {
-                id: `temp-${trimmedUsername}-${Date.now()}`,
-                username: trimmedUsername,
-                name: trimmedUsername === '3' ? '로미오' : trimmedUsername === '4' ? '줄리엣' : trimmedUsername.toUpperCase(),
-                dept: trimmedUsername === '3' || trimmedUsername.toLowerCase() === 'fd' ? Department.FRONT_DESK : Department.HOUSEKEEPING,
-                role: trimmedUsername === '3' || trimmedUsername.toLowerCase() === 'fd' ? Role.FD_STAFF : Role.HK_STAFF
-              };
-              
-              console.log('✅ 임시 사용자 생성:', tempUser);
-              
-              // 비밀번호 저장
-              try {
-                const saved = localStorage.getItem('hotelflow_user_passwords_v1');
-                const passwords = saved ? JSON.parse(saved) : {};
-                passwords[tempUser.id] = trimmedPassword;
-                localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
-                console.log('✅ 임시 사용자 비밀번호 저장 완료');
-              } catch (e) {
-                console.warn('⚠️ 임시 사용자 비밀번호 저장 실패:', e);
-              }
-              
-              // 사용자 목록에 추가
-              try {
-                const saved = localStorage.getItem('hotelflow_users_v1');
-                const users = saved ? JSON.parse(saved) : [];
-                users.push(tempUser);
-                localStorage.setItem('hotelflow_users_v1', JSON.stringify(users));
-                console.log('✅ 임시 사용자를 localStorage에 추가 완료');
-              } catch (e) {
-                console.warn('⚠️ 임시 사용자 저장 실패:', e);
-              }
-              
-              console.log('✅ 임시 사용자로 로컬 fallback 인증 성공:', tempUser.username);
-              onLogin(tempUser);
-              return;
-            } else {
-              console.log('❌ 임시 사용자 생성 조건 불일치:', {
-                username일치: isUsernamePasswordMatch,
-                기본비밀번호일치: defaultPassword && trimmedPassword === defaultPassword
-              });
-            }
-          } else {
-            console.log('❌ username과 password가 일치하지 않음, 임시 사용자 생성 불가');
-          }
-        }
-        
-        if (foundUser) {
-          console.log('🔍 로컬 fallback 인증 시작:', {
-            foundUser: foundUser.username,
-            userId: foundUser.id,
-            inputPassword: trimmedPassword
-          });
-          
-          // 기본 비밀번호 매핑 (먼저 정의)
-          const defaultPasswords: Record<string, string> = {
-            'admin': 'admin',
-            'fd': 'FD',
-            'hk': 'HK',
-            '3': '3',
-            '4': '4',
-          };
-          
-          // 저장된 비밀번호 확인 및 자동 설정
-          try {
-            let saved = localStorage.getItem('hotelflow_user_passwords_v1');
-            let passwords = saved ? JSON.parse(saved) : {};
-            console.log('📋 저장된 비밀번호 확인:', saved ? '있음' : '없음');
-            console.log('📋 저장된 비밀번호 목록:', Object.keys(passwords));
-            
-            // 비밀번호가 없으면 기본값으로 설정
-            if (!passwords[foundUser.id] && defaultPasswords[foundUser.username.toLowerCase()]) {
-              passwords[foundUser.id] = defaultPasswords[foundUser.username.toLowerCase()];
-              localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
-              console.log('✅ 기본 비밀번호 자동 설정:', foundUser.username, '→', passwords[foundUser.id]);
-            }
-            
-            const savedPassword = passwords[foundUser.id];
-            console.log('🔑 사용자 ID별 저장된 비밀번호:', foundUser.id, savedPassword ? `"${savedPassword}"` : '없음');
-              
-              if (savedPassword && trimmedPassword === savedPassword) {
-                console.log('✅ 저장된 비밀번호로 로컬 fallback 인증 성공:', foundUser.username);
-                onLogin(foundUser);
-                return;
-              } else if (savedPassword) {
-                console.log('❌ 저장된 비밀번호 불일치:', {
-                  저장된비밀번호: `"${savedPassword}"`,
-                  입력한비밀번호: `"${trimmedPassword}"`,
-                  일치여부: savedPassword === trimmedPassword
-                });
-              }
-            }
-          } catch (e) {
-            console.warn('⚠️ 저장된 비밀번호 확인 실패:', e);
-          }
-          
-          // 기본 비밀번호 확인 (로컬 fallback용)
-          const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
-          console.log('🔑 기본 비밀번호 확인:', {
-            username: trimmedUsername.toLowerCase(),
-            기본비밀번호: defaultPassword || '없음',
-            입력한비밀번호: trimmedPassword
-          });
-          
-          // 2. username과 password가 같은 경우 (예: FD/FD, HK/HK, 3/3, 4/4 등)
-          const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
-          console.log('🔑 Username=Password 확인:', {
-            username: trimmedUsername.toLowerCase(),
-            password: trimmedPassword.toLowerCase(),
-            일치여부: isUsernamePasswordMatch
-          });
-          
-          // 3. 기본 비밀번호와 일치하거나 username=password인 경우 로그인 허용
-          if ((defaultPassword && trimmedPassword === defaultPassword) || isUsernamePasswordMatch) {
-            console.log('✅ 로컬 fallback 인증 성공:', foundUser.username);
-            onLogin(foundUser);
-            return;
-          } else {
-            console.log('❌ 로컬 fallback 인증 실패:', {
-              기본비밀번호일치: defaultPassword && trimmedPassword === defaultPassword,
-              username일치: isUsernamePasswordMatch
-            });
-          }
-        } else {
-          console.log('❌ 사용자를 찾을 수 없음:', trimmedUsername);
-          console.log('🔍 임시 사용자 생성 조건 확인:', {
-            username: trimmedUsername,
-            password: trimmedPassword ? '***' : '(empty)',
-            username_lower: trimmedUsername.toLowerCase(),
-            password_lower: trimmedPassword?.toLowerCase()
-          });
-          
-          // 사용자를 찾지 못했지만 username과 password가 같으면 임시 사용자 생성하여 로그인 허용
-          const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
-          console.log('🔍 username과 password 일치 여부:', isUsernamePasswordMatch);
-          
-          if (isUsernamePasswordMatch) {
-            console.log('🔍 username과 password가 일치하므로 임시 사용자 생성하여 로그인 허용');
-            
-            // 임시 사용자 생성 (기본 비밀번호 매핑 확인)
-            const defaultPasswords: Record<string, string> = {
-              'admin': 'admin',
-              'fd': 'FD',
-              'hk': 'HK',
-              '3': '3',
-              '4': '4',
-            };
-            
-            const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
-            console.log('🔍 기본 비밀번호 확인:', {
-              username: trimmedUsername.toLowerCase(),
-              기본비밀번호: defaultPassword || '없음',
-              입력한비밀번호: trimmedPassword,
-              일치여부: defaultPassword && trimmedPassword === defaultPassword
-            });
-            
-            if (defaultPassword && trimmedPassword === defaultPassword) {
-              console.log('✅ 기본 비밀번호 일치, 임시 사용자 생성 시작');
-              // 임시 사용자 생성
-              const tempUser: User = {
-                id: `temp-${trimmedUsername}-${Date.now()}`,
-                username: trimmedUsername,
-                name: trimmedUsername === '3' ? '로미오' : trimmedUsername === '4' ? '줄리엣' : trimmedUsername.toUpperCase(),
-                dept: trimmedUsername === '3' || trimmedUsername.toLowerCase() === 'fd' ? Department.FRONT_DESK : Department.HOUSEKEEPING,
-                role: trimmedUsername === '3' || trimmedUsername.toLowerCase() === 'fd' ? Role.FD_STAFF : Role.HK_STAFF
-              };
-              
-              console.log('✅ 임시 사용자 생성:', tempUser);
-              
-              // 비밀번호 저장
-              try {
-                const saved = localStorage.getItem('hotelflow_user_passwords_v1');
-                const passwords = saved ? JSON.parse(saved) : {};
-                passwords[tempUser.id] = trimmedPassword;
-                localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
-                console.log('✅ 임시 사용자 비밀번호 저장 완료');
-              } catch (e) {
-                console.warn('⚠️ 임시 사용자 비밀번호 저장 실패:', e);
-              }
-              
-              // 사용자 목록에 추가
-              try {
-                const saved = localStorage.getItem('hotelflow_users_v1');
-                const users = saved ? JSON.parse(saved) : [];
-                users.push(tempUser);
-                localStorage.setItem('hotelflow_users_v1', JSON.stringify(users));
-                console.log('✅ 임시 사용자를 localStorage에 추가 완료');
-              } catch (e) {
-                console.warn('⚠️ 임시 사용자 저장 실패:', e);
-              }
-              
-              console.log('✅ 임시 사용자로 로컬 fallback 인증 성공:', tempUser.username);
-              onLogin(tempUser);
-              return;
-            }
-          }
-        }
-        
-        setError('Invalid username or password. Please try again.');
         return;
       }
     } catch (error) {
-      console.error('❌ 서버 API 호출 실패:', error);
-      console.warn('⚠️ 서버 API 호출 실패, 로컬 사용자 정보로 대체 인증 시도...');
-      
-      // 서버 API 호출 실패 시 로컬 인증으로 대체 (하위 호환성)
-      // 1차: username으로 찾기
-      let foundUser = allAvailableUsers.find(
-        u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
-      );
-      
-      // 2차: username이 없거나 다른 경우, name 또는 id로 찾기
-      if (!foundUser) {
-        console.log('🔍 서버 API 실패 후 2차 검색 시작 (name/id로 찾기)');
-        
-        // 로미오: username이 "3" 또는 name이 "로미오" 또는 id에 "3"이 포함된 경우
-        if (trimmedUsername === '3') {
-          console.log('🔍 username "3" 찾기 시도');
-          foundUser = allAvailableUsers.find(u => {
-            const matches = u.username === '3' || 
-                           u.name === '로미오' || 
-                           (u.name && u.name.includes('로미오')) ||
-                           (u.id && u.id.includes('3'));
-            if (matches) {
-              console.log('✅ 매칭된 사용자:', { id: u.id, username: u.username, name: u.name });
-            }
-            return matches;
-          });
-          
-          // 찾았는데 username이 없거나 다르면 "3"으로 설정
-          if (foundUser) {
-            if (!foundUser.username || foundUser.username !== '3') {
-              console.log('🔧 username을 "3"으로 수정:', foundUser.username, '→', '3');
-              foundUser = { ...foundUser, username: '3' };
-            }
-          }
-        }
-        // 줄리엣: username이 "4" 또는 name이 "줄리엣" 또는 id에 "4"가 포함된 경우
-        else if (trimmedUsername === '4') {
-          console.log('🔍 username "4" 찾기 시도');
-          foundUser = allAvailableUsers.find(u => {
-            const matches = u.username === '4' || 
-                           u.name === '줄리엣' || 
-                           (u.name && u.name.includes('줄리엣')) ||
-                           (u.id && u.id.includes('4'));
-            if (matches) {
-              console.log('✅ 매칭된 사용자:', { id: u.id, username: u.username, name: u.name });
-            }
-            return matches;
-          });
-          
-          // 찾았는데 username이 없거나 다르면 "4"로 설정
-          if (foundUser) {
-            if (!foundUser.username || foundUser.username !== '4') {
-              console.log('🔧 username을 "4"로 수정:', foundUser.username, '→', '4');
-              foundUser = { ...foundUser, username: '4' };
-            }
-          }
-        }
-        
-        if (!foundUser) {
-          console.log('❌ 2차 검색에서도 사용자를 찾지 못함');
-        }
-      }
-      
-      if (foundUser) {
-        console.log('🔍 서버 API 실패 후 로컬 fallback 인증 시작:', {
-          foundUser: foundUser.username || '없음',
-          userId: foundUser.id,
-          name: foundUser.name,
-          inputPassword: trimmedPassword
-        });
-        
-        // 기본 비밀번호 매핑 (먼저 정의)
-        const defaultPasswords: Record<string, string> = {
-          'admin': 'admin',
-          'fd': 'FD',
-          'hk': 'HK',
-          '3': '3',
-          '4': '4',
-        };
-        
-        // 저장된 비밀번호 확인 및 자동 설정
-        try {
-          let saved = localStorage.getItem('hotelflow_user_passwords_v1');
-          let passwords = saved ? JSON.parse(saved) : {};
-          console.log('📋 저장된 비밀번호 확인:', saved ? '있음' : '없음');
-          console.log('📋 저장된 비밀번호 목록:', Object.keys(passwords));
-          
-          // 비밀번호가 없으면 기본값으로 설정
-          if (!passwords[foundUser.id] && defaultPasswords[foundUser.username.toLowerCase()]) {
-            passwords[foundUser.id] = defaultPasswords[foundUser.username.toLowerCase()];
-            localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
-            console.log('✅ 기본 비밀번호 자동 설정:', foundUser.username, '→', passwords[foundUser.id]);
-          }
-          
-          const savedPassword = passwords[foundUser.id];
-          console.log('🔑 사용자 ID별 저장된 비밀번호:', foundUser.id, savedPassword ? `"${savedPassword}"` : '없음');
-            
-            if (savedPassword && trimmedPassword === savedPassword) {
-              console.log('✅ 저장된 비밀번호로 로컬 fallback 인증 성공:', foundUser.username);
-              onLogin(foundUser);
-              return;
-            } else if (savedPassword) {
-              console.log('❌ 저장된 비밀번호 불일치:', {
-                저장된비밀번호: `"${savedPassword}"`,
-                입력한비밀번호: `"${trimmedPassword}"`,
-                일치여부: savedPassword === trimmedPassword
-              });
-            }
-          }
-        } catch (e) {
-          console.warn('⚠️ 저장된 비밀번호 확인 실패:', e);
-        }
-        
-        // 기본 비밀번호 확인 (로컬 fallback용)
-        const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
-        console.log('🔑 기본 비밀번호 확인:', {
-          username: trimmedUsername.toLowerCase(),
-          기본비밀번호: defaultPassword || '없음',
-          입력한비밀번호: trimmedPassword
-        });
-        
-        // 2. username과 password가 같은 경우 (예: FD/FD, HK/HK, 3/3, 4/4 등)
-        const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
-        console.log('🔑 Username=Password 확인:', {
-          username: trimmedUsername.toLowerCase(),
-          password: trimmedPassword.toLowerCase(),
-          일치여부: isUsernamePasswordMatch
-        });
-        
-        // 3. 기본 비밀번호와 일치하거나 username=password인 경우 로그인 허용
-        if ((defaultPassword && trimmedPassword === defaultPassword) || isUsernamePasswordMatch) {
-          console.log('✅ 로컬 fallback 인증 성공:', foundUser.username);
-          onLogin(foundUser);
-          return;
-      } else {
-        console.log('❌ 로컬 fallback 인증 실패:', {
-          기본비밀번호일치: defaultPassword && trimmedPassword === defaultPassword,
-          username일치: isUsernamePasswordMatch
-        });
-      }
-    } else {
-      console.log('❌ 서버 API 실패 후 사용자를 찾을 수 없음:', trimmedUsername);
-      
-      // 사용자를 찾지 못했지만 username과 password가 같으면 임시 사용자 생성하여 로그인 허용
-      const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
-      if (isUsernamePasswordMatch) {
-        console.log('🔍 서버 API 실패 후 username과 password가 일치하므로 임시 사용자 생성하여 로그인 허용');
-        
-        // 임시 사용자 생성 (기본 비밀번호 매핑 확인)
-        const defaultPasswords: Record<string, string> = {
-          'admin': 'admin',
-          'fd': 'FD',
-          'hk': 'HK',
-          '3': '3',
-          '4': '4',
-        };
-        
-        const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
-        if (defaultPassword && trimmedPassword === defaultPassword) {
-          // 임시 사용자 생성
-          const tempUser: User = {
-            id: `temp-${trimmedUsername}-${Date.now()}`,
-            username: trimmedUsername,
-            name: trimmedUsername === '3' ? '로미오' : trimmedUsername === '4' ? '줄리엣' : trimmedUsername.toUpperCase(),
-            dept: trimmedUsername === '3' || trimmedUsername.toLowerCase() === 'fd' ? Department.FRONT_DESK : Department.HOUSEKEEPING,
-            role: trimmedUsername === '3' || trimmedUsername.toLowerCase() === 'fd' ? Role.FD_STAFF : Role.HK_STAFF
-          };
-          
-          console.log('✅ 임시 사용자 생성:', tempUser);
-          
-          // 비밀번호 저장
-          try {
-            const saved = localStorage.getItem('hotelflow_user_passwords_v1');
-            const passwords = saved ? JSON.parse(saved) : {};
-            passwords[tempUser.id] = trimmedPassword;
-            localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
-            console.log('✅ 임시 사용자 비밀번호 저장 완료');
-          } catch (e) {
-            console.warn('⚠️ 임시 사용자 비밀번호 저장 실패:', e);
-          }
-          
-          // 사용자 목록에 추가
-          try {
-            const saved = localStorage.getItem('hotelflow_users_v1');
-            const users = saved ? JSON.parse(saved) : [];
-            users.push(tempUser);
-            localStorage.setItem('hotelflow_users_v1', JSON.stringify(users));
-            console.log('✅ 임시 사용자를 localStorage에 추가 완료');
-          } catch (e) {
-            console.warn('⚠️ 임시 사용자 저장 실패:', e);
-          }
-          
-          console.log('✅ 임시 사용자로 로컬 fallback 인증 성공:', tempUser.username);
-          onLogin(tempUser);
-          return;
-        }
-      }
+      // 서버 API 실패 시 로컬 인증으로 fallback
     }
-    
-    setError('Unable to connect to server. Please check your connection and try again.');
-    return;
-  }
-};
+
+    // 로컬 인증 fallback
+    const authenticatedUser = attemptLocalAuth(trimmedUsername, trimmedPassword);
+    if (authenticatedUser) {
+      onLogin(authenticatedUser);
+      return;
+    }
+
+    setError('Invalid username or password. Please try again.');
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
