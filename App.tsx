@@ -179,6 +179,16 @@ const App: React.FC = () => {
                 needsUpdate = true;
                 return { ...u, username: 'HK', password: 'HK' };
               }
+              // 로미오: username/password를 "FD"/"FD"에서 "3"/"3"으로 변경
+              if (u.name === '로미오' && (u.username === 'FD' || u.password === 'FD')) {
+                needsUpdate = true;
+                return { ...u, username: '3', password: '3' };
+              }
+              // 줄리엣: username/password를 "HK"/"HK"에서 "4"/"4"로 변경
+              if (u.name === '줄리엣' && (u.username === 'HK' || u.password === 'HK')) {
+                needsUpdate = true;
+                return { ...u, username: '4', password: '4' };
+              }
               return u;
             });
             
@@ -188,7 +198,9 @@ const App: React.FC = () => {
                 localStorage.setItem('hotelflow_users_v1', JSON.stringify(migrated));
                 console.log('✅ 기존 사용자 정보 마이그레이션 완료:', {
                   프론트수: migrated.find((u: User) => u.id === 'u1')?.username,
-                  하우스키핑수: migrated.find((u: User) => u.id === 'u2')?.username
+                  하우스키핑수: migrated.find((u: User) => u.id === 'u2')?.username,
+                  로미오: migrated.find((u: User) => u.name === '로미오')?.username,
+                  줄리엣: migrated.find((u: User) => u.name === '줄리엣')?.username
                 });
               } catch (e) {
                 console.warn('⚠️ 마이그레이션된 users 저장 실패:', e);
