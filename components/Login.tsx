@@ -185,9 +185,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
 
           <div className="mt-12 pt-6 border-t border-slate-100">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-              <p className="text-[10px] text-amber-700 leading-relaxed">
+              <p className="text-xs text-amber-700 leading-relaxed">
                 If forgot your password or cannot sign in,<br />
-                contact the <strong>HotelHotel@kakao.com</strong> or{' '}
+                contact the <strong className="font-semibold">HotelHotel@kakao.com</strong> or{' '}
                 <a 
                   href="https://open.kakao.com/o/s7P3BINh" 
                   target="_blank" 
