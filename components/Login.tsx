@@ -296,62 +296,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       return 'http://localhost:3001';
     };
 
-    // 서버 API를 통한 로그인 시도
-    try {
-      const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: trimmedUsername, password: trimmedPassword }),
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        
-        // 🔒 보안: Staff Management에 등록된 사용자인지 확인 (username 정확히 매칭)
-        const savedUser = allAvailableUsers.find(
-          u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
-        );
-        
-        if (!savedUser) {
-          // Staff Management에 등록되지 않은 사용자는 로그인 불가
-          console.warn('🚫 로그인 거부: Staff Management에 등록되지 않은 사용자:', trimmedUsername);
-          setError('등록되지 않은 사용자입니다. 관리자에게 문의하세요.');
-          return;
-        }
-        
-        // 🔒 보안: Staff Management에 저장된 사용자 정보만 사용 (서버 응답 무시)
-        // 서버가 잘못된 사용자 정보를 반환할 수 있으므로 항상 Staff Management 데이터 사용
-        const authenticatedUser: User = {
-          id: savedUser.id, // Staff Management의 ID만 사용
-          username: savedUser.username || trimmedUsername, // Staff Management의 username만 사용
-          name: savedUser.name, // Staff Management의 name만 사용
-          dept: savedUser.dept, // Staff Management의 dept만 사용
-          role: savedUser.role, // Staff Management의 role만 사용
-        };
-        
-        console.log('✅ Staff Management 등록 사용자 로그인:', {
-          username: trimmedUsername,
-          staffManagement: { name: savedUser.name, dept: savedUser.dept, role: savedUser.role },
-          serverResponse: { name: userData.name, dept: userData.dept, role: userData.role },
-          finalUser: { name: authenticatedUser.name, dept: authenticatedUser.dept, role: authenticatedUser.role }
-        });
-        
-        // 서버 응답과 다를 수 있음을 경고
-        if (userData.name !== savedUser.name || 
-            userData.dept !== savedUser.dept || 
-            userData.role !== savedUser.role) {
-          console.warn('⚠️ 서버 응답과 Staff Management 데이터가 다릅니다. Staff Management 데이터를 사용합니다.');
-        }
-        
-        onLogin(authenticatedUser);
-        return;
-      }
-    } catch (error) {
-      // 서버 API 실패 시 로컬 인증으로 fallback
-    }
-
-    // 로컬 인증 fallback (보안: Staff Management 등록 사용자만 허용)
+    // 🔒 보안: 서버 API는 완전히 건너뛰고 클라이언트 Staff Management 데이터만 사용
+    // 서버가 잘못된 사용자 정보를 반환할 수 있으므로 항상 로컬 인증만 사용
+    
+    // 로컬 인증 (보안: Staff Management 등록 사용자만 허용)
     const authenticatedUser = attemptLocalAuth(trimmedUsername, trimmedPassword);
     if (authenticatedUser) {
       onLogin(authenticatedUser);
