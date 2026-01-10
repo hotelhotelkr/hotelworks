@@ -65,23 +65,8 @@ app.get('/health', (req, res) => {
 
 // REST API는 /api 라우터에서 처리됨
 
-// 프로덕션 모드: 빌드된 정적 파일 서빙 (API 라우트 이후에 배치)
-if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, 'dist');
-  
-  // 정적 파일 서빙
-  app.use(express.static(distPath));
-  
-  // 모든 라우트를 index.html로 리다이렉트 (SPA 라우팅 지원)
-  // API 라우트가 아닌 경우에만
-  app.get('*', (req, res, next) => {
-    // API 경로는 제외
-    if (req.path.startsWith('/api/') || req.path.startsWith('/socket.io/') || req.path === '/health') {
-      return next();
-    }
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
-}
+// 백엔드 전용 - 프론트엔드 빌드 파일 서빙 제거
+// 프론트엔드는 Vercel에서 별도로 호스팅됨
 
 // ========== WebSocket 핸들러 ==========
 
