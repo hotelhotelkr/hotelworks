@@ -302,7 +302,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
             <h2 className="text-4xl font-bold leading-tight mb-4">
               Operational Excellence,<br />Simplified.
             </h2>
-            <p className="text-indigo-100 text-lg">
+            <p className="text-indigo-100 text-lg mb-8 md:mb-0">
               Authorized access only. Please provide your credentials to enter the operational dashboard.
             </p>
           </div>
