@@ -105,6 +105,14 @@
         return input;
       }
       
+      // localStorage에서 WebSocket URL 가져오기
+      try {
+        const savedUrl = localStorage.getItem('hotelflow_ws_url');
+        if (savedUrl && savedUrl.trim() !== '') {
+          return savedUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+        }
+      } catch (e) {}
+      
       // 자동 감지
       const host = window.location.hostname;
       const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
@@ -113,7 +121,13 @@
         return `${protocol}//${host}:3001`;
       }
       
-      // Render 등 프로덕션 환경
+      // Vercel에서 접근하는 경우 Render 서버 사용
+      if (host.includes('vercel.app')) {
+        // Render 서버 URL (환경에 맞게 수정 필요)
+        return 'https://hotelworks-backend.onrender.com';
+      }
+      
+      // 기본값
       return `${protocol}//${host}:3001`;
     }
     
