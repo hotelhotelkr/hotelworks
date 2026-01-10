@@ -30,25 +30,69 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     e.preventDefault();
     setError('');
 
-    // 디버깅: availableUsers 확인
-    console.log('🔍 로그인 시도:', { username, availableUsersCount: availableUsers.length });
-    console.log('📋 사용 가능한 사용자 목록:', availableUsers.map(u => ({ 
-      username: u.username, 
-      name: u.name, 
-      dept: u.dept 
-    })));
+    // 입력값 정리 (공백 제거)
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
 
+    // 디버깅: availableUsers 확인
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 로그인 시도 시작');
+    console.log('   입력한 username:', `"${trimmedUsername}"`, `(길이: ${trimmedUsername.length})`);
+    console.log('   입력한 password:', trimmedPassword ? `"***" (길이: ${trimmedPassword.length})` : '(empty)');
+    console.log('   availableUsers 개수:', availableUsers.length);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // 각 사용자와 비교 (상세 로그)
+    console.log('📋 사용 가능한 사용자 목록:');
+    availableUsers.forEach((u, index) => {
+      const usernameMatch = u.username.trim() === trimmedUsername;
+      const passwordMatch = u.password.trim() === trimmedPassword;
+      const matchStatus = usernameMatch && passwordMatch ? '✅' : 
+                         usernameMatch ? '⚠️ (password 불일치)' : 
+                         '❌';
+      
+      console.log(`   [${index + 1}] ${matchStatus}`, {
+        username: `"${u.username}"` + (u.username !== u.username.trim() ? ' (공백 있음)' : ''),
+        password: '***' + (u.password !== u.password.trim() ? ' (공백 있음)' : ''),
+        name: u.name,
+        usernameMatch,
+        passwordMatch
+      });
+    });
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    // username과 password 비교 (공백 제거된 값으로)
     const foundUser = availableUsers.find(
-      u => u.username === username && u.password === password
+      u => u.username.trim() === trimmedUsername && u.password.trim() === trimmedPassword
     );
 
     if (foundUser) {
-      console.log('✅ 로그인 성공:', foundUser.name);
+      console.log('✅ 로그인 성공!', {
+        name: foundUser.name,
+        username: foundUser.username,
+        dept: foundUser.dept,
+        role: foundUser.role
+      });
       onLogin(foundUser);
     } else {
-      console.warn('❌ 로그인 실패: 사용자를 찾을 수 없음');
-      console.warn('   입력한 username:', username);
-      console.warn('   입력한 password:', password ? '***' : '(empty)');
+      console.error('❌ 로그인 실패: 사용자를 찾을 수 없음');
+      console.error('   최종 입력값:', {
+        username: `"${trimmedUsername}"`,
+        password: trimmedPassword ? '***' : '(empty)'
+      });
+      
+      // 유사한 username이 있는지 확인
+      const similarUsername = availableUsers.find(u => 
+        u.username.trim().toLowerCase() === trimmedUsername.toLowerCase()
+      );
+      if (similarUsername) {
+        console.warn('   ⚠️ 비슷한 username 발견:', {
+          찾은_username: `"${similarUsername.username}"`,
+          입력한_username: `"${trimmedUsername}"`,
+          대소문자_차이: similarUsername.username.trim() !== trimmedUsername
+        });
+      }
+      
       setError('Invalid username or password. Please try again.');
     }
   };
