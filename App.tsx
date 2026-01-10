@@ -943,10 +943,28 @@ const App: React.FC = () => {
         const { senderId } = data;
         const user = currentUserRef.current;
         
-        // 로그인 상태이고, 요청한 클라이언트가 아닐 때만 응답
-        if (user && senderId !== user.id) {
-          debugLog('📤 전체 사용자 목록 응답 전송 to', senderId);
+        // 요청한 클라이언트가 자신이 아닐 때만 응답 (로그인 상태와 무관)
+        // 로그인하지 않은 상태에서도 사용자 목록을 동기화할 수 있도록
+        if (senderId !== (user?.id || 'anonymous')) {
+          console.log('📤 전체 사용자 목록 응답 전송 to', senderId, user ? '(로그인 상태)' : '(로그아웃 상태)');
           const currentUsers = usersRef.current;
+          
+          // localStorage에서도 사용자 확인 (usersRef가 비어있을 수 있음)
+          let allUsers = currentUsers;
+          if (currentUsers.length === 0) {
+            try {
+              const saved = localStorage.getItem('hotelflow_users_v1');
+              if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  allUsers = parsed;
+                  console.log('📋 localStorage에서 사용자 목록 로드:', allUsers.length, '명');
+                }
+              }
+            } catch (e) {
+              console.warn('⚠️ localStorage에서 사용자 로드 실패:', e);
+            }
+          }
           
           // 저장된 비밀번호 가져오기
           try {
@@ -954,40 +972,43 @@ const App: React.FC = () => {
             const passwords = saved ? JSON.parse(saved) : {};
             
             // 사용자 목록에 비밀번호 포함 (동기화 필요)
-            const usersWithPasswords = currentUsers.map((u: User) => {
+            const usersWithPasswords = allUsers.map((u: User) => {
               const password = passwords[u.id] || undefined;
               return { ...u, password };
             });
             
             const responseData = {
               users: usersWithPasswords,
-              senderId: user.id,
+              senderId: user?.id || 'anonymous',
               timestamp: new Date().toISOString()
             };
             
-            debugLog('📤 WebSocket 메시지 전송 - all_users_response:', {
+            console.log('📤 WebSocket 메시지 전송 - all_users_response:', {
               senderId: responseData.senderId,
               receiverId: senderId,
-              userCount: responseData.users.length
+              userCount: responseData.users.length,
+              users: responseData.users.map((u: any) => ({ id: u.id, username: u.username, name: u.name }))
             });
             
             socket.emit('all_users_response', responseData);
           } catch (e) {
             console.warn('⚠️ 비밀번호 로드 실패:', e);
             // 비밀번호 없이 전송 (하위 호환성)
-            const usersWithoutPasswords = currentUsers.map((u: User) => {
+            const usersWithoutPasswords = allUsers.map((u: User) => {
               const { password, ...userWithoutPassword } = u;
               return userWithoutPassword;
             });
             
             const responseData = {
               users: usersWithoutPasswords,
-              senderId: user.id,
+              senderId: user?.id || 'anonymous',
               timestamp: new Date().toISOString()
             };
             
             socket.emit('all_users_response', responseData);
           }
+        } else {
+          console.log('⚠️ 자신이 보낸 request_all_users 무시:', senderId);
         }
       });
 
