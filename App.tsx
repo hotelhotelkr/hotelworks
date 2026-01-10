@@ -679,6 +679,13 @@ const App: React.FC = () => {
         setIsConnected(true);
         syncOfflineQueue();
         
+        // WebSocket 연결 후 localStorage 주문들을 DB로 동기화
+        if (currentUserRef.current) {
+          setTimeout(() => {
+            syncLocalStorageOrdersToDB();
+          }, 1000);
+        }
+        
         const user = currentUserRef.current;
         if (user) {
           socket.emit('request_all_orders', {
@@ -728,6 +735,13 @@ const App: React.FC = () => {
         
         // 오프라인 큐에 저장된 메시지들을 모두 전송
         syncOfflineQueue();
+        
+        // 재연결 후 localStorage 주문들을 DB로 동기화
+        if (currentUserRef.current) {
+          setTimeout(() => {
+            syncLocalStorageOrdersToDB();
+          }, 1000);
+        }
         
         // 로그인 상태와 관계없이 재연결 성공 시 전체 주문 목록 동기화 요청 (실시간 동기화 보장)
         const user = currentUserRef.current;
@@ -1683,6 +1697,104 @@ const App: React.FC = () => {
     }
   }, [currentUser]); // currentUser가 변경될 때마다 실행 (로그인 시)
 
+  // API Base URL 가져오기
+  const getApiBaseUrl = useCallback((): string => {
+    // WebSocket URL에서 HTTP API URL 추출
+    try {
+      const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
+      if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+        // ws:// 또는 wss://를 http:// 또는 https://로 변환
+        return envUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+      }
+    } catch (e) {}
+    
+    // localStorage에서 WebSocket URL 가져오기
+    try {
+      const savedUrl = localStorage.getItem('hotelflow_ws_url');
+      if (savedUrl && savedUrl.trim() !== '') {
+        return savedUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+      }
+    } catch (e) {}
+    
+    // 로컬 환경 감지
+    if (typeof window !== 'undefined' && window.location) {
+      const host = window.location.hostname;
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      
+      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.')) {
+        return `${protocol}//${host}:3001`;
+      }
+    }
+    
+    // 기본값
+    return 'http://localhost:3001';
+  }, []);
+
+  // localStorage 주문들을 DB로 자동 동기화
+  const syncLocalStorageOrdersToDB = useCallback(async () => {
+    try {
+      const ordersJson = localStorage.getItem(STORAGE_KEY);
+      if (!ordersJson) {
+        debugLog('📭 localStorage에 주문이 없음');
+        return;
+      }
+
+      const orders = JSON.parse(ordersJson);
+      if (!Array.isArray(orders) || orders.length === 0) {
+        debugLog('📭 localStorage 주문이 0개');
+        return;
+      }
+
+      // Date 객체를 ISO 문자열로 변환
+      const formattedOrders = orders.map((order: any) => ({
+        ...order,
+        requestedAt: order.requestedAt instanceof Date 
+          ? order.requestedAt.toISOString() 
+          : (typeof order.requestedAt === 'string' ? order.requestedAt : new Date(order.requestedAt).toISOString()),
+        acceptedAt: order.acceptedAt ? (order.acceptedAt instanceof Date ? order.acceptedAt.toISOString() : order.acceptedAt) : undefined,
+        inProgressAt: order.inProgressAt ? (order.inProgressAt instanceof Date ? order.inProgressAt.toISOString() : order.inProgressAt) : undefined,
+        completedAt: order.completedAt ? (order.completedAt instanceof Date ? order.completedAt.toISOString() : order.completedAt) : undefined,
+        memos: (order.memos || []).map((memo: any) => ({
+          ...memo,
+          timestamp: memo.timestamp instanceof Date 
+            ? memo.timestamp.toISOString() 
+            : (typeof memo.timestamp === 'string' ? memo.timestamp : new Date(memo.timestamp).toISOString())
+        }))
+      }));
+
+      const apiUrl = `${getApiBaseUrl()}/api/orders/sync`;
+      debugLog(`🔄 주문 동기화 시작: ${formattedOrders.length}개 주문 → ${apiUrl}`);
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orders: formattedOrders })
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      debugLog(`✅ 주문 동기화 완료: ${result.results.created}개 생성, ${result.results.skipped}개 건너뜀, ${result.results.errors.length}개 오류`);
+
+      if (result.results.created > 0) {
+        triggerToast(
+          `${result.results.created}개의 주문이 데이터베이스에 저장되었습니다.`,
+          'success',
+          currentUserRef.current?.dept,
+          'SUCCESS'
+        );
+      }
+    } catch (error: any) {
+      debugError('❌ 주문 동기화 실패:', error.message);
+      // 실패해도 사용자에게 알리지 않음 (백그라운드 작업)
+    }
+  }, [getApiBaseUrl, triggerToast]);
+
   const handleLogin = (user: User) => {
     currentUserRef.current = user;
     setCurrentUser(user);
@@ -1720,6 +1832,11 @@ const App: React.FC = () => {
       
       socket.emit('request_all_orders', requestData);
     }
+
+    // localStorage 주문들을 DB로 자동 동기화 (백그라운드)
+    setTimeout(() => {
+      syncLocalStorageOrdersToDB();
+    }, 2000); // 2초 후 실행 (WebSocket 연결 안정화 대기)
   };
 
   const handleLogout = () => {
