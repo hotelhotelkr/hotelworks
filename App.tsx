@@ -1218,7 +1218,15 @@ const App: React.FC = () => {
           }
 
           case 'USER_ADD': {
-            console.log('📥 사용자 추가 수신:', payload.name, 'from', senderId);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('📥 [USER_ADD] 사용자 추가 메시지 수신');
+            console.log('   발신자:', senderId);
+            console.log('   사용자 이름:', payload.name);
+            console.log('   사용자 ID:', payload.id);
+            console.log('   Username:', payload.username);
+            console.log('   로그인 상태:', currentUserRef.current ? `${currentUserRef.current.name} (로그인)` : '로그아웃');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            
             const user = currentUserRef.current;
             // 같은 사용자 ID + 같은 세션 ID = 같은 기기
             const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
@@ -1230,19 +1238,31 @@ const App: React.FC = () => {
                 console.log('⚠️ 사용자가 이미 존재함:', payload.id, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
                 return prev;
               }
-              console.log('✅ 새 사용자 추가:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+              
+              console.log('✅ 새 사용자 추가 중:', payload.name, {
+                isSelfMessage: isSelfMessage ? '자신이 보낸 메시지' : '다른 사용자',
+                loginStatus: user ? '로그인 상태' : '로그아웃 상태',
+                prevCount: prev.length,
+                newCount: prev.length + 1
+              });
+              
               const updated = [...prev, payload];
+              
               // localStorage에 저장 (앱 재시작 시에도 유지)
               try {
                 localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+                console.log('✅ localStorage에 users 저장 완료:', updated.length, '명');
               } catch (e) {
-                console.warn('⚠️ localStorage에 users 저장 실패:', e);
+                console.error('❌ localStorage에 users 저장 실패:', e);
               }
+              
               return updated;
             });
+            
             // 모든 기기에서 알림 표시 (로그인/로그아웃 상태 모두 포함)
             triggerToast(`새 직원 등록됨: ${payload.name}`, 'success', Department.ADMIN, 'SUCCESS');
-            console.log('🔔 사용자 추가 알림 표시:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+            console.log('🔔 사용자 추가 알림 표시 완료:', payload.name);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             break;
           }
 
