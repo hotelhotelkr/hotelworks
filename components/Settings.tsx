@@ -746,30 +746,50 @@ const Settings: React.FC<SettingsProps> = ({
                   }
                   
                   const getApiBaseUrl = (): string => {
-                    try {
-                      const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
-                      if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
-                        return envUrl.replace('ws://', 'http://').replace('wss://', 'https://');
-                      }
-                    } catch (e) {}
-                    
+                    // 1. localStorage에서 WebSocket URL 가져오기 (가장 확실)
                     try {
                       const savedUrl = localStorage.getItem('hotelflow_ws_url');
                       if (savedUrl && savedUrl.trim() !== '') {
-                        return savedUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+                        const apiUrl = savedUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+                        console.log('📡 API URL (localStorage):', apiUrl);
+                        return apiUrl;
                       }
                     } catch (e) {}
                     
+                    // 2. 환경 변수에서 가져오기
+                    try {
+                      const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
+                      if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+                        const apiUrl = envUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+                        console.log('📡 API URL (환경변수):', apiUrl);
+                        return apiUrl;
+                      }
+                    } catch (e) {}
+                    
+                    // 3. 현재 페이지에서 자동 감지
                     if (typeof window !== 'undefined' && window.location) {
                       const host = window.location.hostname;
                       const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
                       
+                      // 로컬 환경
                       if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.')) {
-                        return `${protocol}//${host}:3001`;
+                        const apiUrl = `${protocol}//${host}:3001`;
+                        console.log('📡 API URL (로컬 자동감지):', apiUrl);
+                        return apiUrl;
+                      }
+                      
+                      // Vercel 프로덕션 환경
+                      if (host.includes('vercel.app') || host === 'hotelworks.kr') {
+                        const apiUrl = 'https://hotelworks-backend.onrender.com';
+                        console.log('📡 API URL (프로덕션):', apiUrl);
+                        return apiUrl;
                       }
                     }
                     
-                    return 'http://localhost:3001';
+                    // 기본값
+                    const defaultUrl = 'https://hotelworks-backend.onrender.com';
+                    console.log('📡 API URL (기본값):', defaultUrl);
+                    return defaultUrl;
                   };
                   
                   const formattedOrders = orders.map((order: any) => ({
@@ -789,6 +809,11 @@ const Settings: React.FC<SettingsProps> = ({
                   }));
                   
                   const apiUrl = `${getApiBaseUrl()}/api/orders/sync`;
+                  console.log('🔄 동기화 시작:', {
+                    localStorageOrders: orders.length,
+                    apiUrl,
+                    formattedOrdersCount: formattedOrders.length
+                  });
                   
                   const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -805,16 +830,27 @@ const Settings: React.FC<SettingsProps> = ({
                   
                   const result = await response.json();
                   
+                  console.log('✅ 동기화 결과:', result);
+                  
                   setSyncStatus({
                     status: 'success',
                     message: `동기화 완료! ${result.results.created}개 생성, ${result.results.skipped}개 건너뜀`,
                     results: result.results
                   });
+                  
+                  // 성공 메시지 알림
+                  if (result.results.created > 0) {
+                    alert(`✅ ${result.results.created}개의 주문이 데이터베이스에 저장되었습니다!\n\n이제 phpMyAdmin에서 확인할 수 있습니다.`);
+                  } else if (result.results.skipped > 0) {
+                    alert(`⏭️ 모든 주문이 이미 데이터베이스에 있습니다.\n\n(건너뜀: ${result.results.skipped}개)`);
+                  }
                 } catch (error: any) {
+                  console.error('❌ 동기화 실패:', error);
                   setSyncStatus({
                     status: 'error',
                     message: `동기화 실패: ${error.message}`
                   });
+                  alert(`❌ 동기화 실패: ${error.message}\n\n콘솔을 확인하세요 (F12)`);
                 }
               }}
               disabled={syncStatus.status === 'syncing'}
