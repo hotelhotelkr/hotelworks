@@ -11,17 +11,25 @@ services:
         value: production
       - key: PORT
         value: 10000
-      # MySQL 데이터베이스 설정 (Render Dashboard에서 추가 필요)
-      # - key: DB_HOST
-      #   sync: false
-      # - key: DB_PORT
-      #   value: 3306
-      # - key: DB_USER
-      #   sync: false
-      # - key: DB_PASSWORD
-      #   sync: false
-      # - key: DB_NAME
-      #   value: hotelworks
+      # MySQL 데이터베이스 설정
+      # ⚠️ 중요: 아래 값들은 Render Dashboard에서 실제 값으로 설정해야 합니다
+      # Render Dashboard → hotelworks-backend → Environment 탭에서 추가하세요
+      # 
+      # DB_HOST 예시:
+      #   - AWS RDS: your-db-instance.xxxxx.us-east-1.rds.amazonaws.com
+      #   - DigitalOcean: db-mysql-xxx-xxx.db.ondigitalocean.com
+      #   - PlanetScale: xxx.us-east-2.psdb.cloud
+      #   - 기타: your-mysql-host.com
+      - key: DB_HOST
+        sync: false  # Render Dashboard에서 직접 설정 필요
+      - key: DB_PORT
+        value: '3306'
+      - key: DB_USER
+        sync: false  # Render Dashboard에서 직접 설정 필요
+      - key: DB_PASSWORD
+        sync: false  # Render Dashboard에서 직접 설정 필요 (민감한 정보)
+      - key: DB_NAME
+        value: 'hotelworks'
     
     # 헬스체크
     healthCheckPath: /health
