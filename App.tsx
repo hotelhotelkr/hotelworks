@@ -997,8 +997,12 @@ const App: React.FC = () => {
         const { users: receivedUsers, senderId } = data;
         const user = currentUserRef.current;
         
-        // 자신이 보낸 응답은 무시
-        if (senderId === user?.id) return;
+        // 자신이 보낸 응답은 무시 (단, 로그인하지 않은 상태에서는 무시하지 않음)
+        // 로그인 화면에서도 사용자 목록을 받아야 하므로
+        if (user && senderId === user.id) {
+          console.log('⚠️ 자신이 보낸 users 응답 무시:', senderId);
+          return;
+        }
         
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('📥 [all_users_response] 사용자 목록 동기화 수신');

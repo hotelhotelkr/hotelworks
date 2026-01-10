@@ -374,9 +374,17 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           }
         } else {
           console.log('❌ 사용자를 찾을 수 없음:', trimmedUsername);
+          console.log('🔍 임시 사용자 생성 조건 확인:', {
+            username: trimmedUsername,
+            password: trimmedPassword ? '***' : '(empty)',
+            username_lower: trimmedUsername.toLowerCase(),
+            password_lower: trimmedPassword?.toLowerCase()
+          });
           
           // 사용자를 찾지 못했지만 username과 password가 같으면 임시 사용자 생성하여 로그인 허용
           const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
+          console.log('🔍 username과 password 일치 여부:', isUsernamePasswordMatch);
+          
           if (isUsernamePasswordMatch) {
             console.log('🔍 username과 password가 일치하므로 임시 사용자 생성하여 로그인 허용');
             
@@ -390,7 +398,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
             };
             
             const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
+            console.log('🔍 기본 비밀번호 확인:', {
+              username: trimmedUsername.toLowerCase(),
+              기본비밀번호: defaultPassword || '없음',
+              입력한비밀번호: trimmedPassword,
+              일치여부: defaultPassword && trimmedPassword === defaultPassword
+            });
+            
             if (defaultPassword && trimmedPassword === defaultPassword) {
+              console.log('✅ 기본 비밀번호 일치, 임시 사용자 생성 시작');
               // 임시 사용자 생성
               const tempUser: User = {
                 id: `temp-${trimmedUsername}-${Date.now()}`,
