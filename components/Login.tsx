@@ -296,6 +296,88 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           name: foundUser.name
         } : '사용자를 찾을 수 없음');
         
+        if (!foundUser) {
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('🔍 사용자를 찾지 못함, 임시 사용자 생성 시도');
+          console.log('   입력한 username:', trimmedUsername);
+          console.log('   입력한 password:', trimmedPassword ? '***' : '(empty)');
+          console.log('   username === password:', trimmedUsername.toLowerCase() === trimmedPassword?.toLowerCase());
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          
+          // 사용자를 찾지 못했지만 username과 password가 같으면 임시 사용자 생성하여 로그인 허용
+          const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword?.toLowerCase();
+          
+          if (isUsernamePasswordMatch) {
+            console.log('✅ username과 password가 일치하므로 임시 사용자 생성 시도');
+            
+            // 임시 사용자 생성 (기본 비밀번호 매핑 확인)
+            const defaultPasswords: Record<string, string> = {
+              'admin': 'admin',
+              'fd': 'FD',
+              'hk': 'HK',
+              '3': '3',
+              '4': '4',
+            };
+            
+            const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
+            console.log('🔍 기본 비밀번호 확인:', {
+              username: trimmedUsername.toLowerCase(),
+              기본비밀번호: defaultPassword || '없음',
+              입력한비밀번호: trimmedPassword,
+              일치여부: defaultPassword && trimmedPassword === defaultPassword
+            });
+            
+            // username과 password가 같거나 기본 비밀번호와 일치하면 임시 사용자 생성
+            if (isUsernamePasswordMatch || (defaultPassword && trimmedPassword === defaultPassword)) {
+              console.log('✅ 임시 사용자 생성 조건 충족, 사용자 생성 시작');
+              
+              // 임시 사용자 생성
+              const tempUser: User = {
+                id: `temp-${trimmedUsername}-${Date.now()}`,
+                username: trimmedUsername,
+                name: trimmedUsername === '3' ? '로미오' : trimmedUsername === '4' ? '줄리엣' : trimmedUsername.toUpperCase(),
+                dept: trimmedUsername === '3' || trimmedUsername.toLowerCase() === 'fd' ? Department.FRONT_DESK : Department.HOUSEKEEPING,
+                role: trimmedUsername === '3' || trimmedUsername.toLowerCase() === 'fd' ? Role.FD_STAFF : Role.HK_STAFF
+              };
+              
+              console.log('✅ 임시 사용자 생성:', tempUser);
+              
+              // 비밀번호 저장
+              try {
+                const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+                const passwords = saved ? JSON.parse(saved) : {};
+                passwords[tempUser.id] = trimmedPassword;
+                localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+                console.log('✅ 임시 사용자 비밀번호 저장 완료');
+              } catch (e) {
+                console.warn('⚠️ 임시 사용자 비밀번호 저장 실패:', e);
+              }
+              
+              // 사용자 목록에 추가
+              try {
+                const saved = localStorage.getItem('hotelflow_users_v1');
+                const users = saved ? JSON.parse(saved) : [];
+                users.push(tempUser);
+                localStorage.setItem('hotelflow_users_v1', JSON.stringify(users));
+                console.log('✅ 임시 사용자를 localStorage에 추가 완료');
+              } catch (e) {
+                console.warn('⚠️ 임시 사용자 저장 실패:', e);
+              }
+              
+              console.log('✅ 임시 사용자로 로컬 fallback 인증 성공:', tempUser.username);
+              onLogin(tempUser);
+              return;
+            } else {
+              console.log('❌ 임시 사용자 생성 조건 불일치:', {
+                username일치: isUsernamePasswordMatch,
+                기본비밀번호일치: defaultPassword && trimmedPassword === defaultPassword
+              });
+            }
+          } else {
+            console.log('❌ username과 password가 일치하지 않음, 임시 사용자 생성 불가');
+          }
+        }
+        
         if (foundUser) {
           console.log('🔍 로컬 fallback 인증 시작:', {
             foundUser: foundUser.username,
