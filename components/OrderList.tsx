@@ -33,6 +33,50 @@ const OrderList: React.FC<OrderListProps> = ({
   onOpenMemo
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // 각 주문별 메모 표시 상태를 localStorage에 저장하여 유지
+  const [expandedMemos, setExpandedMemos] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('hotelflow_expanded_memos');
+      return saved ? new Set(JSON.parse(saved)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
+  
+  // 메모 표시 상태 토글
+  const toggleMemoExpansion = (orderId: string) => {
+    setExpandedMemos(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      // localStorage에 저장
+      try {
+        localStorage.setItem('hotelflow_expanded_memos', JSON.stringify(Array.from(next)));
+      } catch (e) {
+        console.warn('⚠️ 메모 표시 상태 저장 실패:', e);
+      }
+      return next;
+    });
+  };
+  
+  // 메모 모달을 열 때 해당 주문의 메모를 확장 상태로 설정
+  const handleOpenMemo = (order: Order) => {
+    setExpandedMemos(prev => {
+      const next = new Set(prev);
+      next.add(order.id);
+      try {
+        localStorage.setItem('hotelflow_expanded_memos', JSON.stringify(Array.from(next)));
+      } catch (e) {
+        console.warn('⚠️ 메모 표시 상태 저장 실패:', e);
+      }
+      return next;
+    });
+    onOpenMemo(order);
+  };
 
   const filteredOrders = useMemo(() => {
     const filtered = orders.filter(order => {
@@ -165,7 +209,12 @@ const OrderList: React.FC<OrderListProps> = ({
                 filteredOrders.map((order) => {
                   const isCancelled = order.status === OrderStatus.CANCELLED;
                   const isCompleted = order.status === OrderStatus.COMPLETED;
-                  const displayMemos = order.memos.slice(-2);
+                  
+                  // 메모 확장 상태 확인: 메모 모달을 열었던 주문은 모든 메모 표시
+                  const isMemoExpanded = expandedMemos.has(order.id);
+                  const displayMemos = isMemoExpanded 
+                    ? order.memos  // 확장된 경우 모든 메모 표시
+                    : order.memos.slice(-2);  // 기본적으로 최근 2개만 표시
                   
                   return (
                     <tr 
@@ -207,9 +256,26 @@ const OrderList: React.FC<OrderListProps> = ({
                                 </div>
                               </div>
                             ))}
-                            {order.memos.length > 2 && (
-                              <button onClick={() => onOpenMemo(order)} className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center hover:text-indigo-600 transition-colors">
+                            {order.memos.length > 2 && !isMemoExpanded && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenMemo(order);
+                                }} 
+                                className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center hover:text-indigo-600 transition-colors"
+                              >
                                 + {order.memos.length - 2} more memos
+                              </button>
+                            )}
+                            {isMemoExpanded && order.memos.length > 2 && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleMemoExpansion(order.id);
+                                }} 
+                                className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center hover:text-indigo-600 transition-colors"
+                              >
+                                메모 접기
                               </button>
                             )}
                           </div>
@@ -385,7 +451,12 @@ const OrderList: React.FC<OrderListProps> = ({
             filteredOrders.map((order) => {
               const isCancelled = order.status === OrderStatus.CANCELLED;
               const isCompleted = order.status === OrderStatus.COMPLETED;
-              const displayMemos = order.memos.slice(-2);
+              
+              // 메모 확장 상태 확인: 메모 모달을 열었던 주문은 모든 메모 표시
+              const isMemoExpanded = expandedMemos.has(order.id);
+              const displayMemos = isMemoExpanded 
+                ? order.memos  // 확장된 경우 모든 메모 표시
+                : order.memos.slice(-2);  // 기본적으로 최근 2개만 표시
               
               return (
                 <div 
