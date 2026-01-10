@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import OrderModel from './database/models/OrderModel.js';
+import apiRoutes from './database/routes.js';
 
 dotenv.config();
 
@@ -28,6 +29,9 @@ app.use((req, res, next) => {
     next();
   }
 });
+
+// API 라우트 등록
+app.use('/api', apiRoutes);
 
 // HTTP 서버 생성
 const httpServer = createServer(app);
@@ -59,70 +63,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 모든 주문 조회
-app.get('/api/orders', async (req, res) => {
-  try {
-    const orders = await OrderModel.findAll();
-    res.json({ success: true, data: orders });
-  } catch (error) {
-    console.error('주문 조회 오류:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// 특정 주문 조회
-app.get('/api/orders/:id', async (req, res) => {
-  try {
-    const order = await OrderModel.findById(req.params.id);
-    if (!order) {
-      return res.status(404).json({ success: false, error: '주문을 찾을 수 없습니다.' });
-    }
-    res.json({ success: true, data: order });
-  } catch (error) {
-    console.error('주문 조회 오류:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// 주문 생성
-app.post('/api/orders', async (req, res) => {
-  try {
-    const orderData = req.body;
-    const order = await OrderModel.create(orderData);
-    res.status(201).json({ success: true, data: order });
-  } catch (error) {
-    console.error('주문 생성 오류:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// 주문 업데이트
-app.put('/api/orders/:id', async (req, res) => {
-  try {
-    const orderId = req.params.id;
-    const updateData = req.body;
-    const order = await OrderModel.update(orderId, updateData);
-    if (!order) {
-      return res.status(404).json({ success: false, error: '주문을 찾을 수 없습니다.' });
-    }
-    res.json({ success: true, data: order });
-  } catch (error) {
-    console.error('주문 업데이트 오류:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// 주문 삭제
-app.delete('/api/orders/:id', async (req, res) => {
-  try {
-    const orderId = req.params.id;
-    await OrderModel.delete(orderId);
-    res.json({ success: true, message: '주문이 삭제되었습니다.' });
-  } catch (error) {
-    console.error('주문 삭제 오류:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// REST API는 /api 라우터에서 처리됨
 
 // 프로덕션 모드: 빌드된 정적 파일 서빙 (API 라우트 이후에 배치)
 if (process.env.NODE_ENV === 'production') {
@@ -145,14 +86,41 @@ if (process.env.NODE_ENV === 'production') {
 // ========== WebSocket 핸들러 ==========
 
 io.on('connection', (socket) => {
-  console.log(`✅ 클라이언트 연결: ${socket.id}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`✅ 새 클라이언트 연결`);
+  console.log(`   Socket ID: ${socket.id}`);
+  console.log(`   연결 시간: ${new Date().toLocaleString('ko-KR')}`);
+  console.log(`   총 연결 수: ${io.sockets.sockets.size}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   socket.on('hotelflow_sync', async (data) => {
     const { type, payload, senderId, timestamp } = data;
     
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📨 서버 메시지 수신:', type);
+    console.log('   발신자:', senderId);
+    console.log('   Socket ID:', socket.id);
+    console.log('   타임스탬프:', timestamp);
+    
+    if (type === 'NEW_ORDER') {
+      console.log('   주문 ID:', payload?.id);
+      console.log('   방번호:', payload?.roomNo);
+      console.log('   아이템:', payload?.itemName);
+      console.log('   수량:', payload?.quantity);
+    } else if (type === 'STATUS_UPDATE') {
+      console.log('   주문 ID:', payload?.id);
+      console.log('   새 상태:', payload?.status);
+      console.log('   방번호:', payload?.roomNo);
+    } else if (type === 'NEW_MEMO') {
+      console.log('   주문 ID:', payload?.orderId);
+      console.log('   메모:', payload?.memo?.text);
+    }
+    
+    // 데이터베이스 저장
     try {
       if (type === 'NEW_ORDER') {
         await OrderModel.create(payload);
+        console.log('   💾 DB 저장 완료 (NEW_ORDER)');
       } else if (type === 'STATUS_UPDATE') {
         const updateData = {
           status: payload.status,
@@ -162,9 +130,10 @@ io.on('connection', (socket) => {
           assignedTo: payload.assignedTo
         };
         await OrderModel.update(payload.id, updateData);
+        console.log('   💾 DB 저장 완료 (STATUS_UPDATE)');
       }
     } catch (error) {
-      console.error('❌ 데이터베이스 저장 오류:', error.message);
+      console.error('   ❌ DB 저장 오류:', error.message);
     }
     
     const message = {
@@ -174,7 +143,13 @@ io.on('connection', (socket) => {
       timestamp: timestamp || new Date().toISOString()
     };
     
+    // 🚨 모든 연결된 클라이언트에게 브로드캐스트
+    const clientCount = io.sockets.sockets.size;
+    console.log(`   📡 브로드캐스트 시작 - ${clientCount}개 클라이언트에게 전송`);
     io.emit('hotelflow_sync', message);
+    console.log('   ✅ 브로드캐스트 완료');
+    console.log('   수신 시간:', new Date().toLocaleString('ko-KR'));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   });
 
   socket.on('request_all_orders', (data) => {
@@ -194,8 +169,14 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('disconnect', () => {
-    console.log(`❌ 클라이언트 연결 해제: ${socket.id}`);
+  socket.on('disconnect', (reason) => {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`❌ 클라이언트 연결 해제`);
+    console.log(`   Socket ID: ${socket.id}`);
+    console.log(`   이유: ${reason}`);
+    console.log(`   해제 시간: ${new Date().toLocaleString('ko-KR')}`);
+    console.log(`   남은 연결 수: ${io.sockets.sockets.size - 1}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   });
 });
 

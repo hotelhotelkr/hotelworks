@@ -10,6 +10,9 @@ async function initDatabase() {
   try {
     console.log('📊 데이터베이스 초기화 시작...');
     
+    // 외래 키 체크 비활성화
+    await pool.execute('SET FOREIGN_KEY_CHECKS = 0');
+    
     // 스키마 파일 읽기
     const schemaPath = path.join(__dirname, 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
@@ -23,12 +26,17 @@ async function initDatabase() {
     for (const statement of statements) {
       if (statement) {
         await pool.execute(statement);
+        console.log('   ✅ SQL 실행 완료:', statement.substring(0, 50) + '...');
       }
     }
+    
+    // 외래 키 체크 활성화
+    await pool.execute('SET FOREIGN_KEY_CHECKS = 1');
     
     console.log('✅ 데이터베이스 초기화 완료');
   } catch (error) {
     console.error('❌ 데이터베이스 초기화 실패:', error.message);
+    console.error('   상세:', error);
     throw error;
   }
 }

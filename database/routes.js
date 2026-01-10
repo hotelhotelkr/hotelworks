@@ -1,0 +1,270 @@
+import express from 'express';
+import pool from './db.js';
+
+const router = express.Router();
+
+// ============================================
+// 주문 관련 API
+// ============================================
+
+/**
+ * 모든 주문 조회
+ * GET /api/orders
+ */
+router.get('/orders', async (req, res) => {
+  try {
+    const [orders] = await pool.execute(
+      'SELECT * FROM orders ORDER BY requested_at DESC'
+    );
+    res.json(orders);
+  } catch (error) {
+    console.error('❌ 주문 조회 실패:', error.message);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+/**
+ * 특정 주문 조회
+ * GET /api/orders/:id
+ */
+router.get('/orders/:id', async (req, res) => {
+  try {
+    const [orders] = await pool.execute(
+      'SELECT * FROM orders WHERE id = ?',
+      [req.params.id]
+    );
+    
+    if (orders.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    res.json(orders[0]);
+  } catch (error) {
+    console.error('❌ 주문 조회 실패:', error.message);
+    res.status(500).json({ error: 'Failed to fetch order' });
+  }
+});
+
+/**
+ * 주문 생성
+ * POST /api/orders
+ */
+router.post('/orders', async (req, res) => {
+  try {
+    const {
+      id,
+      room_no,
+      guest_name,
+      category,
+      item_name,
+      quantity,
+      priority,
+      status,
+      requested_at,
+      created_by,
+      request_channel,
+      request_note
+    } = req.body;
+
+    await pool.execute(
+      `INSERT INTO orders (
+        id, room_no, guest_name, category, item_name, quantity,
+        priority, status, requested_at, created_by, request_channel, request_note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        room_no,
+        guest_name || null,
+        category,
+        item_name,
+        quantity || 1,
+        priority || 'NORMAL',
+        status || 'REQUESTED',
+        requested_at,
+        created_by,
+        request_channel,
+        request_note || null
+      ]
+    );
+
+    console.log('✅ 주문 생성 완료:', id);
+    res.status(201).json({ message: 'Order created', id });
+  } catch (error) {
+    console.error('❌ 주문 생성 실패:', error.message);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+/**
+ * 주문 상태 업데이트
+ * PUT /api/orders/:id
+ */
+router.put('/orders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      status,
+      accepted_at,
+      in_progress_at,
+      completed_at,
+      assigned_to
+    } = req.body;
+
+    const updates = [];
+    const values = [];
+
+    if (status) {
+      updates.push('status = ?');
+      values.push(status);
+    }
+    if (accepted_at !== undefined) {
+      updates.push('accepted_at = ?');
+      values.push(accepted_at);
+    }
+    if (in_progress_at !== undefined) {
+      updates.push('in_progress_at = ?');
+      values.push(in_progress_at);
+    }
+    if (completed_at !== undefined) {
+      updates.push('completed_at = ?');
+      values.push(completed_at);
+    }
+    if (assigned_to !== undefined) {
+      updates.push('assigned_to = ?');
+      values.push(assigned_to);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(id);
+
+    const [result] = await pool.execute(
+      `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    console.log('✅ 주문 상태 업데이트 완료:', id);
+    res.json({ message: 'Order updated', id });
+  } catch (error) {
+    console.error('❌ 주문 업데이트 실패:', error.message);
+    res.status(500).json({ error: 'Failed to update order' });
+  }
+});
+
+// ============================================
+// 메모 관련 API
+// ============================================
+
+/**
+ * 특정 주문의 메모 조회
+ * GET /api/orders/:orderId/memos
+ */
+router.get('/orders/:orderId/memos', async (req, res) => {
+  try {
+    const [memos] = await pool.execute(
+      'SELECT * FROM memos WHERE order_id = ? ORDER BY timestamp ASC',
+      [req.params.orderId]
+    );
+    res.json(memos);
+  } catch (error) {
+    console.error('❌ 메모 조회 실패:', error.message);
+    res.status(500).json({ error: 'Failed to fetch memos' });
+  }
+});
+
+/**
+ * 메모 추가
+ * POST /api/memos
+ */
+router.post('/memos', async (req, res) => {
+  try {
+    const {
+      id,
+      order_id,
+      text,
+      sender_id,
+      sender_name,
+      sender_dept,
+      timestamp
+    } = req.body;
+
+    await pool.execute(
+      `INSERT INTO memos (
+        id, order_id, text, sender_id, sender_name, sender_dept, timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, order_id, text, sender_id, sender_name, sender_dept, timestamp]
+    );
+
+    console.log('✅ 메모 추가 완료:', id);
+    res.status(201).json({ message: 'Memo created', id });
+  } catch (error) {
+    console.error('❌ 메모 추가 실패:', error.message);
+    res.status(500).json({ error: 'Failed to create memo' });
+  }
+});
+
+// ============================================
+// 사용자 관련 API
+// ============================================
+
+/**
+ * 로그인
+ * POST /api/login
+ */
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    const [users] = await pool.execute(
+      'SELECT * FROM users WHERE username = ?',
+      [username]
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = users[0];
+
+    // 🔒 실제 프로덕션에서는 bcrypt로 비밀번호 해싱 필요
+    if (user.password !== password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    console.log('✅ 로그인 성공:', user.username);
+    res.json({
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      dept: user.dept,
+      role: user.role
+    });
+  } catch (error) {
+    console.error('❌ 로그인 실패:', error.message);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+/**
+ * 모든 사용자 조회
+ * GET /api/users
+ */
+router.get('/users', async (req, res) => {
+  try {
+    const [users] = await pool.execute(
+      'SELECT id, username, name, dept, role, created_at FROM users'
+    );
+    res.json(users);
+  } catch (error) {
+    console.error('❌ 사용자 조회 실패:', error.message);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+export default router;

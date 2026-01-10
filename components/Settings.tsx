@@ -337,6 +337,9 @@ const Settings: React.FC<SettingsProps> = ({
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  // 고급 설정 표시 상태
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+
   return (
     <div className="space-y-6 pb-12">
       <div className="bg-white rounded-[2rem] border border-slate-200 p-6 sm:p-8 shadow-sm">
@@ -345,62 +348,122 @@ const Settings: React.FC<SettingsProps> = ({
           Settings
         </h2>
 
-        {/* 1. 연결 설정 */}
-        <section className="mb-8">
-          <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
-            <Server className="w-5 h-5 text-indigo-600" />
-            1. 연결 설정 (Connection Settings)
-          </h3>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-slate-600 mb-2">
-                WebSocket 서버 URL
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={wsUrl}
-                  onChange={(e) => setWsUrl(e.target.value)}
-                  placeholder="http://localhost:3001"
-                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-                <button
-                  onClick={saveWsUrl}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors"
-                >
-                  저장
-                </button>
-                <button
-                  onClick={testConnection}
-                  disabled={connectionTestResult.status === 'testing'}
-                  className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-300 transition-colors disabled:opacity-50"
-                >
-                  {connectionTestResult.status === 'testing' ? '테스트 중...' : '연결 테스트'}
-                </button>
-              </div>
-              {connectionTestResult.message && (
-                <div className={`mt-2 p-3 rounded-lg text-sm flex items-center gap-2 ${
-                  connectionTestResult.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
-                  connectionTestResult.status === 'error' ? 'bg-rose-50 text-rose-700' :
-                  'bg-blue-50 text-blue-700'
-                }`}>
-                  {connectionTestResult.status === 'success' && <CheckCircle className="w-4 h-4" />}
-                  {connectionTestResult.status === 'error' && <XCircle className="w-4 h-4" />}
-                  {connectionTestResult.status === 'testing' && <RefreshCw className="w-4 h-4 animate-spin" />}
-                  {connectionTestResult.message}
+        {/* 1. 연결 설정 (고급 - 숨김) */}
+        {showAdvancedSettings && (
+          <section className="mb-8">
+            <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
+              <Server className="w-5 h-5 text-amber-600" />
+              1. 연결 설정 (Connection Settings) - 고급
+            </h3>
+            
+            <div className="space-y-4 p-4 bg-amber-50 rounded-xl border-2 border-amber-200">
+              <div className="flex items-start gap-2 text-sm text-amber-800 mb-3">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold mb-1">⚠️ 고급 사용자 전용 설정</p>
+                  <p className="text-xs">
+                    • 로컬 테스트: 설정 불필요 (자동 연결)<br/>
+                    • 다른 기기 연결 시: IP:포트 입력 필요<br/>
+                    • 예: http://192.168.0.100:8000
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-600 mb-2">
+                  WebSocket 서버 URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={wsUrl}
+                    onChange={(e) => setWsUrl(e.target.value)}
+                    placeholder="http://localhost:8000"
+                    className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                  <button
+                    onClick={saveWsUrl}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors"
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={testConnection}
+                    disabled={connectionTestResult.status === 'testing'}
+                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-300 transition-colors disabled:opacity-50"
+                  >
+                    {connectionTestResult.status === 'testing' ? '테스트 중...' : '연결 테스트'}
+                  </button>
+                </div>
+                {connectionTestResult.message && (
+                  <div className={`mt-2 p-3 rounded-lg text-sm flex items-center gap-2 ${
+                    connectionTestResult.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
+                    connectionTestResult.status === 'error' ? 'bg-rose-50 text-rose-700' :
+                    'bg-blue-50 text-blue-700'
+                  }`}>
+                    {connectionTestResult.status === 'success' && <CheckCircle className="w-4 h-4" />}
+                    {connectionTestResult.status === 'error' && <XCircle className="w-4 h-4" />}
+                    {connectionTestResult.status === 'testing' && <RefreshCw className="w-4 h-4 animate-spin" />}
+                    {connectionTestResult.message}
+                  </div>
+                )}
+              </div>
 
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-              <span className="text-sm font-bold text-slate-700">
-                현재 연결 상태: {isConnected ? '연결됨' : '연결 안 됨'}
-              </span>
+              <div className="flex items-center gap-3 p-4 bg-white rounded-xl border border-slate-200">
+                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                <span className="text-sm font-bold text-slate-700">
+                  현재 연결 상태: {isConnected ? '✅ 연결됨' : '❌ 연결 안 됨'}
+                </span>
+              </div>
             </div>
+          </section>
+        )}
+
+        {/* 2. 연결 상태 (간단 버전) */}
+        {!showAdvancedSettings && (
+          <section className="mb-8">
+            <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-indigo-600" />
+              1. 연결 상태 (Connection Status)
+            </h3>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                  <span className="text-sm font-bold text-slate-700">
+                    WebSocket: {isConnected ? '✅ 연결됨' : '❌ 연결 안 됨'}
+                  </span>
+                </div>
+                {!isConnected && (
+                  <span className="text-xs text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200">
+                    서버 실행 중인지 확인하세요
+                  </span>
+                )}
+              </div>
+
+              <button
+                onClick={() => setShowAdvancedSettings(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
+              >
+                <Code className="w-4 h-4" />
+                고급 설정 표시 (다른 기기 연결 시)
+              </button>
+            </div>
+          </section>
+        )}
+
+        {showAdvancedSettings && (
+          <div className="mb-8">
+            <button
+              onClick={() => setShowAdvancedSettings(false)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
+            >
+              <EyeOff className="w-4 h-4" />
+              고급 설정 숨기기
+            </button>
           </div>
-        </section>
+        )}
 
         {/* 3. 데이터 관리 */}
         <section className="mb-8">
@@ -438,11 +501,12 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </section>
 
-        {/* 4. 시스템 정보 */}
+        {/* 4. 시스템 정보 (고급 설정에만 표시) */}
+        {showAdvancedSettings && (
         <section className="mb-8">
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
-            <Info className="w-5 h-5 text-indigo-600" />
-            4. 시스템 정보 (System Information)
+            <Info className="w-5 h-5 text-amber-600" />
+            4. 시스템 정보 (System Information) - 고급
           </h3>
           
           <div className="space-y-3">
@@ -519,9 +583,11 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
           </div>
         </section>
+        )}
 
-        {/* 6. 콘솔 로그 레벨 (관리자 전용) */}
-        <section className="mb-8">
+        {/* 6. 콘솔 로그 레벨 (개발자 전용 - 고급 설정에만 표시) */}
+        {showAdvancedSettings && (
+          <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-black text-slate-700 flex items-center gap-2">
               <Code className="w-5 h-5 text-indigo-600" />
@@ -575,8 +641,10 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
           )}
         </section>
+        )}
 
-        {/* 7. WebSocket 메시지 로깅 (관리자 전용) */}
+        {/* 7. WebSocket 메시지 로깅 (개발자 전용 - 고급 설정에만 표시) */}
+        {showAdvancedSettings && (
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-black text-slate-700 flex items-center gap-2">
@@ -631,12 +699,13 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
           )}
         </section>
+        )}
 
-        {/* 8. 기타 설정 */}
+        {/* 2. 기타 설정 (캐시 정리만) */}
         <section>
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-indigo-600" />
-            8. 기타 설정
+            2. 기타 설정 (Other Settings)
           </h3>
           
           <div className="space-y-4">

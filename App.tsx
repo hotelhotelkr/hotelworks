@@ -51,12 +51,39 @@ const STORAGE_KEY = 'hotelflow_orders_v1';
 const SYNC_CHANNEL = 'hotelflow_sync';
 const OFFLINE_QUEUE_KEY = 'hotelflow_offline_queue'; // 오프라인 상태에서 생성된 메시지 큐
 
-// WebSocket 서버 URL을 동적으로 가져오는 함수
-// PC와 모바일이 항상 같은 서버에 연결되도록 개선
+/**
+ * 세션 ID: 각 브라우저 탭/기기를 고유하게 식별
+ * - 페이지 로드 시마다 새로 생성
+ * - 같은 사용자가 다른 기기/탭에서 로그인해도 서로 다른 세션 ID를 가짐
+ * - 중복 알림 방지에 사용: senderId + sessionId가 모두 같으면 같은 기기로 판단
+ */
+const SESSION_ID = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+/**
+ * WebSocket 서버 URL 동적 감지
+ * - 로컬 환경(localhost, IP): 자동으로 포트 3001 사용
+ * - 프로덕션: localStorage 또는 환경 변수에서 URL 가져옴
+ * - PC와 모바일 모두 같은 서버에 연결
+ */
 const getWebSocketURL = (): string => {
+  // 🚨 개발 환경: localStorage 무시하고 자동 감지 우선
+  if (typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname;
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    
+    // localhost 또는 로컬 IP 주소인 경우 무조건 로컬 서버 사용
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+      const wsUrl = `${protocol}//${host}:8000`;
+      console.log('🔌 로컬 WebSocket URL:', wsUrl);
+      return wsUrl;
+    }
+  }
+  
+  // 🚨 프로덕션 환경: localStorage 또는 환경 변수 사용
   try {
     const savedUrl = localStorage.getItem('hotelflow_ws_url');
     if (savedUrl && savedUrl.trim() !== '') {
+      console.log('🔌 저장된 WebSocket URL:', savedUrl.trim());
       return savedUrl.trim();
     }
   } catch (e) {
@@ -66,32 +93,22 @@ const getWebSocketURL = (): string => {
   try {
     const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
     if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+      console.log('🔌 환경 변수 WebSocket URL:', envUrl);
       return envUrl;
     }
   } catch (e) {
     // 환경 변수 접근 실패 시 무시
   }
   
-  if (typeof window !== 'undefined' && window.location) {
-    const host = window.location.hostname;
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    const port = window.location.port;
-    const wsPort = port === '3000' ? '3001' : (port || '3001');
-    
-    if (host !== 'localhost' && host !== '127.0.0.1') {
-      if (!port || port === '80' || port === '443' || port === '') {
-        return `${protocol}//${host}`;
-      }
-      return `${protocol}//${host}:${wsPort}`;
-    }
-    
-    return `${protocol}//${host}:${wsPort}`;
-  }
-  
-  return 'http://localhost:3001';
+  console.log('🔌 기본 WebSocket URL: http://localhost:8000');
+  return 'http://localhost:8000';
 };
 
-// 디버그 로깅 헬퍼 함수 (통합)
+/**
+ * 디버그 로깅 헬퍼 함수
+ * - Settings에서 디버그 모드 활성화 시에만 로그 출력
+ * - 프로덕션 성능 최적화: console.log 호출 최소화
+ */
 const isDebugEnabled = () => {
   try {
     return localStorage.getItem('hotelflow_debug_logging') === 'true';
@@ -419,6 +436,7 @@ const App: React.FC = () => {
             type: message.type,
             payload: message.payload,
             senderId: message.senderId,
+            sessionId: message.sessionId || SESSION_ID,
             timestamp: message.timestamp || new Date().toISOString()
           };
           
@@ -558,7 +576,13 @@ const App: React.FC = () => {
     
     try {
       const wsUrl = getWebSocketURL();
-      debugLog('🔌 WebSocket 연결 시도:', wsUrl);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🔌 WebSocket 초기화 시작');
+      console.log('   대상 URL:', wsUrl);
+      console.log('   현재 페이지:', window.location.href);
+      console.log('   시간:', new Date().toLocaleString('ko-KR'));
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
       socketRef.current = io(wsUrl, {
         transports: ['websocket', 'polling'], // websocket 우선, 실패 시 polling으로 폴백
         reconnection: true,
@@ -576,7 +600,7 @@ const App: React.FC = () => {
       const socket = socketRef.current;
 
       socket.on('connect', () => {
-        debugLog('✅ WebSocket 연결 성공, Socket ID:', socket.id);
+        console.log('✅ WebSocket 연결 성공:', socket.id, '| URL:', wsUrl);
         setIsConnected(true);
         syncOfflineQueue();
         
@@ -603,8 +627,13 @@ const App: React.FC = () => {
       });
 
       socket.on('connect_error', (error) => {
-        debugError('❌ WebSocket 연결 오류:', error.message);
+        console.error('❌ WebSocket 연결 오류:', error.message, '| URL:', wsUrl);
         setIsConnected(false);
+        
+        // 사용자에게 연결 문제 알림 (디버그 모드에서만)
+        if (isDebugEnabled()) {
+          console.error('💡 해결 방법: 서버가 실행 중인지 확인하세요 (npm run dev:server)');
+        }
         
         // 연결 오류 시 자동 재연결 시도 (실시간 동기화 보장)
         // Socket.IO가 자동으로 재연결을 시도하지만, 명시적으로도 시도
@@ -814,45 +843,31 @@ const App: React.FC = () => {
       socket.on(SYNC_CHANNEL, (data: any) => {
         if (!mounted) return; // 컴포넌트가 언마운트되면 처리하지 않음
         
-        const { type, payload, senderId, timestamp } = data;
+        const { type, payload, senderId, sessionId, timestamp } = data;
         
         const user = currentUserRef.current;
         
-        // WebSocket 메시지 로깅 설정 확인
-        const wsMessageLogging = localStorage.getItem('hotelflow_ws_message_logging') === 'true';
+        // WebSocket 메시지 수신 로그 (디버그 모드에서만)
+        debugLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        debugLog('📥 WebSocket 메시지 수신:', type);
+        debugLog('   발신자:', senderId, '| 세션:', sessionId);
+        debugLog('   로그인:', user ? `${user.name} (${user.dept})` : '로그아웃');
         
-        if (wsMessageLogging) {
-          console.group('📥 WebSocket 메시지 수신 (상세)');
-          console.log('타입:', type);
-          console.log('발신자:', senderId);
-          console.log('타임스탬프:', timestamp);
-          console.log('로그인 상태:', user ? '로그인됨' : '로그아웃됨');
-          console.log('페이로드:', payload);
-          console.groupEnd();
-        } else {
-          // 항상 로그 출력 (실시간 동기화 확인용)
-          console.log('📥 WebSocket 메시지 수신:', type, 'from', senderId, '로그인 상태:', user ? '로그인됨' : '로그아웃됨', 'timestamp:', timestamp);
-          if (type === 'STATUS_UPDATE') {
-            console.log('   - 주문 ID:', payload?.id);
-            console.log('   - 상태:', payload?.status);
-            console.log('   - 방번호:', payload?.roomNo);
-            console.log('   - 수신 시간:', new Date().toISOString());
-          } else if (type === 'NEW_ORDER') {
-            console.log('   - 주문 ID:', payload?.id);
-            console.log('   - 방번호:', payload?.roomNo);
-            console.log('   - 아이템:', payload?.itemName);
-          } else if (type === 'NEW_MEMO') {
-            console.log('   - 주문 ID:', payload?.orderId);
-            console.log('   - 메모:', payload?.memo?.text);
-          }
+        if (type === 'STATUS_UPDATE') {
+          debugLog('   주문:', payload?.id, '| 상태:', payload?.status, '| 방:', payload?.roomNo);
+        } else if (type === 'NEW_ORDER') {
+          debugLog('   주문:', payload?.id, '| 방:', payload?.roomNo, '| 아이템:', payload?.itemName, '| 수량:', payload?.quantity);
+        } else if (type === 'NEW_MEMO') {
+          debugLog('   주문:', payload?.orderId, '| 메모:', payload?.memo?.text);
         }
+        debugLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         // currentUserRef를 통해 최신 로그인 상태 확인
         const isLoggedIn = currentUserRef.current !== null;
         
-        // 로그아웃 상태에서도 실시간 동기화를 위해 localStorage의 orders를 직접 업데이트
+        // 🚨 로그아웃 상태: localStorage만 업데이트하고 pending_messages에 저장
         if (!isLoggedIn) {
-          debugLog('💾 로그아웃 상태: localStorage의 orders를 직접 업데이트 (실시간 동기화)');
+          console.log('💾 로그아웃 상태 - localStorage만 업데이트');
           try {
             // localStorage에서 현재 orders 읽기
             const savedOrders = localStorage.getItem(STORAGE_KEY);
@@ -881,30 +896,7 @@ const App: React.FC = () => {
                     : []
                 };
                 const exists = updatedOrders.find(o => o.id === newOrder.id);
-                if (exists) {
-                  // 기존 주문 업데이트 (메모 병합)
-                  updatedOrders = updatedOrders.map(o => {
-                    if (o.id === newOrder.id) {
-                      const existingMemoIds = new Set(o.memos.map(m => m.id));
-                      const existingMemoKeys = new Set(o.memos.map(m => `${m.text.trim()}|${m.senderId}`));
-                      const newMemos = newOrder.memos.filter(m => {
-                        if (existingMemoIds.has(m.id)) return false;
-                        const memoKey = `${m.text.trim()}|${m.senderId}`;
-                        if (existingMemoKeys.has(memoKey)) {
-                          const existingMemo = o.memos.find(existing => `${existing.text.trim()}|${existing.senderId}` === memoKey);
-                          if (existingMemo) {
-                            const timeDiff = Math.abs(new Date(m.timestamp).getTime() - new Date(existingMemo.timestamp).getTime());
-                            if (timeDiff < 5000) return false;
-                          }
-                          return false;
-                        }
-                        return true;
-                      });
-                      return { ...newOrder, memos: [...o.memos, ...newMemos] };
-                    }
-                    return o;
-                  });
-                } else {
+                if (!exists) {
                   updatedOrders = [newOrder, ...updatedOrders].sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime());
                 }
                 break;
@@ -918,8 +910,7 @@ const App: React.FC = () => {
                       acceptedAt: payload.acceptedAt ? new Date(payload.acceptedAt) : o.acceptedAt,
                       inProgressAt: payload.inProgressAt ? new Date(payload.inProgressAt) : o.inProgressAt,
                       completedAt: payload.completedAt ? new Date(payload.completedAt) : o.completedAt,
-                      assignedTo: payload.assignedTo !== undefined ? payload.assignedTo : o.assignedTo,
-                      memos: payload.memos ? payload.memos.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) : o.memos
+                      assignedTo: payload.assignedTo !== undefined ? payload.assignedTo : o.assignedTo
                     };
                   }
                   return o;
@@ -931,14 +922,9 @@ const App: React.FC = () => {
                   if (o.id === payload.orderId) {
                     const newMemo = { ...payload.memo, timestamp: new Date(payload.memo.timestamp) };
                     const memoExistsById = o.memos.find(m => m.id === newMemo.id);
-                    if (memoExistsById) return o;
-                    const memoKey = `${newMemo.text.trim()}|${newMemo.senderId}`;
-                    const existingMemo = o.memos.find(m => `${m.text.trim()}|${m.senderId}` === memoKey);
-                    if (existingMemo) {
-                      const timeDiff = Math.abs(newMemo.timestamp.getTime() - existingMemo.timestamp.getTime());
-                      if (timeDiff < 5000) return o;
+                    if (!memoExistsById) {
+                      return { ...o, memos: [...o.memos, newMemo] };
                     }
-                    return { ...o, memos: [...o.memos, newMemo] };
                   }
                   return o;
                 });
@@ -948,7 +934,7 @@ const App: React.FC = () => {
             
             // 업데이트된 orders를 localStorage에 저장
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedOrders));
-            debugLog('✅ 로그아웃 상태에서 localStorage orders 업데이트 완료:', type);
+            console.log('✅ 로그아웃 상태 - localStorage 업데이트 완료:', type);
             
             // pending_messages에도 저장 (로그인 시 알림 표시용)
             const pendingMessagesKey = 'hotelflow_pending_messages';
@@ -958,12 +944,12 @@ const App: React.FC = () => {
             const trimmed = pendingMessages.slice(-1000);
             localStorage.setItem(pendingMessagesKey, JSON.stringify(trimmed));
           } catch (e) {
-            debugWarn('⚠️ 로그아웃 상태에서 localStorage 업데이트 실패:', e);
+            console.error('❌ 로그아웃 상태 localStorage 업데이트 실패:', e);
           }
-          return; // 로그아웃 상태에서는 UI 업데이트하지 않음 (localStorage만 업데이트)
+          return; // 로그아웃 상태에서는 UI 업데이트하지 않음
         }
 
-        // 로그인 상태에서만 UI 업데이트
+        // 🚨 로그인 상태: UI 업데이트 + 알림 표시 (모든 로그인된 사용자)
       switch (type) {
           case 'NEW_ORDER': {
             try {
@@ -980,107 +966,41 @@ const App: React.FC = () => {
                     })) 
                   : []
               };
-              // 항상 로그 출력 (실시간 동기화 확인용)
-              console.log('📥 새 주문 수신 (WebSocket):', newOrder.id, newOrder.roomNo, 'from', senderId);
-              console.log('   - 주문 ID:', newOrder.id);
-              console.log('   - 방번호:', newOrder.roomNo);
-              console.log('   - 아이템:', newOrder.itemName);
-              console.log('   - 수량:', newOrder.quantity);
-              console.log('   - 수신 시간:', new Date().toISOString());
               
               const user = currentUserRef.current;
+              // 같은 사용자 ID + 같은 세션 ID = 같은 기기 → WebSocket 알림 스킵
+              const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
               
-              // 자신이 보낸 메시지이고 로컬에 이미 주문이 있으면 메모 병합만 수행 (다른 기기 동기화를 위해)
-              const isSelfMessage = senderId === user?.id;
-              console.log('   - 현재 사용자:', user?.id, user?.name);
-              console.log('   - 자신의 메시지:', isSelfMessage);
+              debugLog('🆕 NEW_ORDER 처리:', user?.name, '| 발신자:', senderId, '| 같은 기기:', isSelfMessage);
               
-              // 상태 업데이트를 강제로 트리거하기 위해 함수형 업데이트 사용
+              // 🚨 UI 업데이트 (모든 로그인된 사용자)
               setOrders(prev => {
                 const exists = prev.find(o => o.id === newOrder.id);
                 if (exists) {
-                  // 기존 주문이 있으면 업데이트 (메모 병합 포함)
-                  // 자신이 보낸 메시지인 경우: 메모만 병합 (다른 기기에서 동기화를 위해)
-                  // 다른 사용자가 보낸 메시지인 경우: 전체 주문 업데이트
-                  const updated = prev.map(o => {
-                    if (o.id === newOrder.id) {
-                      // 자신이 보낸 메시지이고 메모가 이미 모두 있는 경우 업데이트하지 않음
-                      if (isSelfMessage) {
-                        // 메모 ID 기반으로 중복 체크
-                        const existingMemoIds = new Set(o.memos.map(m => m.id));
-                        const hasNewMemos = newOrder.memos.some(m => !existingMemoIds.has(m.id));
-                        
-                        // 새로운 메모가 없으면 업데이트하지 않음 (중복 방지)
-                        if (!hasNewMemos) {
-                          debugLog('🔄 자신이 보낸 메시지: 메모가 이미 모두 있음, 업데이트 스킵');
-                          return o;
-                        }
-                      }
-                      
-                      // 메모 병합: 기존 메모와 새 메모를 합치되 중복 제거
-                      // ID 기반 중복 체크
-                      const existingMemoIds = new Set(o.memos.map(m => m.id));
-                      // 텍스트 + 발신자 기반 중복 체크 (타임스탬프는 5초 이내 차이는 같은 메모로 간주)
-                      const existingMemoKeys = new Set(
-                        o.memos.map(m => `${m.text.trim()}|${m.senderId}`)
-                      );
-                      const newMemos = newOrder.memos.filter(m => {
-                        // ID가 이미 있으면 제외
-                        if (existingMemoIds.has(m.id)) {
-                          debugLog('⚠️ 중복 메모 무시 (ID):', m.id);
-                          return false;
-                        }
-                        // 같은 텍스트와 발신자가 있으면 제외 (타임스탬프는 5초 이내 차이 허용)
-                        const memoKey = `${m.text.trim()}|${m.senderId}`;
-                        if (existingMemoKeys.has(memoKey)) {
-                          // 타임스탬프가 5초 이내 차이면 같은 메모로 간주
-                          const existingMemo = o.memos.find(existing => 
-                            `${existing.text.trim()}|${existing.senderId}` === memoKey
-                          );
-                          if (existingMemo) {
-                            const timeDiff = Math.abs(new Date(m.timestamp).getTime() - existingMemo.timestamp.getTime());
-                            if (timeDiff < 5000) { // 5초 이내
-                              debugLog('⚠️ 중복 메모 무시 (내용 + 시간):', m.id, m.text);
-                              return false;
-                            }
-                          } else {
-                            debugLog('⚠️ 중복 메모 무시 (내용):', m.id, m.text);
-                            return false;
-                          }
-                        }
-                        return true;
-                      });
-                      
-                      // 자신이 보낸 메시지인 경우: 메모만 병합 (다른 필드는 기존 값 유지)
-                      if (isSelfMessage) {
-                        return {
-                          ...o,
-                          memos: [...o.memos, ...newMemos]
-                        };
-                      }
-                      
-                      // 다른 사용자가 보낸 메시지인 경우: 전체 주문 업데이트
-                      return {
-                        ...newOrder,
-                        memos: [...o.memos, ...newMemos]
-                      };
-                    }
-                    return o;
-                  });
-                  debugLog('🔄 기존 주문 업데이트:', newOrder.id, newOrder.roomNo, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자가 보낸 메시지)');
-                  return updated;
+                  console.log('   기존 주문 발견 - 업데이트');
+                  // 자신이 보낸 메시지는 중복 방지를 위해 스킵 (로컬에 이미 추가됨)
+                  if (isSelfMessage) {
+                    console.log('   자신이 보낸 메시지 - 스킵');
+                    return prev;
+                  }
+                  // 다른 사용자가 보낸 메시지는 업데이트
+                  return prev.map(o => o.id === newOrder.id ? newOrder : o);
                 }
-                // 새 주문 추가 (최신순으로 정렬)
-                console.log('✅ 새 주문 추가 (WebSocket):', newOrder.id, newOrder.roomNo);
-                console.log('   - 추가 전 주문 수:', prev.length);
+                // 새 주문 추가
+                console.log('   새 주문 추가 - 추가 전:', prev.length, '개');
                 const newOrders = [newOrder, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
-                console.log('   - 추가 후 주문 수:', newOrders.length);
+                console.log('   새 주문 추가 - 추가 후:', newOrders.length, '개');
                 return newOrders;
               });
               
-              // 토스트 표시: 모든 기기에서 알림 표시 (로그인/로그아웃 상태 모두 포함)
-              console.log('🔔 새 주문 알림 표시:', newOrder.roomNo, newOrder.itemName, 'from', senderId, user ? '(로그인 상태)' : '(로그아웃 상태)');
-              triggerToast(`${newOrder.roomNo}호(#${newOrder.id}) 신규 요청: ${newOrder.itemName}`, 'info', Department.FRONT_DESK, 'NEW_ORDER');
+              // 🚨 알림 표시: 모든 메시지에 대해 WebSocket 알림 표시
+              debugLog('🔔 알림:', newOrder.roomNo, newOrder.itemName, '| 발신자:', senderId);
+              triggerToast(
+                `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
+                'info', 
+                Department.FRONT_DESK, 
+                'NEW_ORDER'
+              );
             } catch (error) {
               console.error('❌ NEW_ORDER 처리 오류:', error, payload);
           }
@@ -1088,18 +1008,16 @@ const App: React.FC = () => {
           }
 
           case 'STATUS_UPDATE': {
-            // 모든 사용자가 실시간으로 동기화되도록 - 자신이 보낸 메시지도 항상 처리
             const user = currentUserRef.current;
-            const isSelfMessage = senderId === user?.id;
+            // 같은 사용자 ID + 같은 세션 ID = 같은 기기
+            const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
             
-            console.log('📥 상태 변경 수신:', payload.id, payload.status, 'from', senderId, 'timestamp:', timestamp);
-            console.log('   - 주문 ID:', payload.id);
-            console.log('   - 상태:', payload.status);
-            console.log('   - 방번호:', payload.roomNo);
-            console.log('   - 발신자:', senderId);
-            console.log('   - 현재 사용자:', user?.id);
-            console.log('   - 자신의 메시지:', isSelfMessage);
-            console.log('   - 페이로드:', JSON.stringify(payload, null, 2));
+            console.log('🔄 STATUS_UPDATE 처리 시작');
+            console.log('   주문 ID:', payload.id);
+            console.log('   새 상태:', payload.status);
+            console.log('   방번호:', payload.roomNo);
+            console.log('   현재 사용자:', user?.name, `(${user?.dept})`);
+            console.log('   자신의 메시지:', isSelfMessage ? 'YES' : 'NO');
             
             // 항상 상태 업데이트 수행 (실시간 동기화 보장)
             setOrders(prev => {
@@ -1204,23 +1122,43 @@ const App: React.FC = () => {
               return updated;
             });
             
-            // 상태 변경 알림: 모든 기기에서 알림 표시 (로컬 기기 포함, WebSocket을 통해, 로그인/로그아웃 상태 모두 포함)
-            // 로컬에서 토스트를 생성하지 않으므로 WebSocket으로 받은 모든 메시지에서 알림 표시
+            // 🚨 알림 표시: 모든 상태 변경에 대해 알림 표시
+            debugLog('🔔 상태 변경 알림:', payload.status, '| 방:', payload.roomNo);
             const effect: SoundEffect = payload.status === OrderStatus.COMPLETED ? 'SUCCESS' : 'UPDATE';
             const toastType = payload.status === OrderStatus.COMPLETED ? 'success' : payload.status === OrderStatus.CANCELLED ? 'warning' : 'info';
-            const statusMsg = payload.status === OrderStatus.CANCELLED ? '취소됨' : payload.status;
-            triggerToast(`${payload.roomNo}호(#${payload.id}) 상태 변경: ${statusMsg}`, toastType, payload.status === OrderStatus.COMPLETED ? Department.HOUSEKEEPING : (isSelfMessage && user ? user.dept : undefined), effect);
-            console.log('🔔 상태 변경 알림 표시:', payload.status, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+            const statusText = payload.status === OrderStatus.CANCELLED ? '취소됨' 
+              : payload.status === OrderStatus.COMPLETED ? '완료됨'
+              : payload.status === OrderStatus.IN_PROGRESS ? '진행중'
+              : payload.status === OrderStatus.ACCEPTED ? '접수됨'
+              : payload.status;
+            triggerToast(
+              `${payload.roomNo}호 상태 변경: ${statusText}`, 
+              toastType, 
+              payload.status === OrderStatus.COMPLETED ? Department.HOUSEKEEPING : undefined, 
+              effect
+            );
+            console.log('✅ 알림 표시 완료');
             break;
           }
 
           case 'NEW_MEMO': {
-            console.log('📥 새 메모 수신:', payload.orderId, 'from', senderId);
+            const user = currentUserRef.current;
+            // 같은 사용자 ID + 같은 세션 ID = 같은 기기
+            const isSelfMemo = payload.memo.senderId === user?.id && sessionId === SESSION_ID;
+            
+            console.log('💬 NEW_MEMO 처리 시작');
+            console.log('   주문 ID:', payload.orderId);
+            console.log('   메모 내용:', payload.memo.text);
+            console.log('   작성자:', payload.memo.senderName, `(${payload.memo.senderDept})`);
+            console.log('   현재 사용자:', user?.name, `(${user?.dept})`);
+            console.log('   자신의 메모:', isSelfMemo ? 'YES' : 'NO');
+            
+            // 🚨 UI 업데이트 (모든 로그인된 사용자)
             let foundRoomNo: string | null = null;
             setOrders(prev => {
               const found = prev.find(o => o.id === payload.orderId);
               if (!found) {
-                console.warn('⚠️ 메모 추가 대상 주문을 찾을 수 없음:', payload.orderId);
+                console.warn('   ⚠️ 주문을 찾을 수 없음');
                 return prev;
               }
               
@@ -1232,29 +1170,12 @@ const App: React.FC = () => {
                   // ID 기반 중복 체크
                   const memoExistsById = o.memos.find(m => m.id === newMemo.id);
                   if (memoExistsById) {
-                    console.log('⚠️ 중복 메모 무시 (ID):', newMemo.id);
+                    console.log('   ⏭️  중복 메모 - 스킵');
                     return o;
                   }
                   
-                  // 텍스트 + 발신자 기반 중복 체크 (타임스탬프는 5초 이내 차이는 같은 메모로 간주)
-                  const memoKey = `${newMemo.text.trim()}|${newMemo.senderId}`;
-                  const existingMemo = o.memos.find(m => 
-                    `${m.text.trim()}|${m.senderId}` === memoKey
-                  );
-                  if (existingMemo) {
-                    // 타임스탬프가 5초 이내 차이면 같은 메모로 간주
-                    const timeDiff = Math.abs(newMemo.timestamp.getTime() - existingMemo.timestamp.getTime());
-                    if (timeDiff < 5000) { // 5초 이내
-                      console.log('⚠️ 중복 메모 무시 (내용 + 시간):', newMemo.id, newMemo.text);
-                      return o;
-                    }
-                  }
-                  
-                  console.log('✅ 새 메모 추가:', payload.orderId, newMemo.id);
-                  return {
-            ...o,
-                    memos: [...o.memos, newMemo]
-                  };
+                  console.log('   ✅ 메모 추가');
+                  return { ...o, memos: [...o.memos, newMemo] };
                 }
                 return o;
               });
@@ -1266,20 +1187,23 @@ const App: React.FC = () => {
               return updated;
             });
             
-            const roomDisplay = foundRoomNo ? `${foundRoomNo}호` : (payload.roomNo ? `${payload.roomNo}호` : `#${payload.orderId}`);
-            const user = currentUserRef.current;
-            // 메모 추가 알림: 모든 기기에서 알림 표시 (로컬 기기 포함, WebSocket을 통해, 로그인/로그아웃 상태 모두 포함)
-            // 로컬에서 토스트를 생성하지 않으므로 WebSocket으로 받은 모든 메시지에서 알림 표시
-            const isSelfMemo = payload.memo.senderId === user?.id;
-            triggerToast(`${roomDisplay}(#${payload.orderId})에 새 메모가 추가되었습니다.`, 'memo', payload.memo.senderDept, 'MEMO');
-            console.log('🔔 메모 추가 알림 표시:', isSelfMemo ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+            // 🚨 알림 표시: 모든 메모에 대해 알림 표시
+            const roomDisplay = foundRoomNo ? `${foundRoomNo}호` : `#${payload.orderId}`;
+            debugLog('🔔 메모 알림:', roomDisplay, '|', payload.memo.text);
+            triggerToast(
+              `${roomDisplay} 새 메모: ${payload.memo.text}`, 
+              'memo', 
+              payload.memo.senderDept, 
+              'MEMO'
+            );
             break;
           }
 
           case 'USER_ADD': {
             console.log('📥 사용자 추가 수신:', payload.name, 'from', senderId);
             const user = currentUserRef.current;
-            const isSelfMessage = senderId === user?.id;
+            // 같은 사용자 ID + 같은 세션 ID = 같은 기기
+            const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
             // 로그인 상태에서만 사용자 목록 업데이트
             if (user) {
               setUsers(prev => {
@@ -1302,7 +1226,8 @@ const App: React.FC = () => {
           case 'USER_UPDATE': {
             console.log('📥 사용자 수정 수신:', payload.name, 'from', senderId);
             const user = currentUserRef.current;
-            const isSelfMessage = senderId === user?.id;
+            // 같은 사용자 ID + 같은 세션 ID = 같은 기기
+            const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
             // 로그인 상태에서만 사용자 목록 업데이트
             if (user) {
               setUsers(prev => {
@@ -1324,7 +1249,8 @@ const App: React.FC = () => {
           case 'USER_DELETE': {
             console.log('📥 사용자 삭제 수신:', payload.userId, 'from', senderId);
             const user = currentUserRef.current;
-            const isSelfMessage = senderId === user?.id;
+            // 같은 사용자 ID + 같은 세션 ID = 같은 기기
+            const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
             let deletedUserName = '알 수 없음';
             // 로그인 상태에서만 사용자 목록 업데이트
             if (user) {
@@ -1768,10 +1694,8 @@ const App: React.FC = () => {
       debugLog('   - 수량:', order.quantity);
       debugLog('   - 상태:', order.status);
       
-      // 토스트는 비동기로 표시 (상태 업데이트 외부에서)
-      setTimeout(() => {
-    triggerToast(`${order.roomNo}호(#${order.id}) 신규 요청: ${order.itemName}`, 'info', currentUser.dept, 'NEW_ORDER');
-      }, 0);
+      // 🚨 로컬 알림 제거: WebSocket 알림만 사용하여 중복 방지
+      // 모든 기기(생성한 기기 포함)에서 WebSocket을 통해 알림을 받음
       
       // 브로드캐스트는 비동기로 수행 (상태 업데이트 후)
       setTimeout(() => {
@@ -1797,16 +1721,34 @@ const App: React.FC = () => {
                 })) || []
               },
               senderId,
+              sessionId: SESSION_ID,
               timestamp: new Date().toISOString()
             };
             
+            // 🚨 중복 체크: 같은 타입 + 같은 ID의 메시지가 이미 큐에 있으면 스킵
+            const messageId = payload.id || payload.orderId;
+            const isDuplicate = queue.some((m: any) => 
+              m.type === type && 
+              (m.payload.id === messageId || m.payload.orderId === messageId)
+            );
+            
+            if (isDuplicate) {
+              debugLog('⏭️ 오프라인 큐 중복 스킵:', type, messageId);
+              return;
+            }
+            
             queue.push(message);
-            // 최대 1000개까지만 저장
-            const trimmed = queue.slice(-1000);
+            // 최대 500개까지만 저장 (메모리 효율)
+            const trimmed = queue.slice(-500);
             localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(trimmed));
-            console.log('💾 오프라인 큐에 저장:', type, payload.id || payload.orderId, '큐 크기:', trimmed.length);
+            debugLog('💾 오프라인 큐 저장:', type, messageId, '| 크기:', trimmed.length);
           } catch (e) {
             console.error('❌ 오프라인 큐 저장 실패:', e);
+            // localStorage quota 초과 시 큐 초기화
+            if (e instanceof Error && e.name === 'QuotaExceededError') {
+              console.warn('⚠️ localStorage 용량 초과, 오프라인 큐 초기화');
+              localStorage.removeItem(OFFLINE_QUEUE_KEY);
+            }
           }
         };
 
@@ -1817,16 +1759,7 @@ const App: React.FC = () => {
         }
 
         if (socket.connected) {
-          // 항상 상세 로그 출력 (실시간 동기화 확인용)
-          console.log('📤 주문 브로드캐스트 시작:', order.id, order.roomNo, 'senderId:', currentUser.id);
-          console.log('   - 주문 ID:', order.id);
-          console.log('   - 방번호:', order.roomNo);
-          console.log('   - 아이템:', order.itemName);
-          console.log('   - 수량:', order.quantity);
-          console.log('   - Socket ID:', socket.id);
-          console.log('   - 연결 상태:', socket.connected);
-          console.log('   - 발신자:', currentUser.id, currentUser.name);
-          console.log('   - 전송 시간:', new Date().toISOString());
+          debugLog('📤 주문 브로드캐스트:', order.id, '| 방:', order.roomNo, '| 아이템:', order.itemName);
           
           try {
             const payload = {
@@ -1845,17 +1778,13 @@ const App: React.FC = () => {
               type: 'NEW_ORDER',
               payload,
               senderId: currentUser.id,
+              sessionId: SESSION_ID,
               timestamp: new Date().toISOString()
             };
             
-            console.log('   - 페이로드:', JSON.stringify(message.payload, null, 2));
-            
-            // 메시지 전송 (항상 전송 - 실시간 동기화 보장)
+            // 메시지 전송 (실시간 동기화)
             socket.emit(SYNC_CHANNEL, message);
-            
-            console.log('✅ 브로드캐스트 전송 완료:', order.id, order.roomNo);
-            console.log('   - 전송 완료 시간:', new Date().toISOString());
-            console.log('   - 모든 연결된 클라이언트에게 브로드캐스트됨');
+            debugLog('✅ 브로드캐스트 완료:', order.id);
             
             // 전송 확인을 위한 짧은 딜레이 후 연결 상태 확인
             setTimeout(() => {
@@ -1998,6 +1927,7 @@ const App: React.FC = () => {
         })) || []
       },
       senderId: currentUser.id,
+      sessionId: SESSION_ID,
       timestamp: new Date().toISOString()
     };
     
@@ -2135,6 +2065,7 @@ const App: React.FC = () => {
           roomNo: foundRoomNo // roomNo도 함께 전송
         },
         senderId: currentUser.id,
+        sessionId: SESSION_ID,
         timestamp: new Date().toISOString()
       };
       
@@ -2151,7 +2082,7 @@ const App: React.FC = () => {
       }
       
       socket.emit(SYNC_CHANNEL, message);
-      console.log('📤 메모 추가 브로드캐스트:', orderId, newMemoObj.id);
+      debugLog('📤 메모 브로드캐스트:', orderId, '| 메모:', newMemoObj.id);
     } else {
       // 오프라인 큐에 저장
       try {
@@ -2168,6 +2099,7 @@ const App: React.FC = () => {
             roomNo: foundRoomNo
           },
           senderId: currentUser.id,
+          sessionId: SESSION_ID,
           timestamp: new Date().toISOString()
         });
         const trimmed = queue.slice(-1000);
@@ -2237,7 +2169,7 @@ const App: React.FC = () => {
         timestamp: new Date().toISOString()
       };
       socket.emit(SYNC_CHANNEL, message);
-      console.log('📤 사용자 추가 브로드캐스트:', newUser.name);
+      debugLog('📤 사용자 추가:', newUser.name);
     }
   }, [triggerToast]);
 
@@ -2256,7 +2188,7 @@ const App: React.FC = () => {
         timestamp: new Date().toISOString()
       };
       socket.emit(SYNC_CHANNEL, message);
-      console.log('📤 사용자 수정 브로드캐스트:', updatedUser.name);
+      debugLog('📤 사용자 수정:', updatedUser.name);
     }
   }, [triggerToast]);
 
@@ -2275,7 +2207,7 @@ const App: React.FC = () => {
         timestamp: new Date().toISOString()
       };
       socket.emit(SYNC_CHANNEL, message);
-      console.log('📤 사용자 삭제 브로드캐스트:', userId);
+      debugLog('📤 사용자 삭제:', userId);
     }
   }, [triggerToast]);
 
