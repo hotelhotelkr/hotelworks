@@ -230,9 +230,34 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         });
         
         // 로컬 fallback 인증 (하위 호환성)
-        const foundUser = allAvailableUsers.find(
+        // 1차: username으로 찾기
+        let foundUser = allAvailableUsers.find(
           u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
         );
+        
+        // 2차: username이 없거나 다른 경우, name으로 찾기
+        if (!foundUser) {
+          // 로미오: username이 "3" 또는 name이 "로미오"인 경우
+          if (trimmedUsername === '3') {
+            foundUser = allAvailableUsers.find(
+              u => u.username === '3' || u.name === '로미오' || (u.name && u.name.includes('로미오'))
+            );
+            // 찾았는데 username이 없으면 "3"으로 설정
+            if (foundUser && !foundUser.username) {
+              foundUser = { ...foundUser, username: '3' };
+            }
+          }
+          // 줄리엣: username이 "4" 또는 name이 "줄리엣"인 경우
+          else if (trimmedUsername === '4') {
+            foundUser = allAvailableUsers.find(
+              u => u.username === '4' || u.name === '줄리엣' || (u.name && u.name.includes('줄리엣'))
+            );
+            // 찾았는데 username이 없으면 "4"로 설정
+            if (foundUser && !foundUser.username) {
+              foundUser = { ...foundUser, username: '4' };
+            }
+          }
+        }
         
         console.log('🔍 로컬 fallback 사용자 찾기 결과:', foundUser ? {
           id: foundUser.id,
@@ -328,14 +353,40 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       console.warn('⚠️ 서버 API 호출 실패, 로컬 사용자 정보로 대체 인증 시도...');
       
       // 서버 API 호출 실패 시 로컬 인증으로 대체 (하위 호환성)
-      const foundUser = allAvailableUsers.find(
+      // 1차: username으로 찾기
+      let foundUser = allAvailableUsers.find(
         u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
       );
       
+      // 2차: username이 없거나 다른 경우, name으로 찾기
+      if (!foundUser) {
+        // 로미오: username이 "3" 또는 name이 "로미오"인 경우
+        if (trimmedUsername === '3') {
+          foundUser = allAvailableUsers.find(
+            u => u.username === '3' || u.name === '로미오' || (u.name && u.name.includes('로미오'))
+          );
+          // 찾았는데 username이 없으면 "3"으로 설정
+          if (foundUser && !foundUser.username) {
+            foundUser = { ...foundUser, username: '3' };
+          }
+        }
+        // 줄리엣: username이 "4" 또는 name이 "줄리엣"인 경우
+        else if (trimmedUsername === '4') {
+          foundUser = allAvailableUsers.find(
+            u => u.username === '4' || u.name === '줄리엣' || (u.name && u.name.includes('줄리엣'))
+          );
+          // 찾았는데 username이 없으면 "4"로 설정
+          if (foundUser && !foundUser.username) {
+            foundUser = { ...foundUser, username: '4' };
+          }
+        }
+      }
+      
       if (foundUser) {
         console.log('🔍 서버 API 실패 후 로컬 fallback 인증 시작:', {
-          foundUser: foundUser.username,
+          foundUser: foundUser.username || '없음',
           userId: foundUser.id,
+          name: foundUser.name,
           inputPassword: trimmedPassword
         });
         
