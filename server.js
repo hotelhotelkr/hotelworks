@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import OrderModel from './database/models/OrderModel.js';
 import apiRoutes from './database/routes.js';
 import pool from './database/db.js';
+import initDatabase from './database/init.js';
 
 dotenv.config();
 
@@ -244,13 +245,21 @@ httpServer.on('error', (error) => {
   }
 });
 
-httpServer.listen(PORT, '0.0.0.0', () => {
+httpServer.listen(PORT, '0.0.0.0', async () => {
   const serverUrl = process.env.SERVER_URL || `http://localhost:${PORT}`;
   const wsUrl = process.env.WS_SERVER_URL || serverUrl.replace('http://', 'ws://').replace('https://', 'wss://');
   
   console.log(`🚀 WebSocket 서버가 포트 ${PORT}에서 실행 중입니다.`);
   console.log(`📱 PC와 모바일에서 실시간 동기화가 가능합니다.`);
   console.log(`🔗 서버 상태 확인: http://localhost:${PORT}/health`);
+  
+  // 데이터베이스 초기화 (테이블 생성 및 기본 사용자 삽입)
+  try {
+    await initDatabase();
+    console.log('✅ 데이터베이스 초기화 완료');
+  } catch (error) {
+    console.error('⚠️ 데이터베이스 초기화 실패 (서버는 계속 실행):', error.message);
+  }
   if (process.env.SERVER_URL) {
     console.log(`🔗 외부 접속: ${serverUrl}/health`);
     console.log(`📡 WebSocket 연결: ${wsUrl}`);
