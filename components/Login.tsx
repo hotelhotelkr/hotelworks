@@ -146,8 +146,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       // FD, HK인 경우 더 상세한 정보
       if (isTargetUser) {
         userInfo.usernameRaw = JSON.stringify(u.username);
-        userInfo.usernameCodePoints = Array.from(userUsername).map(c => c.charCodeAt(0));
-        userInfo.inputUsernameCodePoints = Array.from(trimmedUsername).map(c => c.charCodeAt(0));
+        userInfo.usernameCodePoints = Array.from(userUsername).map((c: string) => c.charCodeAt(0));
+        userInfo.inputUsernameCodePoints = Array.from(trimmedUsername).map((c: string) => c.charCodeAt(0));
       }
       
       console.log(`   [${index + 1}] ${matchStatus}`, userInfo);
