@@ -186,24 +186,24 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           <div className="mt-12 pt-6 border-t border-slate-100">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
               <p className="text-[11px] text-amber-800 font-bold mb-2">📌 로그인 안내</p>
-              <p className="text-[10px] text-amber-700 leading-relaxed">
+              <p className="text-[10px] text-amber-700 leading-relaxed mb-3">
                 • <strong>이름이 아닌 LOGIN ID를 입력하세요</strong><br />
                 • 예: 로미오 → LOGIN ID "FD", 비밀번호 "FD"<br />
                 • 예: 줄리엣 → LOGIN ID "HK", 비밀번호 "HK"
               </p>
+              <p className="text-[10px] text-amber-700 leading-relaxed pt-3 border-t border-amber-300">
+                If forgot your password or cannot sign in,<br />
+                contact the <strong>HotelHotel@kakao.com</strong> or{' '}
+                <a 
+                  href="https://open.kakao.com/o/s7P3BINh" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-amber-900 hover:text-amber-950 underline font-semibold transition-colors"
+                >
+                  오픈채팅
+                </a>.
+              </p>
             </div>
-            <p className="text-[11px] text-center text-slate-400 leading-relaxed">
-              If forgot your password or cannot sign in,<br />
-              contact the <strong>HotelHotel@kakao.com</strong> or{' '}
-              <a 
-                href="https://open.kakao.com/o/s7P3BINh" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-indigo-600 hover:text-indigo-700 underline font-semibold transition-colors"
-              >
-                오픈채팅
-              </a>.
-            </p>
           </div>
         </div>
       </div>
