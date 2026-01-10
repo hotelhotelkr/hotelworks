@@ -69,7 +69,7 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5 }) => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <MessageSquare className="w-5 h-5 text-indigo-600" />
-          <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm">실시간 메모 피드</h3>
+          <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm">메모(실시간)</h3>
         </div>
         <div className="text-center py-8 text-slate-400">
           <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-20" />
@@ -86,7 +86,7 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5 }) => {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <MessageSquare className="w-5 h-5 text-indigo-600" />
-        <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm flex-1">실시간 메모 피드</h3>
+        <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm flex-1">메모(실시간)</h3>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-slate-400">
             최근 {recentMemos.length}개
