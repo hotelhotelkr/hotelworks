@@ -33,6 +33,14 @@ async function initDatabase() {
     // 외래 키 체크 활성화
     await pool.execute('SET FOREIGN_KEY_CHECKS = 1');
     
+    // 초기 사용자 데이터 삽입
+    try {
+      const seedUsers = (await import('./seed.js')).default;
+      await seedUsers();
+    } catch (seedError) {
+      console.warn('⚠️ 초기 사용자 데이터 삽입 실패 (무시하고 계속):', seedError.message);
+    }
+    
     console.log('✅ 데이터베이스 초기화 완료');
   } catch (error) {
     console.error('❌ 데이터베이스 초기화 실패:', error.message);

@@ -2709,7 +2709,7 @@ const App: React.FC = () => {
     XLSX.writeFile(wb, filename);
   };
 
-  const handleAddUser = useCallback((newUser: User) => {
+  const handleAddUser = useCallback(async (newUser: User) => {
     // 비밀번호 별도 저장 (로그인을 위해 필요)
     if (newUser.password) {
       try {
@@ -2725,6 +2725,33 @@ const App: React.FC = () => {
     
     // 🔒 보안: users에서는 비밀번호 필드 제거 (전송 시에만 포함)
     const { password, ...userWithoutPassword } = newUser;
+    
+    // 데이터베이스에 사용자 저장
+    try {
+      const apiUrl = (import.meta.env as any).VITE_API_URL || 'https://hotelworks-backend.onrender.com';
+      const response = await fetch(`${apiUrl}/api/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: newUser.id,
+          username: newUser.username,
+          password: newUser.password || '',
+          name: newUser.name,
+          dept: newUser.dept,
+          role: newUser.role
+        })
+      });
+      
+      if (response.ok) {
+        console.log('✅ 데이터베이스에 사용자 저장 완료:', newUser.username);
+      } else {
+        console.warn('⚠️ 데이터베이스에 사용자 저장 실패:', response.status);
+      }
+    } catch (error) {
+      console.warn('⚠️ 데이터베이스에 사용자 저장 실패 (네트워크 오류):', error);
+    }
     
     setUsers(prev => {
       const updated = [...prev, userWithoutPassword];

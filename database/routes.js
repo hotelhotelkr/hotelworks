@@ -1,7 +1,11 @@
 import express from 'express';
 import pool from './db.js';
+import userRoutes from './routes-users.js';
 
 const router = express.Router();
+
+// 사용자 관련 라우트 등록
+router.use('/', userRoutes);
 
 // ============================================
 // 데이터베이스 상태 확인 API
