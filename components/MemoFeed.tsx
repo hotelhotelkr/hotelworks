@@ -138,7 +138,13 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5, onMemoClick }
         {recentMemos.map(({ order, memo, timestamp }) => (
           <div
             key={`${order.id}-${memo.id}`}
-            onClick={() => onMemoClick && onMemoClick(order)}
+            onClick={(e) => {
+              // 메모를 클릭해도 메모 피드가 접히지 않도록 상태 유지
+              // 메모 피드가 펼쳐져 있으면 그대로 유지
+              if (onMemoClick) {
+                onMemoClick(order);
+              }
+            }}
             className={`border rounded-xl p-3 transition-all hover:shadow-md cursor-pointer ${getDeptColor(memo.senderDept)}`}
           >
             <div className="flex items-start justify-between gap-2 mb-2">

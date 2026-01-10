@@ -152,7 +152,8 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onExport, currentUser, on
           orders={orders} 
           maxItems={5} 
           onMemoClick={(order) => {
-            navigate('/orders');
+            // 메모를 클릭해도 메모 피드가 유지되도록 메모 모달만 열기
+            // 페이지 이동 없이 메모 모달만 열어서 메모 피드 상태 유지
             onOpenMemo(order);
           }}
         />
