@@ -161,7 +161,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     return Array.from(userMap.values());
   }, [availableUsers, localUsers]);
 
-  // 로컬 인증 fallback (Department/Role 확인 포함)
+  // 로컬 인증 fallback (Department/Role 확인 및 수정 포함)
   const attemptLocalAuth = (trimmedUsername: string, trimmedPassword: string): User | null => {
     // 사용자 찾기
     let foundUser = findUser(allAvailableUsers, trimmedUsername);
@@ -177,12 +177,39 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       if ((savedPassword && trimmedPassword === savedPassword) ||
           (defaultPassword && trimmedPassword === defaultPassword) ||
           isUsernamePasswordMatch) {
-        // Department/Role이 올바른지 확인하고 필요시 수정
+        // username 기반으로 올바른 Department/Role 가져오기
         const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
-        if (!foundUser.dept || !foundUser.role) {
-          // Department/Role이 없으면 올바른 값으로 설정
-          foundUser = { ...foundUser, dept: expectedConfig.dept, role: expectedConfig.role };
+        
+        // Department/Role이 없거나 잘못되었으면 올바른 값으로 강제 설정
+        const needsUpdate = !foundUser.dept || !foundUser.role || 
+                           foundUser.dept !== expectedConfig.dept || 
+                           foundUser.role !== expectedConfig.role;
+        
+        if (needsUpdate) {
+          foundUser = { 
+            ...foundUser, 
+            dept: expectedConfig.dept, 
+            role: expectedConfig.role 
+          };
+          
+          // localStorage에 수정된 사용자 정보 저장
+          try {
+            const saved = localStorage.getItem('hotelflow_users_v1');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed)) {
+                const updated = parsed.map((u: User) => 
+                  u.id === foundUser.id ? foundUser : u
+                );
+                localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+                console.log('✅ 사용자 Department/Role 수정됨:', foundUser.username, foundUser.dept, foundUser.role);
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ 사용자 정보 저장 실패:', e);
+          }
         }
+        
         return foundUser;
       }
     } else {
