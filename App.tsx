@@ -231,18 +231,8 @@ const App: React.FC = () => {
                 let passwordsUpdated = false;
                 
                 migrated.forEach((u: User) => {
-                  // 기본 비밀번호 매핑
-                  const defaultPasswords: Record<string, string> = {
-                    'admin': 'admin',
-                    'FD': 'FD',
-                    'HK': 'HK',
-                    '3': '3',
-                    '4': '4',
-                  };
-                  
-                  // 저장된 비밀번호가 없고 기본 비밀번호가 있으면 설정
-                  if (!passwords[u.id] && defaultPasswords[u.username]) {
-                    passwords[u.id] = defaultPasswords[u.username];
+                  if (!passwords[u.id] && DEFAULT_PASSWORDS[u.username]) {
+                    passwords[u.id] = DEFAULT_PASSWORDS[u.username];
                     passwordsUpdated = true;
                   }
                 });
@@ -265,16 +255,8 @@ const App: React.FC = () => {
               let passwordsUpdated = false;
               
               parsed.forEach((u: User) => {
-                const defaultPasswords: Record<string, string> = {
-                  'admin': 'admin',
-                  'FD': 'FD',
-                  'HK': 'HK',
-                  '3': '3',
-                  '4': '4',
-                };
-                
-                if (!passwords[u.id] && defaultPasswords[u.username]) {
-                  passwords[u.id] = defaultPasswords[u.username];
+                if (!passwords[u.id] && DEFAULT_PASSWORDS[u.username]) {
+                  passwords[u.id] = DEFAULT_PASSWORDS[u.username];
                   passwordsUpdated = true;
                 }
               });
@@ -302,16 +284,8 @@ const App: React.FC = () => {
         let passwordsUpdated = false;
         
         USERS.forEach((u: User) => {
-          const defaultPasswords: Record<string, string> = {
-            'admin': 'admin',
-            'FD': 'FD',
-            'HK': 'HK',
-            '3': '3',
-            '4': '4',
-          };
-          
-          if (!passwords[u.id] && defaultPasswords[u.username]) {
-            passwords[u.id] = defaultPasswords[u.username];
+          if (!passwords[u.id] && DEFAULT_PASSWORDS[u.username]) {
+            passwords[u.id] = DEFAULT_PASSWORDS[u.username];
             passwordsUpdated = true;
           }
         });
