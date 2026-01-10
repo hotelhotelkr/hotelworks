@@ -2291,6 +2291,54 @@ const App: React.FC = () => {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
+  // 로그아웃 상태에서도 users 상태를 localStorage와 동기화 (모바일 로그인 문제 해결)
+  useEffect(() => {
+    if (!currentUser) {
+      // localStorage에서 최신 users 확인 함수
+      const syncUsersFromStorage = () => {
+        try {
+          const saved = localStorage.getItem('hotelflow_users_v1');
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                // localStorage의 users와 현재 상태가 다르면 업데이트
+                setUsers(prev => {
+                  const savedIds = new Set(parsed.map((u: User) => u.id));
+                  const currentIds = new Set(prev.map(u => u.id));
+                  // localStorage에 더 많은 사용자가 있으면 업데이트
+                  if (savedIds.size !== currentIds.size || 
+                      !Array.from(savedIds).every(id => currentIds.has(id))) {
+                    console.log('🔄 로그인 화면: localStorage에서 users 동기화', {
+                      localStorageCount: parsed.length,
+                      currentStateCount: prev.length
+                    });
+                    return parsed;
+                  }
+                  return prev;
+                });
+              }
+            } catch (e) {
+              console.warn('⚠️ localStorage users 파싱 실패:', e);
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ localStorage users 접근 실패:', e);
+        }
+      };
+
+      // 즉시 한 번 확인
+      syncUsersFromStorage();
+
+      // 2초마다 localStorage 확인 (WebSocket 연결 문제 대비)
+      const interval = setInterval(syncUsersFromStorage, 2000);
+
+      return () => {
+        clearInterval(interval);
+      };
+    }
+  }, [currentUser]); // 로그인 상태 변경 시마다 확인
+
   if (!currentUser) {
     return (
       <>

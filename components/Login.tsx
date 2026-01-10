@@ -17,13 +17,25 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     e.preventDefault();
     setError('');
 
+    // 디버깅: availableUsers 확인
+    console.log('🔍 로그인 시도:', { username, availableUsersCount: availableUsers.length });
+    console.log('📋 사용 가능한 사용자 목록:', availableUsers.map(u => ({ 
+      username: u.username, 
+      name: u.name, 
+      dept: u.dept 
+    })));
+
     const foundUser = availableUsers.find(
       u => u.username === username && u.password === password
     );
 
     if (foundUser) {
+      console.log('✅ 로그인 성공:', foundUser.name);
       onLogin(foundUser);
     } else {
+      console.warn('❌ 로그인 실패: 사용자를 찾을 수 없음');
+      console.warn('   입력한 username:', username);
+      console.warn('   입력한 password:', password ? '***' : '(empty)');
       setError('Invalid username or password. Please try again.');
     }
   };
