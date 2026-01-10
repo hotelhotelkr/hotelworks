@@ -26,6 +26,22 @@ async function seedUsers() {
         role: 'HK_STAFF'
       },
       {
+        id: 'u3',
+        username: '3',
+        password: '3',
+        name: '로미오',
+        dept: 'FRONT_DESK',
+        role: 'FD_STAFF'
+      },
+      {
+        id: 'u5',
+        username: '4',
+        password: '4',
+        name: '줄리엣',
+        dept: 'HOUSEKEEPING',
+        role: 'HK_STAFF'
+      },
+      {
         id: 'u4',
         username: 'admin',
         password: 'admin',

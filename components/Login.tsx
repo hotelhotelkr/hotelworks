@@ -322,17 +322,52 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     // 🔒 보안: 서버 API는 완전히 건너뛰고 클라이언트 Staff Management 데이터만 사용
     // 서버가 잘못된 사용자 정보를 반환할 수 있으므로 항상 로컬 인증만 사용
     
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 로그인 시도:', {
+      username: trimmedUsername,
+      allAvailableUsersCount: allAvailableUsers.length,
+      allAvailableUsers: allAvailableUsers.map(u => ({ 
+        username: u.username, 
+        name: u.name, 
+        dept: u.dept, 
+        role: u.role 
+      }))
+    });
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     // 로컬 인증 (보안: Staff Management 등록 사용자만 허용)
     const authenticatedUser = attemptLocalAuth(trimmedUsername, trimmedPassword);
     if (authenticatedUser) {
+      // 🔒 최종 검증: Login ID 4로 Admin이 반환되면 즉시 거부
+      if (trimmedUsername === '4' && 
+          (authenticatedUser.role === Role.ADMIN || 
+           authenticatedUser.dept === Department.ADMIN || 
+           authenticatedUser.name?.includes('Admin') ||
+           authenticatedUser.name === 'Admin User')) {
+        console.error('🚨 심각한 보안 오류: Login ID 4로 Admin이 반환되었습니다!');
+        console.error('   반환된 사용자:', authenticatedUser);
+        setError('시스템 오류가 발생했습니다. 관리자에게 문의하세요.');
+        return;
+      }
+      
+      console.log('✅ 최종 로그인 승인:', {
+        username: authenticatedUser.username,
+        name: authenticatedUser.name,
+        dept: authenticatedUser.dept,
+        role: authenticatedUser.role
+      });
+      
       onLogin(authenticatedUser);
       return;
     }
 
     // 에러 메시지 설정 (사용자가 등록되지 않았거나 비밀번호가 틀린 경우)
-    if (!allAvailableUsers.find(u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase())) {
+    const foundUser = allAvailableUsers.find(u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase());
+    if (!foundUser) {
+      console.error('🚫 로그인 거부: 등록되지 않은 사용자:', trimmedUsername);
       setError('등록되지 않은 사용자입니다. 관리자에게 문의하세요.');
     } else {
+      console.error('🚫 로그인 거부: 비밀번호 불일치:', trimmedUsername);
       setError('아이디 또는 비밀번호가 올바르지 않습니다. 다시 시도해주세요.');
     }
   };
