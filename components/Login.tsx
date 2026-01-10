@@ -12,19 +12,68 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [localUsers, setLocalUsers] = React.useState<any[]>([]);
+
+  // 모바일에서도 최신 users를 확인하기 위해 localStorage 직접 읽기
+  React.useEffect(() => {
+    const loadUsersFromStorage = () => {
+      try {
+        const saved = localStorage.getItem('hotelflow_users_v1');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setLocalUsers(parsed);
+              console.log('📱 Login: localStorage에서 users 로드', {
+                count: parsed.length,
+                users: parsed.map((u: any) => ({ username: u.username, name: u.name }))
+              });
+            }
+          } catch (e) {
+            console.warn('⚠️ Login: localStorage users 파싱 실패:', e);
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ Login: localStorage 접근 실패:', e);
+      }
+    };
+
+    // 즉시 한 번 로드
+    loadUsersFromStorage();
+
+    // 0.5초마다 확인 (모바일에서 빠른 동기화)
+    const interval = setInterval(loadUsersFromStorage, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // availableUsers와 localStorage users 병합 (최신 데이터 우선)
+  const allAvailableUsers = React.useMemo(() => {
+    const userMap = new Map<string, any>();
+    
+    // 먼저 availableUsers 추가
+    availableUsers.forEach(u => userMap.set(u.id, u));
+    
+    // localStorage users 추가/업데이트 (더 최신일 수 있음)
+    localUsers.forEach(u => userMap.set(u.id, u));
+    
+    return Array.from(userMap.values());
+  }, [availableUsers, localUsers]);
 
   // 컴포넌트 마운트 시 availableUsers 확인 (디버깅)
   React.useEffect(() => {
     console.log('📋 Login 컴포넌트 마운트:', {
       availableUsersCount: availableUsers.length,
-      availableUsers: availableUsers.map(u => ({ 
+      localUsersCount: localUsers.length,
+      mergedUsersCount: allAvailableUsers.length,
+      allUsers: allAvailableUsers.map(u => ({ 
         username: u.username, 
         name: u.name, 
         dept: u.dept,
         id: u.id 
       }))
     });
-  }, [availableUsers]);
+  }, [availableUsers, localUsers, allAvailableUsers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,17 +83,37 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     const trimmedUsername = username.trim();
     const trimmedPassword = password.trim();
 
+    // 로그인 시도 전에 localStorage에서 최신 users 확인
+    try {
+      const saved = localStorage.getItem('hotelflow_users_v1');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setLocalUsers(parsed);
+            console.log('🔄 로그인 시도 전 localStorage 확인:', parsed.length, '명');
+          }
+        } catch (e) {
+          console.warn('⚠️ localStorage 파싱 실패:', e);
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ localStorage 접근 실패:', e);
+    }
+
     // 디버깅: availableUsers 확인
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🔍 로그인 시도 시작');
     console.log('   입력한 username:', `"${trimmedUsername}"`, `(길이: ${trimmedUsername.length})`);
     console.log('   입력한 password:', trimmedPassword ? `"***" (길이: ${trimmedPassword.length})` : '(empty)');
     console.log('   availableUsers 개수:', availableUsers.length);
+    console.log('   localUsers 개수:', localUsers.length);
+    console.log('   병합된 사용자 개수:', allAvailableUsers.length);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // 각 사용자와 비교 (상세 로그)
-    console.log('📋 사용 가능한 사용자 목록:');
-    availableUsers.forEach((u, index) => {
+    console.log('📋 사용 가능한 사용자 목록 (병합된 데이터):');
+    allAvailableUsers.forEach((u, index) => {
       const usernameMatch = u.username.trim() === trimmedUsername;
       const passwordMatch = u.password.trim() === trimmedPassword;
       const matchStatus = usernameMatch && passwordMatch ? '✅' : 
@@ -61,8 +130,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     });
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    // username과 password 비교 (공백 제거된 값으로)
-    const foundUser = availableUsers.find(
+    // username과 password 비교 (병합된 users 사용, 공백 제거된 값으로)
+    const foundUser = allAvailableUsers.find(
       u => u.username.trim() === trimmedUsername && u.password.trim() === trimmedPassword
     );
 
