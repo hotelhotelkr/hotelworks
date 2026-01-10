@@ -269,6 +269,7 @@ const App: React.FC = () => {
   const socketRef = useRef<Socket | null>(null);
   const currentUserRef = useRef<User | null>(null);
   const ordersRef = useRef<Order[]>(orders);
+  const usersRef = useRef<User[]>(users);
   const pendingMessagesProcessingRef = useRef<boolean>(false);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -285,6 +286,11 @@ const App: React.FC = () => {
   useEffect(() => {
     ordersRef.current = orders;
   }, [orders]);
+
+  // users 상태가 변경될 때마다 ref 업데이트
+  useEffect(() => {
+    usersRef.current = users;
+  }, [users]);
 
   // Persistence effect
   useEffect(() => {
@@ -688,10 +694,20 @@ const App: React.FC = () => {
         
         const user = currentUserRef.current;
         if (user) {
+          // 주문 목록 동기화 요청
           socket.emit('request_all_orders', {
             senderId: user.id,
             timestamp: new Date().toISOString()
           });
+          
+          // 사용자 목록 동기화 요청
+          setTimeout(() => {
+            socket.emit('request_all_users', {
+              senderId: user.id,
+              timestamp: new Date().toISOString()
+            });
+            console.log('📤 WebSocket 메시지 전송 - request_all_users (연결)');
+          }, 500);
         }
       });
 
@@ -759,6 +775,15 @@ const App: React.FC = () => {
           console.log('   - 연결 상태:', socket.connected);
           
           socket.emit('request_all_orders', requestData);
+          
+          // 사용자 목록 동기화 요청
+          setTimeout(() => {
+            socket.emit('request_all_users', {
+              senderId: user.id,
+              timestamp: new Date().toISOString()
+            });
+            console.log('📤 WebSocket 메시지 전송 - request_all_users (재연결)');
+          }, 500);
         } else {
           console.log('📤 WebSocket 재연결 성공 (로그아웃 상태) - 실시간 동기화 준비 완료');
         }
@@ -820,6 +845,100 @@ const App: React.FC = () => {
       });
 
       // 전체 주문 목록 응답 수신
+      // 사용자 목록 동기화 요청 수신
+      socket.on('request_all_users', (data: any) => {
+        if (!mounted) return;
+        const { senderId } = data;
+        const user = currentUserRef.current;
+        
+        // 로그인 상태이고, 요청한 클라이언트가 아닐 때만 응답
+        if (user && senderId !== user.id) {
+          debugLog('📤 전체 사용자 목록 응답 전송 to', senderId);
+          const currentUsers = usersRef.current;
+          
+          // 🔒 보안: 비밀번호 필드 제거
+          const usersWithoutPasswords = currentUsers.map((u: User) => {
+            const { password, ...userWithoutPassword } = u;
+            return userWithoutPassword;
+          });
+          
+          const responseData = {
+            users: usersWithoutPasswords,
+            senderId: user.id,
+            timestamp: new Date().toISOString()
+          };
+          
+          debugLog('📤 WebSocket 메시지 전송 - all_users_response:', {
+            senderId: responseData.senderId,
+            receiverId: senderId,
+            userCount: responseData.users.length
+          });
+          
+          socket.emit('all_users_response', responseData);
+        }
+      });
+
+      // 사용자 목록 응답 수신
+      socket.on('all_users_response', (data: any) => {
+        if (!mounted) return;
+        const { users: receivedUsers, senderId } = data;
+        const user = currentUserRef.current;
+        
+        // 자신이 보낸 응답은 무시
+        if (senderId === user?.id) return;
+        
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📥 [all_users_response] 사용자 목록 동기화 수신');
+        console.log('   발신자:', senderId);
+        console.log('   수신한 사용자 수:', receivedUsers?.length || 0);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        if (!receivedUsers || !Array.isArray(receivedUsers)) {
+          console.warn('⚠️ 잘못된 users 응답 데이터');
+          return;
+        }
+        
+        setUsers(prev => {
+          // 현재 사용자 목록과 수신한 사용자 목록 병합
+          const userMap = new Map<string, User>();
+          
+          // 현재 사용자 목록 추가
+          prev.forEach(u => {
+            const { password, ...userWithoutPassword } = u;
+            userMap.set(u.id, userWithoutPassword as User);
+          });
+          
+          // 수신한 사용자 목록 추가/업데이트 (더 최신 데이터로)
+          receivedUsers.forEach((u: User) => {
+            const { password, ...userWithoutPassword } = u;
+            userMap.set(u.id, userWithoutPassword as User);
+          });
+          
+          const merged = Array.from(userMap.values());
+          
+          // 병합된 사용자 목록이 이전과 다르면 localStorage에 저장
+          const prevIds = new Set(prev.map(u => u.id).sort());
+          const mergedIds = new Set(merged.map(u => u.id).sort());
+          const idsChanged = prevIds.size !== mergedIds.size || 
+            !Array.from(prevIds).every(id => mergedIds.has(id));
+          
+          if (idsChanged || prev.length !== merged.length) {
+            try {
+              localStorage.setItem('hotelflow_users_v1', JSON.stringify(merged));
+              console.log('✅ 사용자 목록 동기화 완료:', {
+                이전: prev.length,
+                병합: merged.length,
+                localStorage: '저장됨'
+              });
+            } catch (e) {
+              console.warn('⚠️ localStorage에 users 저장 실패:', e);
+            }
+          }
+          
+          return merged;
+        });
+      });
+
       socket.on('all_orders_response', (data: any) => {
         if (!mounted) return;
         const { orders: receivedOrders, senderId } = data;
@@ -1831,6 +1950,15 @@ const App: React.FC = () => {
       }
       
       socket.emit('request_all_orders', requestData);
+      
+      // 사용자 목록 동기화 요청
+      setTimeout(() => {
+        socket.emit('request_all_users', {
+          senderId: user.id,
+          timestamp: new Date().toISOString()
+        });
+        console.log('📤 WebSocket 메시지 전송 - request_all_users (로그인)');
+      }, 500);
     }
 
     // localStorage 주문들을 DB로 자동 동기화 (백그라운드)

@@ -203,6 +203,23 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('request_all_users', (data) => {
+    const { senderId } = data;
+    socket.broadcast.emit('request_all_users', {
+      senderId,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  socket.on('all_users_response', (data) => {
+    const { users, senderId } = data;
+    io.emit('all_users_response', {
+      users,
+      senderId,
+      timestamp: new Date().toISOString()
+    });
+  });
+
   socket.on('disconnect', (reason) => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`❌ 클라이언트 연결 해제`);
