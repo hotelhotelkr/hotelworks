@@ -51,15 +51,31 @@ const findUser = (users: User[], username: string): User | null => {
   return found || null;
 };
 
-// 임시 사용자 생성 헬퍼 함수
+// 임시 사용자 생성 헬퍼 함수 (Department/Role 매핑)
 const createTemporaryUser = (username: string, password: string): User => {
-  const trimmed = username.trim();
+  const trimmed = username.trim().toLowerCase();
+  
+  // username별 Department/Role 매핑
+  const userConfig: Record<string, { dept: Department; role: Role; name: string }> = {
+    'admin': { dept: Department.ADMIN, role: Role.ADMIN, name: 'Admin User' },
+    'fd': { dept: Department.FRONT_DESK, role: Role.FD_STAFF, name: '프론트수' },
+    'hk': { dept: Department.HOUSEKEEPING, role: Role.HK_STAFF, name: '하우스키핑수' },
+    '3': { dept: Department.FRONT_DESK, role: Role.FD_STAFF, name: '로미오' },
+    '4': { dept: Department.HOUSEKEEPING, role: Role.HK_STAFF, name: '줄리엣' },
+  };
+  
+  const config = userConfig[trimmed] || { 
+    dept: Department.FRONT_DESK, 
+    role: Role.FD_STAFF, 
+    name: username.toUpperCase() 
+  };
+  
   return {
     id: `temp-${trimmed}-${Date.now()}`,
-    username: trimmed,
-    name: trimmed === '3' ? '로미오' : trimmed === '4' ? '줄리엣' : trimmed.toUpperCase(),
-    dept: trimmed === '3' || trimmed.toLowerCase() === 'fd' ? Department.FRONT_DESK : Department.HOUSEKEEPING,
-    role: trimmed === '3' || trimmed.toLowerCase() === 'fd' ? Role.FD_STAFF : Role.HK_STAFF
+    username: username.trim(),
+    name: config.name,
+    dept: config.dept,
+    role: config.role
   };
 };
 
@@ -145,10 +161,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     return Array.from(userMap.values());
   }, [availableUsers, localUsers]);
 
-  // 로컬 인증 fallback
+  // 로컬 인증 fallback (Department/Role 확인 포함)
   const attemptLocalAuth = (trimmedUsername: string, trimmedPassword: string): User | null => {
     // 사용자 찾기
-    const foundUser = findUser(allAvailableUsers, trimmedUsername);
+    let foundUser = findUser(allAvailableUsers, trimmedUsername);
     
     if (foundUser) {
       // 저장된 비밀번호 확인
@@ -161,6 +177,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       if ((savedPassword && trimmedPassword === savedPassword) ||
           (defaultPassword && trimmedPassword === defaultPassword) ||
           isUsernamePasswordMatch) {
+        // Department/Role이 올바른지 확인하고 필요시 수정
+        const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
+        if (!foundUser.dept || !foundUser.role) {
+          // Department/Role이 없으면 올바른 값으로 설정
+          foundUser = { ...foundUser, dept: expectedConfig.dept, role: expectedConfig.role };
+        }
         return foundUser;
       }
     } else {
@@ -237,15 +259,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
 
       if (response.ok) {
         const userData = await response.json();
+        
+        // 서버에서 받은 Department/Role 정보가 있으면 우선 사용
+        const authenticatedUser: User = {
+          id: userData.id,
+          username: userData.username || trimmedUsername,
+          name: userData.name || trimmedUsername,
+          dept: userData.dept || Department.FRONT_DESK, // 기본값
+          role: userData.role || Role.FD_STAFF, // 기본값
+        };
+        
+        // 기존 사용자 정보와 병합 (Department/Role 우선)
         const foundUser = allAvailableUsers.find(
           u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
         );
         
         if (foundUser) {
-          onLogin({ ...foundUser, ...userData });
-        } else {
-          onLogin(userData as User);
+          // 기존 사용자 정보를 사용하되, 서버에서 받은 정보가 있으면 우선
+          authenticatedUser.dept = userData.dept || foundUser.dept;
+          authenticatedUser.role = userData.role || foundUser.role;
+          authenticatedUser.name = userData.name || foundUser.name;
         }
+        
+        onLogin(authenticatedUser);
         return;
       }
     } catch (error) {
