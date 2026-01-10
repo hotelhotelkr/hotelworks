@@ -710,11 +710,176 @@ const Settings: React.FC<SettingsProps> = ({
         </section>
         )}
 
-        {/* 2. 기타 설정 (캐시 정리만) */}
+        {/* 2. 주문 동기화 */}
+        <section className="mb-6">
+          <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
+            <Cloud className="w-5 h-5 text-indigo-600" />
+            2. 주문 동기화 (Order Sync)
+          </h3>
+          
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600 mb-4">
+              localStorage에 저장된 주문들을 데이터베이스로 동기화합니다.
+            </p>
+            
+            <button
+              onClick={async () => {
+                try {
+                  setSyncStatus({ status: 'syncing', message: '동기화 중...' });
+                  
+                  const ordersJson = localStorage.getItem('hotelflow_orders_v1');
+                  if (!ordersJson) {
+                    setSyncStatus({ 
+                      status: 'error', 
+                      message: 'localStorage에 주문이 없습니다.' 
+                    });
+                    return;
+                  }
+                  
+                  const orders = JSON.parse(ordersJson);
+                  if (!Array.isArray(orders) || orders.length === 0) {
+                    setSyncStatus({ 
+                      status: 'error', 
+                      message: '주문이 0개입니다.' 
+                    });
+                    return;
+                  }
+                  
+                  const getApiBaseUrl = (): string => {
+                    try {
+                      const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
+                      if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+                        return envUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+                      }
+                    } catch (e) {}
+                    
+                    try {
+                      const savedUrl = localStorage.getItem('hotelflow_ws_url');
+                      if (savedUrl && savedUrl.trim() !== '') {
+                        return savedUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+                      }
+                    } catch (e) {}
+                    
+                    if (typeof window !== 'undefined' && window.location) {
+                      const host = window.location.hostname;
+                      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+                      
+                      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.')) {
+                        return `${protocol}//${host}:3001`;
+                      }
+                    }
+                    
+                    return 'http://localhost:3001';
+                  };
+                  
+                  const formattedOrders = orders.map((order: any) => ({
+                    ...order,
+                    requestedAt: order.requestedAt instanceof Date 
+                      ? order.requestedAt.toISOString() 
+                      : (typeof order.requestedAt === 'string' ? order.requestedAt : new Date(order.requestedAt).toISOString()),
+                    acceptedAt: order.acceptedAt ? (order.acceptedAt instanceof Date ? order.acceptedAt.toISOString() : order.acceptedAt) : undefined,
+                    inProgressAt: order.inProgressAt ? (order.inProgressAt instanceof Date ? order.inProgressAt.toISOString() : order.inProgressAt) : undefined,
+                    completedAt: order.completedAt ? (order.completedAt instanceof Date ? order.completedAt.toISOString() : order.completedAt) : undefined,
+                    memos: (order.memos || []).map((memo: any) => ({
+                      ...memo,
+                      timestamp: memo.timestamp instanceof Date 
+                        ? memo.timestamp.toISOString() 
+                        : (typeof memo.timestamp === 'string' ? memo.timestamp : new Date(memo.timestamp).toISOString())
+                    }))
+                  }));
+                  
+                  const apiUrl = `${getApiBaseUrl()}/api/orders/sync`;
+                  
+                  const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ orders: formattedOrders })
+                  });
+                  
+                  if (!response.ok) {
+                    const error = await response.json().catch(() => ({ error: response.statusText }));
+                    throw new Error(error.error || `HTTP ${response.status}`);
+                  }
+                  
+                  const result = await response.json();
+                  
+                  setSyncStatus({
+                    status: 'success',
+                    message: `동기화 완료! ${result.results.created}개 생성, ${result.results.skipped}개 건너뜀`,
+                    results: result.results
+                  });
+                } catch (error: any) {
+                  setSyncStatus({
+                    status: 'error',
+                    message: `동기화 실패: ${error.message}`
+                  });
+                }
+              }}
+              disabled={syncStatus.status === 'syncing'}
+              className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {syncStatus.status === 'syncing' ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  동기화 중...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  주문 동기화 시작
+                </>
+              )}
+            </button>
+            
+            {syncStatus.status !== 'idle' && (
+              <div className={`p-3 rounded-lg ${
+                syncStatus.status === 'success' 
+                  ? 'bg-green-50 border border-green-200 text-green-800' 
+                  : syncStatus.status === 'error'
+                  ? 'bg-red-50 border border-red-200 text-red-800'
+                  : 'bg-blue-50 border border-blue-200 text-blue-800'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {syncStatus.status === 'success' && <CheckCircle className="w-4 h-4" />}
+                  {syncStatus.status === 'error' && <XCircle className="w-4 h-4" />}
+                  {syncStatus.status === 'syncing' && <RefreshCw className="w-4 h-4 animate-spin" />}
+                  <span className="font-bold text-sm">{syncStatus.message}</span>
+                </div>
+                {syncStatus.results && (
+                  <div className="text-xs mt-2 space-y-1">
+                    <p>총 주문: {syncStatus.results.total}개</p>
+                    <p>✅ 생성: {syncStatus.results.created}개</p>
+                    <p>⏭️ 건너뜀: {syncStatus.results.skipped}개</p>
+                    {syncStatus.results.errors > 0 && (
+                      <p>❌ 오류: {syncStatus.results.errors}개</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="text-xs text-slate-500 mt-2">
+              💡 localStorage에 저장된 주문 수: {(() => {
+                try {
+                  const ordersJson = localStorage.getItem('hotelflow_orders_v1');
+                  if (!ordersJson) return '0개';
+                  const orders = JSON.parse(ordersJson);
+                  return Array.isArray(orders) ? `${orders.length}개` : '0개';
+                } catch {
+                  return '확인 불가';
+                }
+              })()}
+            </div>
+          </div>
+        </section>
+
+        {/* 3. 기타 설정 (캐시 정리만) */}
         <section>
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-indigo-600" />
-            2. 기타 설정 (Other Settings)
+            3. 기타 설정 (Other Settings)
           </h3>
           
           <div className="space-y-4">
