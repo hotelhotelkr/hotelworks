@@ -219,16 +219,32 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         );
         
         if (foundUser) {
+          console.log('🔍 로컬 fallback 인증 시작:', {
+            foundUser: foundUser.username,
+            userId: foundUser.id,
+            inputPassword: trimmedPassword
+          });
+          
           // 저장된 비밀번호 확인
           try {
             const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+            console.log('📋 저장된 비밀번호 확인:', saved ? '있음' : '없음');
             if (saved) {
               const passwords = JSON.parse(saved);
+              console.log('📋 저장된 비밀번호 목록:', Object.keys(passwords));
               const savedPassword = passwords[foundUser.id];
+              console.log('🔑 사용자 ID별 저장된 비밀번호:', foundUser.id, savedPassword ? `"${savedPassword}"` : '없음');
+              
               if (savedPassword && trimmedPassword === savedPassword) {
                 console.log('✅ 저장된 비밀번호로 로컬 fallback 인증 성공:', foundUser.username);
                 onLogin(foundUser);
                 return;
+              } else if (savedPassword) {
+                console.log('❌ 저장된 비밀번호 불일치:', {
+                  저장된비밀번호: `"${savedPassword}"`,
+                  입력한비밀번호: `"${trimmedPassword}"`,
+                  일치여부: savedPassword === trimmedPassword
+                });
               }
             }
           } catch (e) {
@@ -246,16 +262,33 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           };
           
           const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
+          console.log('🔑 기본 비밀번호 확인:', {
+            username: trimmedUsername.toLowerCase(),
+            기본비밀번호: defaultPassword || '없음',
+            입력한비밀번호: trimmedPassword
+          });
           
           // 2. username과 password가 같은 경우 (예: FD/FD, HK/HK, 3/3, 4/4 등)
           const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
+          console.log('🔑 Username=Password 확인:', {
+            username: trimmedUsername.toLowerCase(),
+            password: trimmedPassword.toLowerCase(),
+            일치여부: isUsernamePasswordMatch
+          });
           
           // 3. 기본 비밀번호와 일치하거나 username=password인 경우 로그인 허용
           if ((defaultPassword && trimmedPassword === defaultPassword) || isUsernamePasswordMatch) {
             console.log('✅ 로컬 fallback 인증 성공:', foundUser.username);
             onLogin(foundUser);
             return;
+          } else {
+            console.log('❌ 로컬 fallback 인증 실패:', {
+              기본비밀번호일치: defaultPassword && trimmedPassword === defaultPassword,
+              username일치: isUsernamePasswordMatch
+            });
           }
+        } else {
+          console.log('❌ 사용자를 찾을 수 없음:', trimmedUsername);
         }
         
         setError('Invalid username or password. Please try again.');
@@ -271,16 +304,32 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       );
       
       if (foundUser) {
+        console.log('🔍 서버 API 실패 후 로컬 fallback 인증 시작:', {
+          foundUser: foundUser.username,
+          userId: foundUser.id,
+          inputPassword: trimmedPassword
+        });
+        
         // 저장된 비밀번호 확인
         try {
           const saved = localStorage.getItem('hotelflow_user_passwords_v1');
+          console.log('📋 저장된 비밀번호 확인:', saved ? '있음' : '없음');
           if (saved) {
             const passwords = JSON.parse(saved);
+            console.log('📋 저장된 비밀번호 목록:', Object.keys(passwords));
             const savedPassword = passwords[foundUser.id];
+            console.log('🔑 사용자 ID별 저장된 비밀번호:', foundUser.id, savedPassword ? `"${savedPassword}"` : '없음');
+            
             if (savedPassword && trimmedPassword === savedPassword) {
               console.log('✅ 저장된 비밀번호로 로컬 fallback 인증 성공:', foundUser.username);
               onLogin(foundUser);
               return;
+            } else if (savedPassword) {
+              console.log('❌ 저장된 비밀번호 불일치:', {
+                저장된비밀번호: `"${savedPassword}"`,
+                입력한비밀번호: `"${trimmedPassword}"`,
+                일치여부: savedPassword === trimmedPassword
+              });
             }
           }
         } catch (e) {
@@ -298,15 +347,30 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         };
         
         const defaultPassword = defaultPasswords[trimmedUsername.toLowerCase()];
+        console.log('🔑 기본 비밀번호 확인:', {
+          username: trimmedUsername.toLowerCase(),
+          기본비밀번호: defaultPassword || '없음',
+          입력한비밀번호: trimmedPassword
+        });
         
         // 2. username과 password가 같은 경우 (예: FD/FD, HK/HK, 3/3, 4/4 등)
         const isUsernamePasswordMatch = trimmedUsername.toLowerCase() === trimmedPassword.toLowerCase();
+        console.log('🔑 Username=Password 확인:', {
+          username: trimmedUsername.toLowerCase(),
+          password: trimmedPassword.toLowerCase(),
+          일치여부: isUsernamePasswordMatch
+        });
         
         // 3. 기본 비밀번호와 일치하거나 username=password인 경우 로그인 허용
         if ((defaultPassword && trimmedPassword === defaultPassword) || isUsernamePasswordMatch) {
           console.log('✅ 로컬 fallback 인증 성공:', foundUser.username);
           onLogin(foundUser);
           return;
+        } else {
+          console.log('❌ 로컬 fallback 인증 실패:', {
+            기본비밀번호일치: defaultPassword && trimmedPassword === defaultPassword,
+            username일치: isUsernamePasswordMatch
+          });
         }
       }
       
