@@ -1245,7 +1245,7 @@ const App: React.FC = () => {
               memos: (o.memos && Array.isArray(o.memos)) ? o.memos.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) : []
             })) : [];
             
-            // 메시지 타입에 따라 orders 업데이트
+            // 메시지 타입에 따라 orders 또는 users 업데이트
             let updatedOrders = currentOrders;
             
             switch (type) {
@@ -1293,6 +1293,67 @@ const App: React.FC = () => {
                   }
                   return o;
                 });
+                break;
+              }
+              case 'USER_ADD': {
+                // 로그아웃 상태에서도 사용자 추가 처리
+                try {
+                  const saved = localStorage.getItem('hotelflow_users_v1');
+                  const users = saved ? JSON.parse(saved) : [];
+                  const exists = users.find((u: User) => u.id === payload.id);
+                  if (!exists) {
+                    const { password, ...userWithoutPassword } = payload;
+                    const updated = [...users, userWithoutPassword];
+                    localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+                    // 비밀번호 별도 저장
+                    if (payload.password) {
+                      const passwords = JSON.parse(localStorage.getItem('hotelflow_user_passwords_v1') || '{}');
+                      passwords[payload.id] = payload.password;
+                      localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+                    }
+                    console.log('✅ 로그아웃 상태 - 사용자 추가 완료:', payload.name);
+                  }
+                } catch (e) {
+                  console.error('❌ 로그아웃 상태 사용자 추가 실패:', e);
+                }
+                break;
+              }
+              case 'USER_UPDATE': {
+                // 로그아웃 상태에서도 사용자 수정 처리
+                try {
+                  const saved = localStorage.getItem('hotelflow_users_v1');
+                  const users = saved ? JSON.parse(saved) : [];
+                  const updated = users.map((u: User) => 
+                    u.id === payload.id ? { ...u, ...payload, password: undefined } : u
+                  );
+                  localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+                  // 비밀번호 업데이트
+                  if (payload.password) {
+                    const passwords = JSON.parse(localStorage.getItem('hotelflow_user_passwords_v1') || '{}');
+                    passwords[payload.id] = payload.password;
+                    localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+                  }
+                  console.log('✅ 로그아웃 상태 - 사용자 수정 완료:', payload.name);
+                } catch (e) {
+                  console.error('❌ 로그아웃 상태 사용자 수정 실패:', e);
+                }
+                break;
+              }
+              case 'USER_DELETE': {
+                // 로그아웃 상태에서도 사용자 삭제 처리
+                try {
+                  const saved = localStorage.getItem('hotelflow_users_v1');
+                  const users = saved ? JSON.parse(saved) : [];
+                  const updated = users.filter((u: User) => u.id !== payload.userId);
+                  localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+                  // 비밀번호도 삭제
+                  const passwords = JSON.parse(localStorage.getItem('hotelflow_user_passwords_v1') || '{}');
+                  delete passwords[payload.userId];
+                  localStorage.setItem('hotelflow_user_passwords_v1', JSON.stringify(passwords));
+                  console.log('✅ 로그아웃 상태 - 사용자 삭제 완료:', payload.userId);
+                } catch (e) {
+                  console.error('❌ 로그아웃 상태 사용자 삭제 실패:', e);
+                }
                 break;
               }
             }
