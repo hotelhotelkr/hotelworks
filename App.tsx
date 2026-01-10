@@ -2458,15 +2458,35 @@ const App: React.FC = () => {
     // WebSocket을 통해 다른 모든 사용자에게 동기화 - 비밀번호 제외
     const socket = socketRef.current;
     const user = currentUserRef.current;
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📤 [USER_UPDATE] 사용자 수정 메시지 전송 시도');
+    console.log('   사용자 이름:', updatedUser.name);
+    console.log('   Username:', updatedUser.username);
+    console.log('   사용자 ID:', updatedUser.id);
+    console.log('   WebSocket 존재:', !!socket);
+    console.log('   WebSocket 연결 상태:', socket?.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+    console.log('   현재 사용자:', user ? user.name : '없음');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     if (socket?.connected && user) {
       const message = {
         type: 'USER_UPDATE',
         payload: userWithoutPassword, // 비밀번호 제외
         senderId: user.id,
+        sessionId: SESSION_ID,
         timestamp: new Date().toISOString()
       };
       socket.emit(SYNC_CHANNEL, message);
+      console.log('✅ USER_UPDATE 메시지 전송 완료:', updatedUser.name);
       debugLog('📤 사용자 수정:', updatedUser.name);
+    } else {
+      console.warn('⚠️ USER_UPDATE 메시지 전송 실패:', {
+        socketExists: !!socket,
+        connected: socket?.connected,
+        userExists: !!user,
+        reason: !socket ? 'socket 없음' : !socket.connected ? 'WebSocket 연결 안 됨' : '사용자 없음'
+      });
     }
   }, [triggerToast]);
 
@@ -2486,15 +2506,33 @@ const App: React.FC = () => {
     // WebSocket을 통해 다른 모든 사용자에게 동기화
     const socket = socketRef.current;
     const user = currentUserRef.current;
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📤 [USER_DELETE] 사용자 삭제 메시지 전송 시도');
+    console.log('   삭제할 사용자 ID:', userId);
+    console.log('   WebSocket 존재:', !!socket);
+    console.log('   WebSocket 연결 상태:', socket?.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+    console.log('   현재 사용자:', user ? user.name : '없음');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     if (socket?.connected && user) {
       const message = {
         type: 'USER_DELETE',
         payload: { userId },
         senderId: user.id,
+        sessionId: SESSION_ID,
         timestamp: new Date().toISOString()
       };
       socket.emit(SYNC_CHANNEL, message);
+      console.log('✅ USER_DELETE 메시지 전송 완료:', userId);
       debugLog('📤 사용자 삭제:', userId);
+    } else {
+      console.warn('⚠️ USER_DELETE 메시지 전송 실패:', {
+        socketExists: !!socket,
+        connected: socket?.connected,
+        userExists: !!user,
+        reason: !socket ? 'socket 없음' : !socket.connected ? 'WebSocket 연결 안 됨' : '사용자 없음'
+      });
     }
   }, [triggerToast]);
 

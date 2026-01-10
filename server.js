@@ -123,6 +123,18 @@ io.on('connection', (socket) => {
     } else if (type === 'NEW_MEMO') {
       console.log('   주문 ID:', payload?.orderId);
       console.log('   메모:', payload?.memo?.text);
+    } else if (type === 'USER_ADD') {
+      console.log('   사용자 ID:', payload?.id);
+      console.log('   이름:', payload?.name);
+      console.log('   Username:', payload?.username);
+      console.log('   부서:', payload?.dept);
+    } else if (type === 'USER_UPDATE') {
+      console.log('   사용자 ID:', payload?.id);
+      console.log('   이름:', payload?.name);
+      console.log('   Username:', payload?.username);
+      console.log('   부서:', payload?.dept);
+    } else if (type === 'USER_DELETE') {
+      console.log('   삭제할 사용자 ID:', payload?.userId);
     }
     
     // 데이터베이스 저장
