@@ -450,33 +450,81 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const [users] = await pool.execute(
-      'SELECT * FROM users WHERE username = ?',
-      [username]
-    );
-
-    if (users.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    const user = users[0];
+    console.log('🔍 로그인 시도:', { username, passwordLength: password.length });
 
-    // 🔒 실제 프로덕션에서는 bcrypt로 비밀번호 해싱 필요
-    if (user.password !== password) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    // 데이터베이스 연결 확인
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      console.log('✅ DB 연결 성공');
+    } catch (dbError) {
+      console.error('❌ DB 연결 실패:', dbError.message);
+      return res.status(503).json({ 
+        error: 'Database connection failed',
+        message: dbError.message 
+      });
     }
 
-    console.log('✅ 로그인 성공:', user.username);
-    res.json({
-      id: user.id,
-      username: user.username,
-      name: user.name,
-      dept: user.dept,
-      role: user.role
-    });
+    try {
+      // users 테이블 존재 확인
+      const [tables] = await connection.execute(
+        `SELECT TABLE_NAME FROM information_schema.TABLES 
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users'`,
+        [process.env.DB_NAME || 'hotelworks']
+      );
+
+      if (tables.length === 0) {
+        console.warn('⚠️ users 테이블이 존재하지 않음');
+        connection.release();
+        return res.status(503).json({ 
+          error: 'Users table does not exist',
+          message: 'Database table not found'
+        });
+      }
+
+      const [users] = await connection.execute(
+        'SELECT * FROM users WHERE username = ?',
+        [username]
+      );
+
+      connection.release();
+
+      if (users.length === 0) {
+        console.log('❌ 사용자를 찾을 수 없음:', username);
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      const user = users[0];
+
+      // 🔒 실제 프로덕션에서는 bcrypt로 비밀번호 해싱 필요
+      if (user.password !== password) {
+        console.log('❌ 비밀번호 불일치:', username);
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      console.log('✅ 로그인 성공:', user.username);
+      res.json({
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        dept: user.dept,
+        role: user.role
+      });
+    } catch (queryError) {
+      if (connection) connection.release();
+      throw queryError;
+    }
   } catch (error) {
     console.error('❌ 로그인 실패:', error.message);
-    res.status(500).json({ error: 'Login failed' });
+    console.error('   스택:', error.stack);
+    res.status(500).json({ 
+      error: 'Login failed',
+      message: error.message 
+    });
   }
 });
 
