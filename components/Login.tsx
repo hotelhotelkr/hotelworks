@@ -235,27 +235,58 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
         );
         
-        // 2차: username이 없거나 다른 경우, name으로 찾기
+        // 2차: username이 없거나 다른 경우, name 또는 id로 찾기
         if (!foundUser) {
-          // 로미오: username이 "3" 또는 name이 "로미오"인 경우
+          console.log('🔍 2차 검색 시작 (name/id로 찾기)');
+          
+          // 로미오: username이 "3" 또는 name이 "로미오" 또는 id에 "3"이 포함된 경우
           if (trimmedUsername === '3') {
-            foundUser = allAvailableUsers.find(
-              u => u.username === '3' || u.name === '로미오' || (u.name && u.name.includes('로미오'))
-            );
-            // 찾았는데 username이 없으면 "3"으로 설정
-            if (foundUser && !foundUser.username) {
-              foundUser = { ...foundUser, username: '3' };
+            console.log('🔍 username "3" 찾기 시도');
+            foundUser = allAvailableUsers.find(u => {
+              const matches = u.username === '3' || 
+                             u.username === '3' || 
+                             u.name === '로미오' || 
+                             (u.name && u.name.includes('로미오')) ||
+                             (u.id && u.id.includes('3'));
+              if (matches) {
+                console.log('✅ 매칭된 사용자:', { id: u.id, username: u.username, name: u.name });
+              }
+              return matches;
+            });
+            
+            // 찾았는데 username이 없거나 다르면 "3"으로 설정
+            if (foundUser) {
+              if (!foundUser.username || foundUser.username !== '3') {
+                console.log('🔧 username을 "3"으로 수정:', foundUser.username, '→', '3');
+                foundUser = { ...foundUser, username: '3' };
+              }
             }
           }
-          // 줄리엣: username이 "4" 또는 name이 "줄리엣"인 경우
+          // 줄리엣: username이 "4" 또는 name이 "줄리엣" 또는 id에 "4"가 포함된 경우
           else if (trimmedUsername === '4') {
-            foundUser = allAvailableUsers.find(
-              u => u.username === '4' || u.name === '줄리엣' || (u.name && u.name.includes('줄리엣'))
-            );
-            // 찾았는데 username이 없으면 "4"로 설정
-            if (foundUser && !foundUser.username) {
-              foundUser = { ...foundUser, username: '4' };
+            console.log('🔍 username "4" 찾기 시도');
+            foundUser = allAvailableUsers.find(u => {
+              const matches = u.username === '4' || 
+                             u.name === '줄리엣' || 
+                             (u.name && u.name.includes('줄리엣')) ||
+                             (u.id && u.id.includes('4'));
+              if (matches) {
+                console.log('✅ 매칭된 사용자:', { id: u.id, username: u.username, name: u.name });
+              }
+              return matches;
+            });
+            
+            // 찾았는데 username이 없거나 다르면 "4"로 설정
+            if (foundUser) {
+              if (!foundUser.username || foundUser.username !== '4') {
+                console.log('🔧 username을 "4"로 수정:', foundUser.username, '→', '4');
+                foundUser = { ...foundUser, username: '4' };
+              }
             }
+          }
+          
+          if (!foundUser) {
+            console.log('❌ 2차 검색에서도 사용자를 찾지 못함');
           }
         }
         
@@ -358,27 +389,57 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
       );
       
-      // 2차: username이 없거나 다른 경우, name으로 찾기
+      // 2차: username이 없거나 다른 경우, name 또는 id로 찾기
       if (!foundUser) {
-        // 로미오: username이 "3" 또는 name이 "로미오"인 경우
+        console.log('🔍 서버 API 실패 후 2차 검색 시작 (name/id로 찾기)');
+        
+        // 로미오: username이 "3" 또는 name이 "로미오" 또는 id에 "3"이 포함된 경우
         if (trimmedUsername === '3') {
-          foundUser = allAvailableUsers.find(
-            u => u.username === '3' || u.name === '로미오' || (u.name && u.name.includes('로미오'))
-          );
-          // 찾았는데 username이 없으면 "3"으로 설정
-          if (foundUser && !foundUser.username) {
-            foundUser = { ...foundUser, username: '3' };
+          console.log('🔍 username "3" 찾기 시도');
+          foundUser = allAvailableUsers.find(u => {
+            const matches = u.username === '3' || 
+                           u.name === '로미오' || 
+                           (u.name && u.name.includes('로미오')) ||
+                           (u.id && u.id.includes('3'));
+            if (matches) {
+              console.log('✅ 매칭된 사용자:', { id: u.id, username: u.username, name: u.name });
+            }
+            return matches;
+          });
+          
+          // 찾았는데 username이 없거나 다르면 "3"으로 설정
+          if (foundUser) {
+            if (!foundUser.username || foundUser.username !== '3') {
+              console.log('🔧 username을 "3"으로 수정:', foundUser.username, '→', '3');
+              foundUser = { ...foundUser, username: '3' };
+            }
           }
         }
-        // 줄리엣: username이 "4" 또는 name이 "줄리엣"인 경우
+        // 줄리엣: username이 "4" 또는 name이 "줄리엣" 또는 id에 "4"가 포함된 경우
         else if (trimmedUsername === '4') {
-          foundUser = allAvailableUsers.find(
-            u => u.username === '4' || u.name === '줄리엣' || (u.name && u.name.includes('줄리엣'))
-          );
-          // 찾았는데 username이 없으면 "4"로 설정
-          if (foundUser && !foundUser.username) {
-            foundUser = { ...foundUser, username: '4' };
+          console.log('🔍 username "4" 찾기 시도');
+          foundUser = allAvailableUsers.find(u => {
+            const matches = u.username === '4' || 
+                           u.name === '줄리엣' || 
+                           (u.name && u.name.includes('줄리엣')) ||
+                           (u.id && u.id.includes('4'));
+            if (matches) {
+              console.log('✅ 매칭된 사용자:', { id: u.id, username: u.username, name: u.name });
+            }
+            return matches;
+          });
+          
+          // 찾았는데 username이 없거나 다르면 "4"로 설정
+          if (foundUser) {
+            if (!foundUser.username || foundUser.username !== '4') {
+              console.log('🔧 username을 "4"로 수정:', foundUser.username, '→', '4');
+              foundUser = { ...foundUser, username: '4' };
+            }
           }
+        }
+        
+        if (!foundUser) {
+          console.log('❌ 2차 검색에서도 사용자를 찾지 못함');
         }
       }
       
