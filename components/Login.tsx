@@ -116,6 +116,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     console.log('   availableUsers 개수:', availableUsers.length);
     console.log('   localUsers 개수:', localUsers.length);
     console.log('   병합된 사용자 개수:', allAvailableUsers.length);
+    console.log('   병합된 사용자 목록:', allAvailableUsers.map(u => ({
+      id: u.id,
+      username: u.username,
+      name: u.name,
+      username_lower: u.username?.toLowerCase(),
+      찾는값: trimmedUsername.toLowerCase()
+    })));
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // 🔒 보안: 서버 API를 통한 인증 (비밀번호는 서버에서만 검증)
