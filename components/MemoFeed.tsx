@@ -82,7 +82,7 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5 }) => {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
       <div 
-        className="flex items-center gap-2 mb-4 cursor-pointer hover:opacity-80 transition-opacity"
+        className="flex items-center gap-2 mb-4 cursor-pointer hover:bg-slate-50 rounded-lg p-2 -mx-2 transition-all"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <MessageSquare className="w-5 h-5 text-indigo-600" />
@@ -97,16 +97,18 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5 }) => {
                 e.stopPropagation();
                 navigate('/memos');
               }}
-              className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-colors uppercase tracking-widest"
+              className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-colors uppercase tracking-widest px-2 py-1 rounded hover:bg-indigo-50"
             >
               전체 히스토리 ({allMemosCount})
             </button>
           )}
-          {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-slate-400" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-slate-400" />
-          )}
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 hover:bg-indigo-200 transition-colors">
+            {isExpanded ? (
+              <ChevronUp className="w-5 h-5 text-indigo-700 font-bold" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-indigo-700 font-bold" />
+            )}
+          </div>
         </div>
       </div>
       
