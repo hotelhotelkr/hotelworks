@@ -783,21 +783,22 @@ const App: React.FC = () => {
         }
         
         const user = currentUserRef.current;
+        
+        // 로그인 상태와 무관하게 항상 사용자 목록 동기화 요청 (로그인 화면에서도 동기화)
+        setTimeout(() => {
+          socket.emit('request_all_users', {
+            senderId: user?.id || 'anonymous',
+            timestamp: new Date().toISOString()
+          });
+          console.log('📤 WebSocket 메시지 전송 - request_all_users (연결)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+        }, 500);
+        
         if (user) {
-          // 주문 목록 동기화 요청
+          // 주문 목록 동기화 요청 (로그인 상태일 때만)
           socket.emit('request_all_orders', {
             senderId: user.id,
             timestamp: new Date().toISOString()
           });
-          
-          // 사용자 목록 동기화 요청
-          setTimeout(() => {
-            socket.emit('request_all_users', {
-              senderId: user.id,
-              timestamp: new Date().toISOString()
-            });
-            console.log('📤 WebSocket 메시지 전송 - request_all_users (연결)');
-          }, 500);
         }
       });
 
