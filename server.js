@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import OrderModel from './database/models/OrderModel.js';
 import apiRoutes from './database/routes.js';
+import pool from './database/db.js';
 
 dotenv.config();
 
@@ -52,14 +53,37 @@ const io = new Server(httpServer, {
 
 // ========== REST API 엔드포인트 ==========
 
-// 헬스체크
-app.get('/health', (req, res) => {
+// 헬스체크 (DB 상태 포함)
+app.get('/health', async (req, res) => {
+  let dbStatus = 'unknown';
+  let dbError = null;
+  
+  try {
+    const connection = await pool.getConnection();
+    await connection.ping();
+    connection.release();
+    dbStatus = 'connected';
+  } catch (error) {
+    dbStatus = 'disconnected';
+    dbError = error.message;
+  }
+  
   res.json({
-    status: 'ok',
+    status: dbStatus === 'connected' ? 'ok' : 'warning',
     service: 'HotelWorks WebSocket Server',
     port: PORT,
     timestamp: new Date().toISOString(),
-    connectedClients: io.sockets.sockets.size
+    connectedClients: io.sockets.sockets.size,
+    database: {
+      status: dbStatus,
+      error: dbError,
+      config: {
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'hotelworks',
+        user: process.env.DB_USER || 'root',
+        hasConfig: !!(process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASSWORD)
+      }
+    }
   });
 });
 

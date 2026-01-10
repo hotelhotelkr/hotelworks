@@ -4,6 +4,135 @@ import pool from './db.js';
 const router = express.Router();
 
 // ============================================
+// 데이터베이스 상태 확인 API
+// ============================================
+
+/**
+ * 데이터베이스 연결 상태 확인
+ * GET /api/db/status
+ */
+router.get('/db/status', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    // 연결 테스트
+    await connection.ping();
+    connection.release();
+    
+    // 테이블 존재 여부 확인
+    const [tables] = await pool.execute(
+      `SELECT TABLE_NAME 
+       FROM information_schema.TABLES 
+       WHERE TABLE_SCHEMA = ? 
+       AND TABLE_NAME IN ('orders', 'memos', 'users')`,
+      [process.env.DB_NAME || 'hotelworks']
+    );
+    
+    // 주문 개수 확인
+    let orderCount = 0;
+    try {
+      const [result] = await pool.execute('SELECT COUNT(*) as count FROM orders');
+      orderCount = result[0]?.count || 0;
+    } catch (e) {
+      console.warn('⚠️ 주문 개수 조회 실패:', e.message);
+    }
+    
+    res.json({
+      status: 'connected',
+      message: '데이터베이스 연결 성공',
+      config: {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || '3306',
+        database: process.env.DB_NAME || 'hotelworks',
+        user: process.env.DB_USER || 'root'
+      },
+      tables: {
+        found: tables.map(t => t.TABLE_NAME),
+        expected: ['orders', 'memos', 'users'],
+        allTablesExist: tables.length === 3
+      },
+      orders: {
+        count: orderCount
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ DB 연결 확인 실패:', error.message);
+    res.status(500).json({
+      status: 'error',
+      message: '데이터베이스 연결 실패',
+      error: error.message,
+      config: {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || '3306',
+        database: process.env.DB_NAME || 'hotelworks',
+        user: process.env.DB_USER || 'root',
+        hasPassword: !!process.env.DB_PASSWORD
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * 데이터베이스 테이블 구조 확인
+ * GET /api/db/tables
+ */
+router.get('/db/tables', async (req, res) => {
+  try {
+    const [tables] = await pool.execute(
+      `SELECT TABLE_NAME, TABLE_ROWS, CREATE_TIME, UPDATE_TIME
+       FROM information_schema.TABLES 
+       WHERE TABLE_SCHEMA = ? 
+       AND TABLE_NAME IN ('orders', 'memos', 'users')
+       ORDER BY TABLE_NAME`,
+      [process.env.DB_NAME || 'hotelworks']
+    );
+    
+    // 각 테이블의 컬럼 정보 가져오기
+    const tablesWithColumns = await Promise.all(
+      tables.map(async (table) => {
+        const [columns] = await pool.execute(
+          `SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+           FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+           ORDER BY ORDINAL_POSITION`,
+          [process.env.DB_NAME || 'hotelworks', table.TABLE_NAME]
+        );
+        
+        // 각 테이블의 데이터 개수
+        let rowCount = 0;
+        try {
+          const [count] = await pool.execute(`SELECT COUNT(*) as count FROM ${table.TABLE_NAME}`);
+          rowCount = count[0]?.count || 0;
+        } catch (e) {
+          console.warn(`⚠️ ${table.TABLE_NAME} 행 개수 조회 실패:`, e.message);
+        }
+        
+        return {
+          ...table,
+          columns,
+          rowCount
+        };
+      })
+    );
+    
+    res.json({
+      success: true,
+      tables: tablesWithColumns,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 테이블 정보 조회 실패:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ============================================
 // 주문 관련 API
 // ============================================
 
