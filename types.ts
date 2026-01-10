@@ -77,4 +77,7 @@ export interface Toast {
   type: 'info' | 'success' | 'warning' | 'error' | 'memo';
   dept?: Department;
   timestamp: Date;
+  orderId?: string;  // 주문 ID (알림 클릭 시 해당 주문으로 이동)
+  roomNo?: string;   // 방 번호 (메모 알림에 표시)
+  memoText?: string; // 메모 내용 (메모 알림에 표시)
 }

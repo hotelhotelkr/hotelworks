@@ -35,6 +35,7 @@ import {
 } from 'recharts';
 import OrderList from './OrderList';
 import RapidOrder from './RapidOrder';
+import MemoFeed from './MemoFeed';
 
 interface DashboardProps {
   orders: Order[];
@@ -145,6 +146,9 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onExport, currentUser, on
              <RapidOrder onDispatch={onDispatch} />
           </div>
         )}
+
+        {/* [1.5] 실시간 메모 피드 - 모든 사용자 */}
+        <MemoFeed orders={orders} maxItems={10} />
 
         {/* [2nd] Recent Dispatch Activity - ONLY FOR FD/ADMIN */}
         {(!isHousekeeping) && (

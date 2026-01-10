@@ -6,19 +6,20 @@ import { Department, Toast } from '../types';
 interface ToastNotificationProps {
   toasts: Toast[];
   onRemove: (id: string) => void;
+  onToastClick?: (orderId: string) => void;  // 알림 클릭 시 해당 주문으로 이동
 }
 
-const ToastNotification: React.FC<ToastNotificationProps> = ({ toasts, onRemove }) => {
+const ToastNotification: React.FC<ToastNotificationProps> = ({ toasts, onRemove, onToastClick }) => {
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 sm:bottom-6 sm:right-6 sm:left-auto sm:translate-x-0 z-[200] flex flex-col gap-2 sm:gap-3 w-[calc(100vw-2rem)] sm:w-full max-w-[280px] sm:max-w-[350px] pointer-events-none">
       {toasts.map((toast) => (
-        <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
+        <ToastItem key={toast.id} toast={toast} onRemove={onRemove} onToastClick={onToastClick} />
       ))}
     </div>
   );
 };
 
-const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({ toast, onRemove }) => {
+const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void; onToastClick?: (orderId: string) => void }> = ({ toast, onRemove, onToastClick }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -73,12 +74,25 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
     }
   }
 
+  // 메모 알림인 경우 방 번호와 메모 내용을 더 명확하게 표시
+  const isMemoToast = toast.type === 'memo';
+  const displayRoomNo = toast.roomNo || (toast.message.match(/(\d+호)/)?.[1] + '호');
+  const displayMemoText = toast.memoText || (isMemoToast ? toast.message.split('새 메모:')[1]?.trim() : null);
+
+  const handleClick = () => {
+    if (toast.orderId && onToastClick) {
+      onToastClick(toast.orderId);
+    }
+  };
+
   return (
     <div 
+      onClick={handleClick}
       className={`
         pointer-events-auto bg-white border border-slate-200 border-l-4 ${getBgColor()} 
         rounded-xl sm:rounded-2xl shadow-2xl p-3 sm:p-4 flex gap-2 sm:gap-4 transition-all duration-300 transform
         ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
+        ${toast.orderId ? 'cursor-pointer hover:shadow-3xl hover:scale-[1.02] active:scale-[0.98]' : ''}
       `}
     >
       <div className="shrink-0 pt-0.5">
@@ -93,19 +107,38 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
             {toast.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
         </div>
-        <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight mb-0.5 sm:mb-1">
-          {mainMessage.split(/(\d+호)/).map((part, index) => 
-            /^\d+호$/.test(part) ? (
-              <span key={index} className="text-rose-700 font-extrabold">{part}</span>
-            ) : (
-              part
-            )
-          )}
-        </p>
-        {itemInfo && (
-          <p className="text-sm sm:text-base font-extrabold text-rose-700 leading-tight">
-            {itemInfo}
-          </p>
+        {isMemoToast && displayRoomNo ? (
+          <>
+            <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight mb-1">
+              <span className="text-rose-700 font-extrabold text-base sm:text-lg">{displayRoomNo}</span>
+              <span className="text-slate-600 ml-2">새 메모</span>
+            </p>
+            {displayMemoText && (
+              <p className="text-sm sm:text-base font-bold text-indigo-700 leading-tight bg-indigo-50 rounded-lg p-2 border border-indigo-100">
+                {displayMemoText}
+              </p>
+            )}
+            {toast.orderId && (
+              <p className="text-[9px] text-slate-400 mt-1 italic">클릭하여 해당 주문 보기</p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight mb-0.5 sm:mb-1">
+              {mainMessage.split(/(\d+호)/).map((part, index) => 
+                /^\d+호$/.test(part) ? (
+                  <span key={index} className="text-rose-700 font-extrabold">{part}</span>
+                ) : (
+                  part
+                )
+              )}
+            </p>
+            {itemInfo && (
+              <p className="text-sm sm:text-base font-extrabold text-rose-700 leading-tight">
+                {itemInfo}
+              </p>
+            )}
+          </>
         )}
       </div>
       <button 

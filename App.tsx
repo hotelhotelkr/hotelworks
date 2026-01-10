@@ -417,7 +417,7 @@ const App: React.FC = () => {
     }
   }, [serviceWorkerRegistration, notificationPermission]);
 
-  const triggerToast = useCallback((message: string, type: Toast['type'] = 'info', dept?: Department, effect: SoundEffect = 'UPDATE') => {
+  const triggerToast = useCallback((message: string, type: Toast['type'] = 'info', dept?: Department, effect: SoundEffect = 'UPDATE', orderId?: string, roomNo?: string, memoText?: string) => {
     const now = new Date();
     const id = Math.random().toString(36).substr(2, 9);
     const newToast: Toast = {
@@ -425,7 +425,10 @@ const App: React.FC = () => {
       message,
       type,
       dept,
-      timestamp: now
+      timestamp: now,
+      orderId,
+      roomNo,
+      memoText
     };
     
     // 브라우저가 백그라운드이거나 닫혀있을 때 푸시 알림 표시
@@ -1261,11 +1264,17 @@ const App: React.FC = () => {
             // 🚨 알림 표시: 모든 메모에 대해 알림 표시
             const roomDisplay = foundRoomNo ? `${foundRoomNo}호` : `#${payload.orderId}`;
             debugLog('🔔 메모 알림:', roomDisplay, '|', payload.memo.text);
+            
+            // 메모 알림에 orderId와 roomNo 포함 (클릭 시 해당 주문으로 이동)
+            const memoToastMessage = `${roomDisplay} 새 메모: ${payload.memo.text}`;
             triggerToast(
-              `${roomDisplay} 새 메모: ${payload.memo.text}`, 
+              memoToastMessage, 
               'memo', 
               payload.memo.senderDept, 
-              'MEMO'
+              'MEMO',
+              payload.orderId,  // orderId 추가
+              foundRoomNo,       // roomNo 추가
+              payload.memo.text  // memoText 추가
             );
             break;
           }
@@ -2490,7 +2499,19 @@ const App: React.FC = () => {
         </Suspense>
         <Suspense fallback={null}>
           <Suspense fallback={null}>
-          <ToastNotification toasts={toasts} onRemove={removeToast} />
+          <ToastNotification 
+            toasts={toasts} 
+            onRemove={removeToast}
+            onToastClick={(orderId) => {
+              // 알림 클릭 시 해당 주문의 메모 모달 열기 (로그인 전에는 작동하지 않음)
+              if (orders.length > 0) {
+                const order = orders.find(o => o.id === orderId);
+                if (order) {
+                  setMemoOrder(order);
+                }
+              }
+            }}
+          />
         </Suspense>
         </Suspense>
       </>
@@ -2809,7 +2830,17 @@ const App: React.FC = () => {
         )}
 
         <Suspense fallback={null}>
-          <ToastNotification toasts={toasts} onRemove={removeToast} />
+          <ToastNotification 
+            toasts={toasts} 
+            onRemove={removeToast}
+            onToastClick={(orderId) => {
+              // 알림 클릭 시 해당 주문의 메모 모달 열기
+              const order = orders.find(o => o.id === orderId);
+              if (order) {
+                setMemoOrder(order);
+              }
+            }}
+          />
         </Suspense>
       </div>
     </Router>
