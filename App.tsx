@@ -38,6 +38,7 @@ const Login = lazy(() => import('./components/Login'));
 const AdminStaffManager = lazy(() => import('./components/AdminStaffManager'));
 const Settings = lazy(() => import('./components/Settings'));
 const ToastNotification = lazy(() => import('./components/ToastNotification'));
+const MemoHistory = lazy(() => import('./components/MemoHistory'));
 
 // Toast 타입은 types.ts에서 import
 
@@ -2766,6 +2767,12 @@ const App: React.FC = () => {
                     onUpdateStatus={handleUpdateStatus}
                     onExport={handleExportExcel}
                     currentUser={currentUser}
+                    onOpenMemo={(order) => setMemoOrder(order)}
+                  />
+                } />
+                <Route path="/memos" element={
+                  <MemoHistory 
+                    orders={orders}
                     onOpenMemo={(order) => setMemoOrder(order)}
                   />
                 } />

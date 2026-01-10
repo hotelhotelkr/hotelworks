@@ -8,7 +8,8 @@ import {
   Users, 
   X,
   LogOut,
-  Building2
+  Building2,
+  MessageSquare
 } from 'lucide-react';
 import { User, Department, Role } from '../types';
 
@@ -23,6 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentUser, onLogou
   const navItems = [
     { name: 'Control Center', icon: LayoutDashboard, path: '/', end: true },
     { name: 'Order Logs', icon: ClipboardList, path: '/orders' },
+    { name: 'Memo History', icon: MessageSquare, path: '/memos' },
     { 
       name: 'Staff Directory', 
       icon: Users, 

@@ -1,6 +1,7 @@
 
-import React, { useMemo } from 'react';
-import { MessageSquare, Clock, User } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { MessageSquare, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Order, Department } from '../types';
 
 interface MemoFeedProps {
@@ -8,7 +9,9 @@ interface MemoFeedProps {
   maxItems?: number;
 }
 
-const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 10 }) => {
+const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 5 }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const navigate = useNavigate();
   // 최신 메모들을 시간순으로 정렬
   const recentMemos = useMemo(() => {
     const allMemos: Array<{ order: Order; memo: any; timestamp: Date }> = [];
@@ -56,6 +59,11 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 10 }) => {
     return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
   };
 
+  // 모든 메모 가져오기 (히스토리 링크용)
+  const allMemosCount = useMemo(() => {
+    return orders.reduce((count, order) => count + (order.memos?.length || 0), 0);
+  }, [orders]);
+
   if (recentMemos.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
@@ -73,15 +81,37 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 10 }) => {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
+      <div 
+        className="flex items-center gap-2 mb-4 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
         <MessageSquare className="w-5 h-5 text-indigo-600" />
-        <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm">실시간 메모 피드</h3>
-        <span className="text-[10px] font-bold text-slate-400 ml-auto">
-          최근 {recentMemos.length}개
-        </span>
+        <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm flex-1">실시간 메모 피드</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-slate-400">
+            최근 {recentMemos.length}개
+          </span>
+          {allMemosCount > maxItems && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/memos');
+              }}
+              className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-colors uppercase tracking-widest"
+            >
+              전체 히스토리 ({allMemosCount})
+            </button>
+          )}
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-slate-400" />
+          )}
+        </div>
       </div>
       
-      <div className="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar">
+      {isExpanded && (
+        <div className="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar">
         {recentMemos.map(({ order, memo, timestamp }) => (
           <div
             key={`${order.id}-${memo.id}`}
@@ -116,7 +146,8 @@ const MemoFeed: React.FC<MemoFeedProps> = ({ orders, maxItems = 10 }) => {
             </p>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
