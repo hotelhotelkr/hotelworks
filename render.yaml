@@ -4,8 +4,8 @@ services:
     name: hotelworks-backend
     runtime: node
     env: node
-    buildCommand: npm install
-    startCommand: npm run start
+    buildCommand: npm install --production
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
