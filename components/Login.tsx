@@ -48,14 +48,21 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
   }, []);
 
   // availableUsers와 localStorage users 병합 (최신 데이터 우선)
+  // 🔒 보안: 비밀번호 필드는 제외하고 병합
   const allAvailableUsers = React.useMemo(() => {
     const userMap = new Map<string, any>();
     
-    // 먼저 availableUsers 추가
-    availableUsers.forEach(u => userMap.set(u.id, u));
+    // 먼저 availableUsers 추가 (비밀번호 제외)
+    availableUsers.forEach(u => {
+      const { password, ...userWithoutPassword } = u;
+      userMap.set(u.id, userWithoutPassword);
+    });
     
-    // localStorage users 추가/업데이트 (더 최신일 수 있음)
-    localUsers.forEach(u => userMap.set(u.id, u));
+    // localStorage users 추가/업데이트 (더 최신일 수 있음, 비밀번호 제외)
+    localUsers.forEach(u => {
+      const { password, ...userWithoutPassword } = u;
+      userMap.set(u.id, userWithoutPassword);
+    });
     
     return Array.from(userMap.values());
   }, [availableUsers, localUsers]);
@@ -111,72 +118,118 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     console.log('   병합된 사용자 개수:', allAvailableUsers.length);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    // 각 사용자와 비교 (상세 로그)
-    console.log('📋 사용 가능한 사용자 목록 (병합된 데이터):');
-    allAvailableUsers.forEach((u, index) => {
-      const userUsername = u.username ? u.username.trim() : '';
-      const userPassword = u.password ? u.password.trim() : '';
-      
-      const usernameMatch = userUsername === trimmedUsername;
-      const passwordMatch = userPassword === trimmedPassword;
-      const usernameCaseMatch = userUsername.toLowerCase() === trimmedUsername.toLowerCase();
-      const passwordCaseMatch = userPassword.toLowerCase() === trimmedPassword.toLowerCase();
-      
-      const matchStatus = usernameMatch && passwordMatch ? '✅' : 
-                         usernameMatch ? '⚠️ (password 불일치)' : 
-                         usernameCaseMatch ? '⚠️ (대소문자 차이)' :
-                         '❌';
-      
-      // username과 password의 상세 정보 출력 (FD, HK 특별 확인)
-      const isTargetUser = (userUsername === 'FD' || userUsername === 'HK' || 
-                           trimmedUsername === 'FD' || trimmedUsername === 'HK');
-      
-      const userInfo: any = {
-        username: `"${userUsername}"` + (u.username !== userUsername ? ' (공백 제거됨)' : ''),
-        password: '***' + (u.password !== userPassword ? ' (공백 제거됨)' : ''),
-        name: u.name,
-        usernameLength: userUsername.length,
-        passwordLength: userPassword.length,
-        usernameMatch,
-        passwordMatch,
-        usernameCaseMatch,
-        passwordCaseMatch
-      };
-      
-      // FD, HK인 경우 더 상세한 정보
-      if (isTargetUser) {
-        userInfo.usernameRaw = JSON.stringify(u.username);
-        userInfo.usernameCodePoints = Array.from(userUsername).map((c: string) => c.charCodeAt(0));
-        userInfo.inputUsernameCodePoints = Array.from(trimmedUsername).map((c: string) => c.charCodeAt(0));
-      }
-      
-      console.log(`   [${index + 1}] ${matchStatus}`, userInfo);
-    });
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-    // username과 password 비교 (병합된 users 사용, 공백 제거된 값으로)
-    let foundUser = allAvailableUsers.find(
-      u => {
-        const userUsername = u.username ? u.username.trim() : '';
-        const userPassword = u.password ? u.password.trim() : '';
-        return userUsername === trimmedUsername && userPassword === trimmedPassword;
-      }
-    );
-    
-    // 정확히 일치하지 않으면 대소문자 무시 비교
-    if (!foundUser) {
-      console.log('⚠️ 정확히 일치하는 사용자 없음, 대소문자 무시 비교 시도...');
-      foundUser = allAvailableUsers.find(
-        u => {
-          const userUsername = u.username ? u.username.trim() : '';
-          const userPassword = u.password ? u.password.trim() : '';
-          return userUsername.toLowerCase() === trimmedUsername.toLowerCase() && 
-                 userPassword.toLowerCase() === trimmedPassword.toLowerCase();
+    // 🔒 보안: 서버 API를 통한 인증 (비밀번호는 서버에서만 검증)
+    // 클라이언트에는 비밀번호가 없으므로 서버 API 호출 필요
+    const getApiBaseUrl = (): string => {
+      // WebSocket URL에서 HTTP API URL 추출
+      try {
+        const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
+        if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+          // ws:// 또는 wss://를 http:// 또는 https://로 변환
+          return envUrl.replace('ws://', 'http://').replace('wss://', 'https://');
         }
-      );
-      if (foundUser) {
-        console.log('⚠️ 대소문자 차이로 인한 불일치 감지, 로그인 허용');
+      } catch (e) {}
+      
+      // localStorage에서 WebSocket URL 가져오기
+      try {
+        const savedUrl = localStorage.getItem('hotelflow_ws_url');
+        if (savedUrl && savedUrl.trim() !== '') {
+          return savedUrl.replace('ws://', 'http://').replace('wss://', 'https://');
+        }
+      } catch (e) {}
+      
+      // 로컬 환경 감지
+      if (typeof window !== 'undefined' && window.location) {
+        const host = window.location.hostname;
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        
+        if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) {
+          return `${protocol}//${host}:3001`;
+        }
       }
+      
+      // 기본값
+      return 'http://localhost:3001';
+    };
+    
+    // 서버 API를 통한 로그인 시도
+    const apiBaseUrl = getApiBaseUrl();
+    const loginApiUrl = `${apiBaseUrl}/api/login`;
+    
+    console.log('🔒 서버 API를 통한 로그인 시도:', loginApiUrl);
+    
+    try {
+      const response = await fetch(loginApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: trimmedUsername,
+          password: trimmedPassword,
+        }),
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('✅ 서버 인증 성공:', userData);
+        
+        // username으로 사용자 정보 찾기 (비밀번호 제외)
+        const foundUser = allAvailableUsers.find(
+          u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
+        );
+        
+        if (foundUser) {
+          // 서버에서 받은 사용자 정보로 로그인
+          const authenticatedUser = {
+            ...foundUser,
+            id: userData.id || foundUser.id,
+            name: userData.name || foundUser.name,
+            dept: userData.dept || foundUser.dept,
+            role: userData.role || foundUser.role,
+          };
+          
+          console.log('✅ 로그인 성공!', authenticatedUser);
+          onLogin(authenticatedUser);
+          return;
+        } else {
+          // 서버 인증은 성공했지만 클라이언트에 사용자 정보가 없는 경우
+          console.warn('⚠️ 서버 인증 성공, 하지만 클라이언트에 사용자 정보 없음');
+          const authenticatedUser = {
+            id: userData.id,
+            username: userData.username,
+            name: userData.name,
+            dept: userData.dept,
+            role: userData.role,
+          };
+          onLogin(authenticatedUser as any);
+          return;
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ 서버 인증 실패:', response.status, errorData);
+        setError('Invalid username or password. Please try again.');
+        return;
+      }
+    } catch (error) {
+      console.error('❌ 서버 API 호출 실패:', error);
+      console.warn('⚠️ 서버 API 호출 실패, 로컬 사용자 정보로 대체 인증 시도...');
+      
+      // 서버 API 호출 실패 시 로컬 인증으로 대체 (하위 호환성)
+      // ⚠️ 주의: 이는 임시 방편이며, 비밀번호는 클라이언트에 없으므로 username만 확인
+      const foundUser = allAvailableUsers.find(
+        u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
+      );
+      
+      if (foundUser && trimmedPassword) {
+        // 비밀번호가 있으면 서버 API 재시도 필요
+        console.warn('⚠️ 로컬 인증: 비밀번호 검증은 서버에서만 가능');
+        setError('Unable to verify credentials. Please check your connection and try again.');
+        return;
+      }
+      
+      setError('Unable to connect to server. Please check your connection and try again.');
+      return;
     }
 
     if (foundUser) {

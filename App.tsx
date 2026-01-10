@@ -166,30 +166,38 @@ const App: React.FC = () => {
         try {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // 기존 사용자 정보 마이그레이션 (username/password 업데이트)
+            // 기존 사용자 정보 마이그레이션 (username 업데이트, 비밀번호 제거)
             let needsUpdate = false;
             const migrated = parsed.map((u: User) => {
-              // u1 (프론트수): username/password를 "1"/"1"에서 "FD"/"FD"로 변경
-              if (u.id === 'u1' && (u.username === '1' || u.password === '1')) {
+              // 🔒 보안: 비밀번호 필드 제거
+              const { password, ...userWithoutPassword } = u;
+              
+              // u1 (프론트수): username을 "1"에서 "FD"로 변경
+              if (u.id === 'u1' && u.username === '1') {
                 needsUpdate = true;
-                return { ...u, username: 'FD', password: 'FD' };
+                return { ...userWithoutPassword, username: 'FD' };
               }
-              // u2 (하우스키핑수): username/password를 "2"/"2"에서 "HK"/"HK"로 변경
-              if (u.id === 'u2' && (u.username === '2' || u.password === '2')) {
+              // u2 (하우스키핑수): username을 "2"에서 "HK"로 변경
+              if (u.id === 'u2' && u.username === '2') {
                 needsUpdate = true;
-                return { ...u, username: 'HK', password: 'HK' };
+                return { ...userWithoutPassword, username: 'HK' };
               }
-              // 로미오: username/password를 "FD"/"FD"에서 "3"/"3"으로 변경
-              if (u.name === '로미오' && (u.username === 'FD' || u.password === 'FD')) {
+              // 로미오: username을 "FD"에서 "3"으로 변경
+              if (u.name === '로미오' && u.username === 'FD') {
                 needsUpdate = true;
-                return { ...u, username: '3', password: '3' };
+                return { ...userWithoutPassword, username: '3' };
               }
-              // 줄리엣: username/password를 "HK"/"HK"에서 "4"/"4"로 변경
-              if (u.name === '줄리엣' && (u.username === 'HK' || u.password === 'HK')) {
+              // 줄리엣: username을 "HK"에서 "4"로 변경
+              if (u.name === '줄리엣' && u.username === 'HK') {
                 needsUpdate = true;
-                return { ...u, username: '4', password: '4' };
+                return { ...userWithoutPassword, username: '4' };
               }
-              return u;
+              // 비밀번호 필드만 제거
+              if (password !== undefined) {
+                needsUpdate = true;
+                return userWithoutPassword;
+              }
+              return userWithoutPassword;
             });
             
             // 마이그레이션이 필요한 경우 localStorage에 저장
@@ -1291,9 +1299,11 @@ const App: React.FC = () => {
                 newCount: prev.length + 1
               });
               
-              const updated = [...prev, payload];
+              // 🔒 보안: 비밀번호 필드 제거 (클라이언트에 저장하지 않음)
+            const { password, ...userWithoutPassword } = payload;
+            const updated = [...prev, userWithoutPassword];
               
-              // localStorage에 저장 (앱 재시작 시에도 유지)
+              // localStorage에 저장 (앱 재시작 시에도 유지) - 비밀번호 제외
               try {
                 localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
                 console.log('✅ localStorage에 users 저장 완료:', updated.length, '명');
@@ -1324,8 +1334,10 @@ const App: React.FC = () => {
                 return prev;
               }
               console.log('✅ 사용자 정보 업데이트:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
-              const updated = prev.map(u => u.id === payload.id ? payload : u);
-              // localStorage에 저장 (앱 재시작 시에도 유지)
+              // 🔒 보안: 비밀번호 필드 제거 (클라이언트에 저장하지 않음)
+              const { password, ...userWithoutPassword } = payload;
+              const updated = prev.map(u => u.id === payload.id ? userWithoutPassword : u);
+              // localStorage에 저장 (앱 재시작 시에도 유지) - 비밀번호 제외
               try {
                 localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
               } catch (e) {
@@ -2250,9 +2262,12 @@ const App: React.FC = () => {
   };
 
   const handleAddUser = useCallback((newUser: User) => {
+    // 🔒 보안: 비밀번호 필드 제거 (클라이언트에 저장/전송하지 않음)
+    const { password, ...userWithoutPassword } = newUser;
+    
     setUsers(prev => {
-      const updated = [...prev, newUser];
-      // localStorage에 저장 (앱 재시작 시에도 유지)
+      const updated = [...prev, userWithoutPassword];
+      // localStorage에 저장 (앱 재시작 시에도 유지) - 비밀번호 제외
       try {
         localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
       } catch (e) {
@@ -2262,7 +2277,7 @@ const App: React.FC = () => {
     });
     triggerToast(`새 직원 등록됨: ${newUser.name}`, 'success', Department.ADMIN, 'SUCCESS');
     
-    // WebSocket을 통해 다른 모든 사용자에게 동기화
+    // WebSocket을 통해 다른 모든 사용자에게 동기화 - 비밀번호 제외
     const socket = socketRef.current;
     const user = currentUserRef.current;
     
@@ -2279,7 +2294,7 @@ const App: React.FC = () => {
     if (socket?.connected && user) {
       const message = {
         type: 'USER_ADD',
-        payload: newUser,
+        payload: userWithoutPassword, // 비밀번호 제외
         senderId: user.id,
         sessionId: SESSION_ID,
         timestamp: new Date().toISOString()
@@ -2298,9 +2313,12 @@ const App: React.FC = () => {
   }, [triggerToast]);
 
   const handleUpdateUser = useCallback((updatedUser: User) => {
+    // 🔒 보안: 비밀번호 필드 제거 (클라이언트에 저장/전송하지 않음)
+    const { password, ...userWithoutPassword } = updatedUser;
+    
     setUsers(prev => {
-      const updated = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
-      // localStorage에 저장 (앱 재시작 시에도 유지)
+      const updated = prev.map(u => u.id === updatedUser.id ? userWithoutPassword : u);
+      // localStorage에 저장 (앱 재시작 시에도 유지) - 비밀번호 제외
       try {
         localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
       } catch (e) {
@@ -2310,13 +2328,13 @@ const App: React.FC = () => {
     });
     triggerToast(`직원 정보 수정됨: ${updatedUser.name}`, 'info', Department.ADMIN, 'UPDATE');
     
-    // WebSocket을 통해 다른 모든 사용자에게 동기화
+    // WebSocket을 통해 다른 모든 사용자에게 동기화 - 비밀번호 제외
     const socket = socketRef.current;
     const user = currentUserRef.current;
     if (socket?.connected && user) {
       const message = {
         type: 'USER_UPDATE',
-        payload: updatedUser,
+        payload: userWithoutPassword, // 비밀번호 제외
         senderId: user.id,
         timestamp: new Date().toISOString()
       };

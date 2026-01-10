@@ -1,10 +1,11 @@
 
 import { Order, OrderStatus, Priority, Department, Role, User } from '../types';
 
+// 🔒 보안: 비밀번호는 서버에만 저장, 클라이언트에서는 제외
 export const USERS: User[] = [
-  { id: 'u1', username: 'FD', password: 'FD', name: '프론트수', dept: Department.FRONT_DESK, role: Role.FD_STAFF },
-  { id: 'u2', username: 'HK', password: 'HK', name: '하우스키핑수', dept: Department.HOUSEKEEPING, role: Role.HK_STAFF },
-  { id: 'u4', username: 'admin', password: 'admin', name: 'Admin User', dept: Department.ADMIN, role: Role.ADMIN },
+  { id: 'u1', username: 'FD', name: '프론트수', dept: Department.FRONT_DESK, role: Role.FD_STAFF },
+  { id: 'u2', username: 'HK', name: '하우스키핑수', dept: Department.HOUSEKEEPING, role: Role.HK_STAFF },
+  { id: 'u4', username: 'admin', name: 'Admin User', dept: Department.ADMIN, role: Role.ADMIN },
 ];
 
 export const CURRENT_USER = USERS[0]; // Simulation as 프론트수
