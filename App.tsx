@@ -158,7 +158,25 @@ const App: React.FC = () => {
     }
   });
 
-  const [users, setUsers] = useState<User[]>(USERS);
+  // users 상태: localStorage에서 초기화 (실시간 동기화된 최신 데이터 유지)
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelflow_users_v1');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return Array.isArray(parsed) && parsed.length > 0 ? parsed : USERS;
+        } catch (e) {
+          console.warn('Failed to parse users from localStorage:', e);
+          return USERS;
+        }
+      }
+      return USERS;
+    } catch (e) {
+      console.warn('Failed to access localStorage for users:', e);
+      return USERS;
+    }
+  });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
@@ -1204,19 +1222,24 @@ const App: React.FC = () => {
             const user = currentUserRef.current;
             // 같은 사용자 ID + 같은 세션 ID = 같은 기기
             const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
-            // 로그인 상태에서만 사용자 목록 업데이트
-            if (user) {
-              setUsers(prev => {
-                // 이미 존재하는 사용자인지 확인
-                const exists = prev.find(u => u.id === payload.id);
-                if (exists) {
-                  console.log('⚠️ 사용자가 이미 존재함:', payload.id, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
-                  return prev;
-                }
-                console.log('✅ 새 사용자 추가:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
-                return [...prev, payload];
-              });
-            }
+            // 🚨 로그인/로그아웃 상태 모두에서 사용자 목록 업데이트 (모바일 로그인 화면에서도 동기화)
+            setUsers(prev => {
+              // 이미 존재하는 사용자인지 확인
+              const exists = prev.find(u => u.id === payload.id);
+              if (exists) {
+                console.log('⚠️ 사용자가 이미 존재함:', payload.id, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
+                return prev;
+              }
+              console.log('✅ 새 사용자 추가:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+              const updated = [...prev, payload];
+              // localStorage에 저장 (앱 재시작 시에도 유지)
+              try {
+                localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+              } catch (e) {
+                console.warn('⚠️ localStorage에 users 저장 실패:', e);
+              }
+              return updated;
+            });
             // 모든 기기에서 알림 표시 (로그인/로그아웃 상태 모두 포함)
             triggerToast(`새 직원 등록됨: ${payload.name}`, 'success', Department.ADMIN, 'SUCCESS');
             console.log('🔔 사용자 추가 알림 표시:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
@@ -1228,18 +1251,23 @@ const App: React.FC = () => {
             const user = currentUserRef.current;
             // 같은 사용자 ID + 같은 세션 ID = 같은 기기
             const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
-            // 로그인 상태에서만 사용자 목록 업데이트
-            if (user) {
-              setUsers(prev => {
-                const exists = prev.find(u => u.id === payload.id);
-                if (!exists) {
-                  console.log('⚠️ 수정할 사용자를 찾을 수 없음:', payload.id, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
-                  return prev;
-                }
-                console.log('✅ 사용자 정보 업데이트:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
-                return prev.map(u => u.id === payload.id ? payload : u);
-              });
-            }
+            // 🚨 로그인/로그아웃 상태 모두에서 사용자 목록 업데이트 (모바일 로그인 화면에서도 동기화)
+            setUsers(prev => {
+              const exists = prev.find(u => u.id === payload.id);
+              if (!exists) {
+                console.log('⚠️ 수정할 사용자를 찾을 수 없음:', payload.id, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
+                return prev;
+              }
+              console.log('✅ 사용자 정보 업데이트:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+              const updated = prev.map(u => u.id === payload.id ? payload : u);
+              // localStorage에 저장 (앱 재시작 시에도 유지)
+              try {
+                localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+              } catch (e) {
+                console.warn('⚠️ localStorage에 users 저장 실패:', e);
+              }
+              return updated;
+            });
             // 모든 기기에서 알림 표시 (로그인/로그아웃 상태 모두 포함)
             triggerToast(`직원 정보 수정됨: ${payload.name}`, 'info', Department.ADMIN, 'UPDATE');
             console.log('🔔 사용자 수정 알림 표시:', payload.name, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
@@ -1251,23 +1279,25 @@ const App: React.FC = () => {
             const user = currentUserRef.current;
             // 같은 사용자 ID + 같은 세션 ID = 같은 기기
             const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
-            let deletedUserName = '알 수 없음';
-            // 로그인 상태에서만 사용자 목록 업데이트
-            if (user) {
-              setUsers(prev => {
-                const exists = prev.find(u => u.id === payload.userId);
-                if (!exists) {
-                  console.log('⚠️ 삭제할 사용자를 찾을 수 없음:', payload.userId, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
-                  return prev;
-                }
-                deletedUserName = exists.name;
-                console.log('✅ 사용자 삭제:', payload.userId, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
-                return prev.filter(u => u.id !== payload.userId);
-              });
-            } else {
-              // 로그아웃 상태에서는 사용자 이름을 알 수 없으므로 기본 메시지 사용
-              deletedUserName = '직원';
-            }
+            let deletedUserName = '직원';
+            // 🚨 로그인/로그아웃 상태 모두에서 사용자 목록 업데이트 (모바일 로그인 화면에서도 동기화)
+            setUsers(prev => {
+              const exists = prev.find(u => u.id === payload.userId);
+              if (!exists) {
+                console.log('⚠️ 삭제할 사용자를 찾을 수 없음:', payload.userId, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
+                return prev;
+              }
+              deletedUserName = exists.name;
+              console.log('✅ 사용자 삭제:', payload.userId, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
+              const updated = prev.filter(u => u.id !== payload.userId);
+              // localStorage에 저장 (앱 재시작 시에도 유지)
+              try {
+                localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+              } catch (e) {
+                console.warn('⚠️ localStorage에 users 저장 실패:', e);
+              }
+              return updated;
+            });
             // 모든 기기에서 알림 표시 (로그인/로그아웃 상태 모두 포함)
             triggerToast(`직원 계정이 삭제되었습니다: ${deletedUserName}`, 'warning', Department.ADMIN, 'CANCEL');
             console.log('🔔 사용자 삭제 알림 표시:', deletedUserName, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)', user ? '(로그인 상태)' : '(로그아웃 상태)');
@@ -2155,7 +2185,16 @@ const App: React.FC = () => {
   };
 
   const handleAddUser = useCallback((newUser: User) => {
-    setUsers(prev => [...prev, newUser]);
+    setUsers(prev => {
+      const updated = [...prev, newUser];
+      // localStorage에 저장 (앱 재시작 시에도 유지)
+      try {
+        localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('⚠️ localStorage에 users 저장 실패:', e);
+      }
+      return updated;
+    });
     triggerToast(`새 직원 등록됨: ${newUser.name}`, 'success', Department.ADMIN, 'SUCCESS');
     
     // WebSocket을 통해 다른 모든 사용자에게 동기화
@@ -2174,7 +2213,16 @@ const App: React.FC = () => {
   }, [triggerToast]);
 
   const handleUpdateUser = useCallback((updatedUser: User) => {
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    setUsers(prev => {
+      const updated = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
+      // localStorage에 저장 (앱 재시작 시에도 유지)
+      try {
+        localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('⚠️ localStorage에 users 저장 실패:', e);
+      }
+      return updated;
+    });
     triggerToast(`직원 정보 수정됨: ${updatedUser.name}`, 'info', Department.ADMIN, 'UPDATE');
     
     // WebSocket을 통해 다른 모든 사용자에게 동기화
@@ -2193,7 +2241,16 @@ const App: React.FC = () => {
   }, [triggerToast]);
 
   const handleDeleteUser = useCallback((userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
+    setUsers(prev => {
+      const updated = prev.filter(u => u.id !== userId);
+      // localStorage에 저장 (앱 재시작 시에도 유지)
+      try {
+        localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('⚠️ localStorage에 users 저장 실패:', e);
+      }
+      return updated;
+    });
     triggerToast(`직원 계정이 삭제되었습니다.`, 'warning', Department.ADMIN, 'CANCEL');
     
     // WebSocket을 통해 다른 모든 사용자에게 동기화
