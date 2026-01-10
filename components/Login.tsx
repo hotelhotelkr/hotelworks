@@ -114,26 +114,70 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     // 각 사용자와 비교 (상세 로그)
     console.log('📋 사용 가능한 사용자 목록 (병합된 데이터):');
     allAvailableUsers.forEach((u, index) => {
-      const usernameMatch = u.username.trim() === trimmedUsername;
-      const passwordMatch = u.password.trim() === trimmedPassword;
+      const userUsername = u.username ? u.username.trim() : '';
+      const userPassword = u.password ? u.password.trim() : '';
+      
+      const usernameMatch = userUsername === trimmedUsername;
+      const passwordMatch = userPassword === trimmedPassword;
+      const usernameCaseMatch = userUsername.toLowerCase() === trimmedUsername.toLowerCase();
+      const passwordCaseMatch = userPassword.toLowerCase() === trimmedPassword.toLowerCase();
+      
       const matchStatus = usernameMatch && passwordMatch ? '✅' : 
                          usernameMatch ? '⚠️ (password 불일치)' : 
+                         usernameCaseMatch ? '⚠️ (대소문자 차이)' :
                          '❌';
       
-      console.log(`   [${index + 1}] ${matchStatus}`, {
-        username: `"${u.username}"` + (u.username !== u.username.trim() ? ' (공백 있음)' : ''),
-        password: '***' + (u.password !== u.password.trim() ? ' (공백 있음)' : ''),
+      // username과 password의 상세 정보 출력 (FD, HK 특별 확인)
+      const isTargetUser = (userUsername === 'FD' || userUsername === 'HK' || 
+                           trimmedUsername === 'FD' || trimmedUsername === 'HK');
+      
+      const userInfo: any = {
+        username: `"${userUsername}"` + (u.username !== userUsername ? ' (공백 제거됨)' : ''),
+        password: '***' + (u.password !== userPassword ? ' (공백 제거됨)' : ''),
         name: u.name,
+        usernameLength: userUsername.length,
+        passwordLength: userPassword.length,
         usernameMatch,
-        passwordMatch
-      });
+        passwordMatch,
+        usernameCaseMatch,
+        passwordCaseMatch
+      };
+      
+      // FD, HK인 경우 더 상세한 정보
+      if (isTargetUser) {
+        userInfo.usernameRaw = JSON.stringify(u.username);
+        userInfo.usernameCodePoints = Array.from(userUsername).map(c => c.charCodeAt(0));
+        userInfo.inputUsernameCodePoints = Array.from(trimmedUsername).map(c => c.charCodeAt(0));
+      }
+      
+      console.log(`   [${index + 1}] ${matchStatus}`, userInfo);
     });
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // username과 password 비교 (병합된 users 사용, 공백 제거된 값으로)
-    const foundUser = allAvailableUsers.find(
-      u => u.username.trim() === trimmedUsername && u.password.trim() === trimmedPassword
+    let foundUser = allAvailableUsers.find(
+      u => {
+        const userUsername = u.username ? u.username.trim() : '';
+        const userPassword = u.password ? u.password.trim() : '';
+        return userUsername === trimmedUsername && userPassword === trimmedPassword;
+      }
     );
+    
+    // 정확히 일치하지 않으면 대소문자 무시 비교
+    if (!foundUser) {
+      console.log('⚠️ 정확히 일치하는 사용자 없음, 대소문자 무시 비교 시도...');
+      foundUser = allAvailableUsers.find(
+        u => {
+          const userUsername = u.username ? u.username.trim() : '';
+          const userPassword = u.password ? u.password.trim() : '';
+          return userUsername.toLowerCase() === trimmedUsername.toLowerCase() && 
+                 userPassword.toLowerCase() === trimmedPassword.toLowerCase();
+        }
+      );
+      if (foundUser) {
+        console.log('⚠️ 대소문자 차이로 인한 불일치 감지, 로그인 허용');
+      }
+    }
 
     if (foundUser) {
       console.log('✅ 로그인 성공!', {
