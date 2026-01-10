@@ -219,11 +219,26 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         
         // 서버 인증 실패 시 로컬 인증으로 fallback 시도
         console.warn('⚠️ 서버 인증 실패, 로컬 인증으로 fallback 시도...');
+        console.log('🔍 로컬 fallback에서 사용자 찾기:', {
+          찾는username: trimmedUsername.toLowerCase(),
+          사용자목록: allAvailableUsers.map(u => ({
+            id: u.id,
+            username: u.username,
+            username_lower: u.username?.trim().toLowerCase(),
+            name: u.name
+          }))
+        });
         
         // 로컬 fallback 인증 (하위 호환성)
         const foundUser = allAvailableUsers.find(
           u => u.username?.trim().toLowerCase() === trimmedUsername.toLowerCase()
         );
+        
+        console.log('🔍 로컬 fallback 사용자 찾기 결과:', foundUser ? {
+          id: foundUser.id,
+          username: foundUser.username,
+          name: foundUser.name
+        } : '사용자를 찾을 수 없음');
         
         if (foundUser) {
           console.log('🔍 로컬 fallback 인증 시작:', {
