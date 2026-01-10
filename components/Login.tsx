@@ -287,25 +287,27 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
       if (response.ok) {
         const userData = await response.json();
         
-        // username 기반으로 올바른 Department/Role 가져오기
+        // username 기반으로 올바른 Department/Role/Name 가져오기
         const expectedConfig = createTemporaryUser(trimmedUsername, trimmedPassword);
         
-        // 서버에서 받은 Department/Role 정보를 확인하되, username 기반 매핑이 우선
+        // username 기반 매핑이 우선 (서버 응답과 관계없이)
         const authenticatedUser: User = {
           id: userData.id || `user-${trimmedUsername}`,
           username: userData.username || trimmedUsername,
-          name: userData.name || expectedConfig.name,
-          dept: userData.dept || expectedConfig.dept, // username 기반 매핑 사용
-          role: userData.role || expectedConfig.role, // username 기반 매핑 사용
+          name: expectedConfig.name, // username 기반 name 강제 사용
+          dept: expectedConfig.dept, // username 기반 dept 강제 사용
+          role: expectedConfig.role, // username 기반 role 강제 사용
         };
         
-        // username 기반 매핑이 올바른지 확인하고 필요시 수정
-        if (authenticatedUser.dept !== expectedConfig.dept || 
-            authenticatedUser.role !== expectedConfig.role) {
-          authenticatedUser.dept = expectedConfig.dept;
-          authenticatedUser.role = expectedConfig.role;
-          console.log('✅ 서버 응답의 Department/Role을 username 기반으로 수정:', 
-                     trimmedUsername, authenticatedUser.dept, authenticatedUser.role);
+        // 서버 응답과 다른 경우 로그 출력
+        if (userData.name !== expectedConfig.name || 
+            userData.dept !== expectedConfig.dept || 
+            userData.role !== expectedConfig.role) {
+          console.log('✅ 서버 응답의 사용자 정보를 username 기반으로 수정:', {
+            username: trimmedUsername,
+            server: { name: userData.name, dept: userData.dept, role: userData.role },
+            correct: { name: authenticatedUser.name, dept: authenticatedUser.dept, role: authenticatedUser.role }
+          });
         }
         
         onLogin(authenticatedUser);
