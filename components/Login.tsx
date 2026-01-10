@@ -225,13 +225,27 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
         (defaultPassword && trimmedPassword === defaultPassword) ||
         isUsernamePasswordMatch) {
       // 🔒 보안: Staff Management에 저장된 사용자 정보만 사용 (변경하지 않음)
-      console.log('✅ Staff Management 등록 사용자 로그인:', {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('✅ 비밀번호 확인 성공:', {
         username: foundUser.username,
         name: foundUser.name,
         dept: foundUser.dept,
         role: foundUser.role,
         id: foundUser.id
       });
+      
+      // 🔒 최종 검증: Login ID 4로 Admin이 반환되면 즉시 거부
+      if (trimmedUsername === '4' && 
+          (foundUser.role === Role.ADMIN || 
+           foundUser.dept === Department.ADMIN || 
+           foundUser.name?.includes('Admin') ||
+           foundUser.name === 'Admin User')) {
+        console.error('🚨 심각한 보안 오류: Login ID 4로 Admin이 반환되었습니다!');
+        console.error('   찾은 사용자:', foundUser);
+        console.error('   Staff Management 전체 사용자:', allAvailableUsers);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        return null;
+      }
       
       // Name/Department/Role이 없는 경우에만 기본값 설정
       if (!foundUser.name || !foundUser.dept || !foundUser.role) {
