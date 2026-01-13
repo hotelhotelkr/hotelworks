@@ -187,12 +187,51 @@ io.on('connection', (socket) => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   });
 
-  socket.on('request_all_orders', (data) => {
+  socket.on('request_all_orders', async (data) => {
     const { senderId } = data;
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📥 전체 주문 목록 요청 수신');
+    console.log('   요청자:', senderId);
+    console.log('   Socket ID:', socket.id);
+    
+    // 🚨 DB에서 모든 오더 조회하여 요청한 클라이언트에게 직접 응답
+    try {
+      const dbOrders = await OrderModel.findAll();
+      console.log('   💾 DB에서 조회한 주문 수:', dbOrders.length);
+      
+      // DB 오더를 클라이언트 형식으로 변환
+      const ordersForClient = dbOrders.map(order => ({
+        ...order,
+        requestedAt: order.requestedAt.toISOString(),
+        acceptedAt: order.acceptedAt?.toISOString(),
+        inProgressAt: order.inProgressAt?.toISOString(),
+        completedAt: order.completedAt?.toISOString(),
+        memos: order.memos.map(m => ({
+          ...m,
+          timestamp: m.timestamp.toISOString()
+        }))
+      }));
+      
+      // 요청한 클라이언트에게 직접 응답
+      socket.emit('all_orders_response', {
+        orders: ordersForClient,
+        senderId: 'server',
+        timestamp: new Date().toISOString()
+      });
+      console.log('   ✅ 서버에서 직접 응답 전송:', ordersForClient.length, '개 주문');
+    } catch (error) {
+      console.error('   ❌ DB 조회 오류:', error.message);
+      // DB 조회 실패 시에도 다른 클라이언트들에게 브로드캐스트
+    }
+    
+    // 다른 클라이언트들에게도 브로드캐스트 (그들도 응답할 수 있도록)
     socket.broadcast.emit('request_all_orders', {
       senderId,
       timestamp: new Date().toISOString()
     });
+    console.log('   📡 다른 클라이언트들에게 브로드캐스트');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   });
 
   socket.on('all_orders_response', (data) => {

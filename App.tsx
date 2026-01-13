@@ -1104,8 +1104,8 @@ const App: React.FC = () => {
         // 로그인 상태일 때만 처리
         if (!user) return;
         
-        // 자신이 보낸 응답은 무시
-        if (senderId === user.id) return;
+        // 자신이 보낸 응답은 무시 (단, 서버 응답은 항상 처리)
+        if (senderId === user.id && senderId !== 'server') return;
         
         // 임시 메시지 처리 중이면 로그만 출력 (메모 병합 로직이 중복을 방지하므로 대기 불필요)
         if (pendingMessagesProcessingRef.current) {
