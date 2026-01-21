@@ -1522,7 +1522,14 @@ const App: React.FC = () => {
               // 🚨 최우선 목표: 실시간 동기화 보장
               // UI 업데이트 (모든 로그인된 사용자 - 자신의 메시지도 포함)
               // 모든 기기에서 즉시 UI 업데이트
-              console.log('🔄 UI 업데이트 시작');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('🔄 UI 업데이트 시작 (즉시 실행)');
+              console.log('   주문 ID:', newOrder.id);
+              console.log('   방번호:', newOrder.roomNo);
+              console.log('   아이템:', newOrder.itemName);
+              console.log('   수량:', newOrder.quantity);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              
               setOrders(prev => {
                 const exists = prev.find(o => o.id === newOrder.id);
                 if (exists) {
