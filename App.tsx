@@ -531,6 +531,16 @@ const App: React.FC = () => {
       });
     }
     
+    // 🚨 토스트 알림 추가 (항상 로그 출력)
+    console.log('🔔 triggerToast 호출:', {
+      message: message.substring(0, 50) + '...',
+      type,
+      dept,
+      orderId,
+      roomNo,
+      timestamp: now.toISOString()
+    });
+    
     // 중복 알림 방지: 같은 메시지가 2초 이내에 이미 있으면 추가하지 않음
     setToasts(prev => {
       const duplicate = prev.find(t => {
@@ -539,6 +549,7 @@ const App: React.FC = () => {
       });
       
       if (duplicate) {
+        console.log('⏭️ 중복 알림 스킵:', message.substring(0, 50));
         return prev; // 중복이면 기존 알림 유지
       }
       
@@ -1414,11 +1425,27 @@ const App: React.FC = () => {
               };
               
               const user = currentUserRef.current;
-              // 같은 사용자 ID + 같은 세션 ID = 같은 기기 → WebSocket 알림 스킵
-              // 중요: sessionId가 null이거나 undefined일 수 있으므로 명시적으로 확인
-              const isSelfMessage = user && senderId === user.id && sessionId && sessionId === SESSION_ID;
+              // 🚨 알림 표시 조건: sessionId가 다르거나 없으면 항상 알림 표시
+              // - sessionId가 같고 senderId가 같으면 자신의 기기 (알림 X)
+              // - 그 외 모든 경우 알림 표시 (다른 기기, 다른 사용자, sessionId 없음)
+              const isSelfMessage = Boolean(
+                user && 
+                senderId === user.id && 
+                sessionId && 
+                sessionId === SESSION_ID
+              );
               
-              debugLog('🆕 NEW_ORDER:', newOrder.roomNo, newOrder.itemName, '| 자신:', isSelfMessage, '| 알림:', !isSelfMessage);
+              // 🚨 항상 출력 (알림 문제 디버깅용)
+              console.log('🆕 NEW_ORDER 처리:', {
+                roomNo: newOrder.roomNo,
+                itemName: newOrder.itemName,
+                currentUser: user?.id,
+                senderId: senderId,
+                sessionId_received: sessionId || 'null',
+                sessionId_current: SESSION_ID,
+                isSelfMessage: isSelfMessage,
+                willShowNotification: !isSelfMessage
+              });
               
               // 🚨 UI 업데이트 (모든 로그인된 사용자 - 자신의 메시지도 포함)
               // 실시간 동기화 보장: 모든 기기에서 즉시 UI 업데이트
@@ -1451,15 +1478,28 @@ const App: React.FC = () => {
               // 실시간 동기화 보장: 모든 기기에서 알림 표시 (자신의 기기 제외)
               // 중요: sessionId가 없거나 다른 경우 항상 알림 표시 (다른 기기/사용자로 간주)
               if (!isSelfMessage) {
-                debugLog('🔔 알림 표시:', newOrder.roomNo, newOrder.itemName);
-                triggerToast(
-                  `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
-                  'info', 
-                  Department.FRONT_DESK, 
-                  'NEW_ORDER'
-                );
+                console.log('🔔 알림 표시 시작:', newOrder.roomNo, newOrder.itemName);
+                try {
+                  triggerToast(
+                    `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
+                    'info', 
+                    Department.FRONT_DESK, 
+                    'NEW_ORDER',
+                    newOrder.id,
+                    newOrder.roomNo
+                  );
+                  console.log('✅ triggerToast 호출 완료');
+                } catch (toastError) {
+                  console.error('❌ triggerToast 호출 실패:', toastError);
+                }
               } else {
-                debugLog('⏭️ 알림 스킵 (자신의 메시지)');
+                console.log('⏭️ 알림 스킵 (자신의 메시지):', {
+                  roomNo: newOrder.roomNo,
+                  currentUser: user?.id,
+                  senderId: senderId,
+                  sessionId_received: sessionId,
+                  sessionId_current: SESSION_ID
+                });
               }
             } catch (error) {
               console.error('❌ NEW_ORDER 처리 오류:', error, payload);
