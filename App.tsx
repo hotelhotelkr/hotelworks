@@ -2468,24 +2468,39 @@ const App: React.FC = () => {
             console.log('📨 전송할 메시지:', JSON.stringify(message, null, 2));
             
             // 메시지 전송 (실시간 동기화)
-            socket.emit(SYNC_CHANNEL, message);
-            console.log('✅ 브로드캐스트 전송 완료:', order.id);
-            console.log('   전송 시간:', new Date().toISOString());
-            console.log('   Socket ID:', socket.id);
-            debugLog('✅ 브로드캐스트 완료:', order.id);
+            console.log('📤 socket.emit 호출 시작');
+            console.log('   채널:', SYNC_CHANNEL);
+            console.log('   메시지 타입:', message.type);
+            console.log('   주문 ID:', message.payload.id);
             
-            // 전송 확인을 위한 짧은 딜레이 후 연결 상태 확인
-            setTimeout(() => {
-              if (!socket.connected) {
-                console.error('❌ 메시지 전송 후 WebSocket 연결 끊김 감지');
-                console.error('   - 재연결 시도 필요');
-                console.error('   - 오프라인 큐에 저장됨');
-                // 오프라인 큐에 저장 (전송 실패 가능성)
-                saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
-              } else {
-                console.log('✅ 메시지 전송 후 WebSocket 연결 유지 확인');
-              }
-            }, 100);
+            try {
+              socket.emit(SYNC_CHANNEL, message);
+              console.log('✅ socket.emit 호출 완료:', order.id);
+              console.log('   전송 시간:', new Date().toISOString());
+              console.log('   Socket ID:', socket.id);
+              console.log('   연결 상태:', socket.connected);
+              debugLog('✅ 브로드캐스트 완료:', order.id);
+              
+              // 전송 확인을 위한 짧은 딜레이 후 연결 상태 확인
+              setTimeout(() => {
+                if (!socket.connected) {
+                  console.error('❌ 메시지 전송 후 WebSocket 연결 끊김 감지');
+                  console.error('   - 재연결 시도 필요');
+                  console.error('   - 오프라인 큐에 저장됨');
+                  // 오프라인 큐에 저장 (전송 실패 가능성)
+                  saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+                } else {
+                  console.log('✅ 메시지 전송 후 WebSocket 연결 유지 확인');
+                }
+              }, 100);
+            } catch (emitError) {
+              console.error('❌ socket.emit 호출 실패:', emitError);
+              console.error('   - Socket ID:', socket.id);
+              console.error('   - 연결 상태:', socket.connected);
+              console.error('   - 에러 상세:', emitError);
+              // 오프라인 큐에 저장
+              saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+            }
           } catch (error) {
             console.error('❌ 브로드캐스트 전송 실패:', error);
             console.error('   - Socket ID:', socket.id);

@@ -204,9 +204,26 @@ io.on('connection', (socket) => {
     const clientCount = io.sockets.sockets.size;
     console.log(`   📡 브로드캐스트 시작 - ${clientCount}개 클라이언트에게 전송`);
     console.log(`   📡 브로드캐스트 메시지:`, JSON.stringify(message, null, 2));
-    io.emit('hotelflow_sync', message);
-    console.log('   ✅ 브로드캐스트 완료');
-    console.log('   수신 시간:', new Date().toLocaleString('ko-KR'));
+    
+    try {
+      io.emit('hotelflow_sync', message);
+      console.log('   ✅ 브로드캐스트 완료');
+      console.log('   전송된 클라이언트 수:', clientCount);
+      console.log('   수신 시간:', new Date().toLocaleString('ko-KR'));
+      
+      // 연결된 모든 클라이언트 정보 로그
+      if (clientCount > 0) {
+        const socketIds = Array.from(io.sockets.sockets.keys());
+        console.log('   연결된 Socket IDs:', socketIds.slice(0, 10)); // 최대 10개만 표시
+      } else {
+        console.warn('   ⚠️ 연결된 클라이언트가 없습니다!');
+      }
+    } catch (broadcastError) {
+      console.error('   ❌ 브로드캐스트 실패:', broadcastError);
+      console.error('   - 에러 상세:', broadcastError.message);
+      console.error('   - 에러 스택:', broadcastError.stack);
+    }
+    
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   });
 
