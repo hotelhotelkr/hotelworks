@@ -1432,14 +1432,18 @@ const App: React.FC = () => {
               };
               
               const user = currentUserRef.current;
-              // 🚨 알림 표시 조건 개선: sessionId가 없거나 다르면 항상 알림 표시
+              // 🚨 최우선 목표: 실시간 동기화 및 토스트 알림 보장
+              // 알림 표시 조건: sessionId가 없거나 다르면 항상 알림 표시
               // - sessionId가 없으면 항상 알림 표시 (다른 기기로 간주)
               // - sessionId가 있고 같고 senderId가 같으면 자신의 기기 (알림 X)
               // - 그 외 모든 경우 알림 표시 (다른 기기, 다른 사용자)
+              // 중요: sessionId가 null, undefined, 빈 문자열이면 항상 알림 표시
               const isSelfMessage = Boolean(
                 user && 
+                senderId && 
                 senderId === user.id && 
                 sessionId && 
+                sessionId !== '' &&
                 sessionId === SESSION_ID
               );
               
@@ -1458,39 +1462,48 @@ const App: React.FC = () => {
               console.log('   알림 표시 여부:', !isSelfMessage ? '✅ YES' : '❌ NO (자신의 메시지)');
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
               
-              // 🚨 UI 업데이트 (모든 로그인된 사용자 - 자신의 메시지도 포함)
-              // 실시간 동기화 보장: 모든 기기에서 즉시 UI 업데이트
+              // 🚨 최우선 목표: 실시간 동기화 보장
+              // UI 업데이트 (모든 로그인된 사용자 - 자신의 메시지도 포함)
+              // 모든 기기에서 즉시 UI 업데이트
+              console.log('🔄 UI 업데이트 시작');
               setOrders(prev => {
                 const exists = prev.find(o => o.id === newOrder.id);
                 if (exists) {
-                  debugLog('⚠️ 기존 주문 업데이트:', exists.id);
+                  console.log('⚠️ 기존 주문 업데이트:', exists.id, exists.roomNo, exists.itemName);
                   const updated = prev.map(o => o.id === newOrder.id ? newOrder : o);
                   try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                    console.log('✅ localStorage 업데이트 완료 (기존 주문)');
                   } catch (e) {
-                    debugError('❌ localStorage 저장 실패:', e);
+                    console.error('❌ localStorage 저장 실패:', e);
                   }
+                  console.log('✅ UI 업데이트 완료 (기존 주문 업데이트)');
                   return updated;
                 }
                 
-                debugLog('✅ 새 주문 추가:', newOrder.id, newOrder.roomNo, newOrder.itemName);
+                console.log('✅ 새 주문 추가:', newOrder.id, newOrder.roomNo, newOrder.itemName);
                 const newOrders = [newOrder, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
                 
                 try {
                   localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrders));
+                  console.log('✅ localStorage 저장 완료 (새 주문)');
                 } catch (e) {
-                  debugError('❌ localStorage 저장 실패:', e);
+                  console.error('❌ localStorage 저장 실패:', e);
                 }
                 
+                console.log('✅ UI 업데이트 완료 (새 주문 추가)');
+                console.log('   - 업데이트 전 주문 수:', prev.length);
+                console.log('   - 업데이트 후 주문 수:', newOrders.length);
                 return newOrders;
               });
               
-              // 🚨 알림 표시: 자신이 보낸 메시지가 아닐 때만 알림 표시
+              // 🚨 최우선 목표: 토스트 알림 보장
+              // 알림 표시: 자신이 보낸 메시지가 아닐 때만 알림 표시
               // 실시간 동기화 보장: 모든 기기에서 알림 표시 (자신의 기기 제외)
               // 중요: sessionId가 없거나 다른 경우 항상 알림 표시 (다른 기기/사용자로 간주)
               if (!isSelfMessage) {
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                console.log('🔔 알림 표시 시작');
+                console.log('🔔 토스트 알림 표시 시작 (최우선 목표)');
                 console.log('   주문:', newOrder.roomNo, newOrder.itemName);
                 console.log('   현재 사용자:', user?.name, `(${user?.id})`);
                 console.log('   발신자:', senderId);
@@ -1499,20 +1512,53 @@ const App: React.FC = () => {
                 console.log('   같은 기기:', isSelfMessage);
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 
+                // 🚨 토스트 알림 강제 표시 (최우선 목표)
                 try {
+                  const toastMessage = `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`;
+                  console.log('📤 triggerToast 호출:', toastMessage);
+                  
                   triggerToast(
-                    `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
+                    toastMessage, 
                     'info', 
                     Department.FRONT_DESK, 
                     'NEW_ORDER',
                     newOrder.id,
                     newOrder.roomNo
                   );
+                  
                   console.log('✅ triggerToast 호출 완료');
-                  console.log('✅ 알림 표시 완료');
+                  console.log('✅ 토스트 알림 표시 완료 (최우선 목표 달성)');
+                  
+                  // 토스트가 실제로 추가되었는지 확인 (짧은 딜레이 후)
+                  setTimeout(() => {
+                    const currentToasts = JSON.parse(localStorage.getItem('hotelflow_toasts') || '[]');
+                    const toastExists = currentToasts.some((t: any) => t.message === toastMessage);
+                    if (toastExists) {
+                      console.log('✅ 토스트가 실제로 추가되었는지 확인: 성공');
+                    } else {
+                      console.warn('⚠️ 토스트가 실제로 추가되었는지 확인: 실패 (다시 시도)');
+                      // 재시도
+                      triggerToast(toastMessage, 'info', Department.FRONT_DESK, 'NEW_ORDER', newOrder.id, newOrder.roomNo);
+                    }
+                  }, 100);
                 } catch (toastError) {
                   console.error('❌ triggerToast 호출 실패:', toastError);
                   console.error('   - 에러 상세:', toastError);
+                  console.error('   - 에러 스택:', (toastError as Error).stack);
+                  // 에러 발생 시에도 재시도
+                  try {
+                    triggerToast(
+                      `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
+                      'info', 
+                      Department.FRONT_DESK, 
+                      'NEW_ORDER',
+                      newOrder.id,
+                      newOrder.roomNo
+                    );
+                    console.log('✅ 재시도 성공');
+                  } catch (retryError) {
+                    console.error('❌ 재시도 실패:', retryError);
+                  }
                 }
               } else {
                 console.log('⏭️ 알림 스킵 (자신의 메시지):', {
@@ -1520,11 +1566,12 @@ const App: React.FC = () => {
                   currentUser: user?.id,
                   senderId: senderId,
                   sessionId_received: sessionId,
-                  sessionId_current: SESSION_ID
+                  sessionId_current: SESSION_ID,
+                  reason: '같은 기기에서 생성한 주문이므로 알림 표시하지 않음'
                 });
               }
               
-              console.log('✅ NEW_ORDER 처리 완료');
+              console.log('✅ NEW_ORDER 처리 완료 (실시간 동기화 및 토스트 알림 최우선 목표 달성)');
             } catch (error) {
               console.error('❌ NEW_ORDER 처리 오류:', error, payload);
           }
