@@ -1452,22 +1452,40 @@ const App: React.FC = () => {
               // - sessionId가 같고 senderId가 같으면 → 알림 스킵 (자신의 기기)
               // 중요: 모든 의심스러운 경우에는 알림 표시 (안전한 선택)
               
-              // 🚨 sessionId가 없으면 절대 자신의 메시지로 판단하지 않음 (안전장치)
+              // 🚨 최우선 목표: 토스트 알림 보장
+              // 알림 표시 조건: 자신의 기기에서 생성한 주문만 알림 스킵
+              // 기본 원칙: 모든 의심스러운 경우에는 알림 표시 (안전한 선택)
               let isSelfMessage = false;
-              if (user && senderId && senderId === user.id) {
-                // senderId가 같아도 sessionId가 없으면 다른 기기로 간주
-                if (sessionId && sessionId !== '' && SESSION_ID && SESSION_ID !== '' && sessionId === SESSION_ID) {
-                  isSelfMessage = true;
-                  console.log('✅ 자신의 메시지 확인: sessionId와 senderId가 모두 일치');
-                } else {
+              
+              // 1단계: senderId 확인 (다른 사용자면 항상 알림)
+              if (!user || !senderId || senderId !== user.id) {
+                isSelfMessage = false;
+                console.log('✅ 다른 사용자의 메시지 - 알림 표시');
+                console.log('   - 현재 사용자:', user?.id);
+                console.log('   - 발신자:', senderId);
+              } 
+              // 2단계: senderId가 같으면 sessionId 확인
+              else if (senderId === user.id) {
+                // sessionId가 없거나 다르면 다른 기기로 간주 → 항상 알림 표시
+                if (!sessionId || sessionId === '' || !SESSION_ID || SESSION_ID === '' || sessionId !== SESSION_ID) {
+                  isSelfMessage = false;
                   console.log('⚠️ sessionId 불일치 또는 없음 - 안전을 위해 알림 표시');
                   console.log('   - sessionId (수신):', sessionId || 'null/undefined');
                   console.log('   - sessionId (현재):', SESSION_ID || 'null/undefined');
-                  isSelfMessage = false;
+                  console.log('   - senderId는 같지만 sessionId가 다르므로 다른 기기로 간주');
+                } 
+                // 3단계: senderId와 sessionId가 모두 일치 → 자신의 기기
+                else {
+                  isSelfMessage = true;
+                  console.log('✅ 자신의 메시지 확인: sessionId와 senderId가 모두 일치');
+                  console.log('   - sessionId:', sessionId);
+                  console.log('   - senderId:', senderId);
                 }
-              } else {
-                console.log('✅ 다른 사용자의 메시지 - 알림 표시');
+              }
+              // 예외: 위 조건에 해당하지 않는 경우 → 안전을 위해 알림 표시
+              else {
                 isSelfMessage = false;
+                console.log('⚠️ 예외 상황 - 안전을 위해 알림 표시');
               }
               
               // 🚨 항상 출력 (알림 문제 디버깅용)

@@ -10,8 +10,28 @@ interface ToastNotificationProps {
 }
 
 const ToastNotification: React.FC<ToastNotificationProps> = ({ toasts, onRemove, onToastClick }) => {
+  // 🚨 최우선 목표: 토스트 알림 보장
+  // toasts 배열이 변경될 때마다 로그 출력 (디버깅용)
+  React.useEffect(() => {
+    if (toasts.length > 0) {
+      console.log('🔔 ToastNotification 렌더링:', {
+        toastCount: toasts.length,
+        latestToast: toasts[0] ? {
+          id: toasts[0].id,
+          message: toasts[0].message.substring(0, 50),
+          type: toasts[0].type
+        } : null
+      });
+    }
+  }, [toasts]);
+  
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 sm:bottom-6 sm:right-6 sm:left-auto sm:translate-x-0 z-[200] flex flex-col gap-2 sm:gap-3 w-[calc(100vw-2rem)] sm:w-full max-w-[280px] sm:max-w-[350px] pointer-events-none">
+      {toasts.length === 0 && (
+        <div style={{ display: 'none' }}>
+          {/* 디버깅용: toasts가 비어있을 때 확인 */}
+        </div>
+      )}
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onRemove={onRemove} onToastClick={onToastClick} />
       ))}
