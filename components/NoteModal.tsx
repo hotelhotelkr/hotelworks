@@ -106,7 +106,11 @@ const NoteModal: React.FC<NoteModalProps> = ({ order, currentUser, onClose, onSu
                       {memo.senderDept === Department.FRONT_DESK ? 'FD' : 'HK'} • {memo.senderName}
                     </span>
                     <span className="text-[8px] font-bold text-slate-400">
-                      {new Date(memo.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(memo.timestamp).toLocaleTimeString('ko-KR', { 
+                        timeZone: 'Asia/Seoul',
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
                     </span>
                   </div>
                   
