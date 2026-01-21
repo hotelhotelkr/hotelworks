@@ -139,9 +139,71 @@ io.on('connection', (socket) => {
       console.log('   삭제할 사용자 ID:', payload?.userId);
     }
     
-    // 데이터베이스 저장
+    // 🚨 최우선 목표: 실시간 동기화 보장
+    // 브로드캐스트를 먼저 실행하고, DB 저장은 비동기로 처리
+    // 이렇게 하면 DB 저장이 느려도 실시간 동기화가 즉시 이루어짐
+    
+    // 🚨 브로드캐스트 메시지 생성 (즉시 전송)
+    const message = {
+      type,
+      payload,
+      senderId,
+      sessionId: sessionId || null, // sessionId 포함 (중복 알림 방지용)
+      timestamp: timestamp || new Date().toISOString()
+    };
+    
+    // 🚨 모든 연결된 클라이언트에게 즉시 브로드캐스트 (실시간 동기화 보장)
+    const clientCount = io.sockets.sockets.size;
+    console.log(`   📡 브로드캐스트 시작 (즉시 실행) - ${clientCount}개 클라이언트에게 전송`);
+    console.log(`   📡 브로드캐스트 메시지:`, JSON.stringify(message, null, 2));
+    
     try {
-      if (type === 'NEW_ORDER') {
+      // 🚨 io.emit은 모든 연결된 클라이언트(발신자 포함)에게 전송
+      // 중요: DB 저장 전에 먼저 브로드캐스트 (실시간 동기화 보장)
+      console.log('   📡 브로드캐스트 실행 전 최종 확인:');
+      console.log('   - 연결된 클라이언트 수:', clientCount);
+      console.log('   - 메시지 타입:', type);
+      console.log('   - 발신자:', senderId);
+      console.log('   - 세션 ID:', sessionId);
+      console.log('   - 브로드캐스트 시간:', new Date().toISOString());
+      
+      // 🚨 즉시 브로드캐스트 (DB 저장 전)
+      io.emit('hotelflow_sync', message);
+      
+      console.log('   ✅ 브로드캐스트 완료 (즉시 실행)');
+      console.log('   전송된 클라이언트 수:', clientCount);
+      console.log('   수신 시간:', new Date().toLocaleString('ko-KR'));
+      console.log('   브로드캐스트 메시지 타입:', type);
+      console.log('   브로드캐스트 발신자:', senderId);
+      
+      // 연결된 모든 클라이언트 정보 로그
+      if (clientCount > 0) {
+        const socketIds = Array.from(io.sockets.sockets.keys());
+        console.log('   연결된 Socket IDs:', socketIds.slice(0, 10)); // 최대 10개만 표시
+        
+        // 각 클라이언트에게 메시지가 전송되었는지 확인
+        socketIds.forEach((socketId, index) => {
+          const clientSocket = io.sockets.sockets.get(socketId);
+          if (clientSocket && clientSocket.connected) {
+            console.log(`   ✅ 클라이언트 ${index + 1}/${socketIds.length} 전송 확인: ${socketId}`);
+          } else {
+            console.warn(`   ⚠️ 클라이언트 ${index + 1}/${socketIds.length} 연결 안 됨: ${socketId}`);
+          }
+        });
+      } else {
+        console.warn('   ⚠️ 연결된 클라이언트가 없습니다!');
+      }
+    } catch (broadcastError) {
+      console.error('   ❌ 브로드캐스트 실패:', broadcastError);
+      console.error('   - 에러 상세:', broadcastError.message);
+      console.error('   - 에러 스택:', broadcastError.stack);
+    }
+    
+    // 🚨 DB 저장은 비동기로 처리 (브로드캐스트 후 백그라운드에서 실행)
+    // 실시간 동기화를 보장하기 위해 DB 저장을 기다리지 않음
+    (async () => {
+      try {
+        if (type === 'NEW_ORDER') {
         // 날짜 형식 변환: 한국 시간을 UTC로 변환하여 저장
         // payload의 시간은 한국 시간으로 간주하고, Supabase에 저장할 때 UTC로 변환
         const koreaTimeToUTC = (koreaTime) => {
