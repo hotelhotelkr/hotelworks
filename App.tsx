@@ -532,14 +532,16 @@ const App: React.FC = () => {
     }
     
     // 🚨 토스트 알림 추가 (항상 로그 출력)
-    console.log('🔔 triggerToast 호출:', {
-      message: message.substring(0, 50) + '...',
-      type,
-      dept,
-      orderId,
-      roomNo,
-      timestamp: now.toISOString()
-    });
+    // 🚨 최우선 목표: 토스트 알림 보장
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔔 triggerToast 호출 (최우선 목표)');
+    console.log('   메시지:', message.substring(0, 80) + (message.length > 80 ? '...' : ''));
+    console.log('   타입:', type);
+    console.log('   부서:', dept);
+    console.log('   주문 ID:', orderId);
+    console.log('   방번호:', roomNo);
+    console.log('   타임스탬프:', now.toISOString());
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // 중복 알림 방지: 같은 메시지가 2초 이내에 이미 있으면 추가하지 않음
     setToasts(prev => {
