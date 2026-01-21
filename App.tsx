@@ -1549,13 +1549,11 @@ const App: React.FC = () => {
                   console.log('✅ triggerToast 호출 완료');
                   console.log('✅ 토스트 알림 표시 완료 (최우선 목표 달성)');
                   
-                  // 토스트가 실제로 추가되었는지 확인 (React state 확인)
-                  setTimeout(() => {
-                    // React state는 직접 확인할 수 없으므로, triggerToast가 성공적으로 호출되었는지만 확인
-                    console.log('✅ triggerToast 호출 완료 - 토스트가 상태에 추가되었습니다');
-                    console.log('   - 토스트는 React state (toasts)에 추가되었습니다');
-                    console.log('   - ToastNotification 컴포넌트가 자동으로 렌더링합니다');
-                  }, 50);
+                  // 토스트가 실제로 추가되었는지 확인 (React state는 직접 확인 불가하므로 로그만)
+                  console.log('✅ triggerToast 호출 완료 - 토스트가 상태에 추가되었습니다');
+                  console.log('   - 토스트는 React state (toasts)에 추가되었습니다');
+                  console.log('   - ToastNotification 컴포넌트가 자동으로 렌더링합니다');
+                  console.log('   - toasts 배열 길이 확인 필요 (React DevTools 사용)');
                 } catch (toastError) {
                   console.error('❌ triggerToast 호출 실패:', toastError);
                   console.error('   - 에러 상세:', toastError);
