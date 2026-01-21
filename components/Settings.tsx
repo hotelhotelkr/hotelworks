@@ -205,13 +205,30 @@ const Settings: React.FC<SettingsProps> = ({
   // WebSocket URL 가져오기
   useEffect(() => {
     const getWebSocketURL = (): string => {
+      // 1순위: 환경 변수
+      try {
+        const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
+        if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+          return envUrl.trim();
+        }
+      } catch (e) {}
+      
+      // 2순위: localStorage
+      try {
+        const savedUrl = localStorage.getItem('hotelflow_ws_url');
+        if (savedUrl && savedUrl.trim() !== '') {
+          return savedUrl.trim();
+        }
+      } catch (e) {}
+      
+      // 3순위: 프로덕션 도메인 감지
       if (typeof window !== 'undefined' && window.location) {
         const host = window.location.hostname;
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         
-        // 프로덕션 도메인: hotelworks.kr
+        // 프로덕션 도메인: hotelworks.kr → Render 서버 사용
         if (host === 'hotelworks.kr' || host === 'www.hotelworks.kr') {
-          return `${protocol}//${host}`;
+          return 'wss://hotelworks-websocket.onrender.com';
         }
         
         // 개발 환경
@@ -219,14 +236,6 @@ const Settings: React.FC<SettingsProps> = ({
           return `${protocol === 'wss:' ? 'ws:' : 'ws:'}//${host}:3001`;
         }
       }
-      
-      // 환경 변수 확인
-      try {
-        const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
-        if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
-          return envUrl;
-        }
-      } catch (e) {}
       
       return 'ws://localhost:3001';
     };
