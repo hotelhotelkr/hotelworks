@@ -105,7 +105,7 @@ io.on('connection', (socket) => {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   socket.on('hotelflow_sync', async (data) => {
-    const { type, payload, senderId, timestamp } = data;
+    const { type, payload, senderId, sessionId, timestamp } = data;
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📨 서버 메시지 수신:', type);
@@ -186,12 +186,14 @@ io.on('connection', (socket) => {
       type,
       payload,
       senderId,
+      sessionId: sessionId || null, // sessionId 포함 (중복 알림 방지용)
       timestamp: timestamp || new Date().toISOString()
     };
     
     // 🚨 모든 연결된 클라이언트에게 브로드캐스트
     const clientCount = io.sockets.sockets.size;
     console.log(`   📡 브로드캐스트 시작 - ${clientCount}개 클라이언트에게 전송`);
+    console.log(`   📡 브로드캐스트 메시지:`, JSON.stringify(message, null, 2));
     io.emit('hotelflow_sync', message);
     console.log('   ✅ 브로드캐스트 완료');
     console.log('   수신 시간:', new Date().toLocaleString('ko-KR'));

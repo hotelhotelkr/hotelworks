@@ -767,6 +767,7 @@ const App: React.FC = () => {
 
       socket.on('connect', () => {
         console.log('✅ WebSocket 연결 성공:', socket.id, '| URL:', wsUrl);
+        console.log('✅ 세션 ID:', SESSION_ID);
         setIsConnected(true);
         syncOfflineQueue();
         
@@ -1409,22 +1410,24 @@ const App: React.FC = () => {
               // 같은 사용자 ID + 같은 세션 ID = 같은 기기 → WebSocket 알림 스킵
               const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
               
-              debugLog('🆕 NEW_ORDER 처리:', user?.name, '| 발신자:', senderId, '| 같은 기기:', isSelfMessage);
+              console.log('🆕 NEW_ORDER 처리 시작');
+              console.log('   현재 사용자:', user?.name, `(${user?.id})`);
+              console.log('   발신자:', senderId);
+              console.log('   세션 ID (수신):', sessionId);
+              console.log('   세션 ID (현재):', SESSION_ID);
+              console.log('   같은 기기:', isSelfMessage);
+              console.log('   주문 ID:', newOrder.id);
+              console.log('   방번호:', newOrder.roomNo);
               
-              // 🚨 UI 업데이트 (모든 로그인된 사용자)
+              // 🚨 UI 업데이트 (모든 로그인된 사용자 - 자신의 메시지도 포함)
               setOrders(prev => {
                 const exists = prev.find(o => o.id === newOrder.id);
                 if (exists) {
                   console.log('   기존 주문 발견 - 업데이트');
-                  // 자신이 보낸 메시지는 중복 방지를 위해 스킵 (로컬에 이미 추가됨)
-                  if (isSelfMessage) {
-                    console.log('   자신이 보낸 메시지 - 스킵');
-                    return prev;
-                  }
-                  // 다른 사용자가 보낸 메시지는 업데이트
+                  // 자신이 보낸 메시지도 업데이트 (다른 기기에서 온 경우)
                   return prev.map(o => o.id === newOrder.id ? newOrder : o);
                 }
-                // 새 주문 추가
+                // 새 주문 추가 (모든 기기에서 추가)
                 console.log('   새 주문 추가 - 추가 전:', prev.length, '개');
                 const newOrders = [newOrder, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
                 console.log('   새 주문 추가 - 추가 후:', newOrders.length, '개');
