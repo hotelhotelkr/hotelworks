@@ -1414,14 +1414,16 @@ const App: React.FC = () => {
               
               const user = currentUserRef.current;
               // 같은 사용자 ID + 같은 세션 ID = 같은 기기 → WebSocket 알림 스킵
-              const isSelfMessage = senderId === user?.id && sessionId === SESSION_ID;
+              // 중요: sessionId가 null이거나 undefined일 수 있으므로 명시적으로 확인
+              const isSelfMessage = user && senderId === user.id && sessionId && sessionId === SESSION_ID;
               
               console.log('🆕 NEW_ORDER 처리 시작');
               console.log('   현재 사용자:', user?.name, `(${user?.id})`);
               console.log('   발신자:', senderId);
-              console.log('   세션 ID (수신):', sessionId);
+              console.log('   세션 ID (수신):', sessionId || 'null/undefined');
               console.log('   세션 ID (현재):', SESSION_ID);
               console.log('   같은 기기:', isSelfMessage);
+              console.log('   알림 표시 여부:', !isSelfMessage ? 'YES (다른 기기/사용자)' : 'NO (같은 기기)');
               console.log('   주문 ID:', newOrder.id);
               console.log('   방번호:', newOrder.roomNo);
               
@@ -1471,22 +1473,38 @@ const App: React.FC = () => {
               
               // 🚨 알림 표시: 자신이 보낸 메시지가 아닐 때만 알림 표시
               // 실시간 동기화 보장: 모든 기기에서 알림 표시 (자신의 기기 제외)
+              // 중요: sessionId가 없거나 다른 경우 항상 알림 표시 (다른 기기/사용자로 간주)
               if (!isSelfMessage) {
-                console.log('🔔 알림 표시:', newOrder.roomNo, newOrder.itemName, '| 발신자:', senderId);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('🔔 알림 표시 시작');
+                console.log('   - 주문:', newOrder.roomNo, newOrder.itemName);
                 console.log('   - 현재 사용자:', user?.name, `(${user?.id})`);
                 console.log('   - 발신자:', senderId);
-                console.log('   - 세션 ID (수신):', sessionId);
+                console.log('   - 세션 ID (수신):', sessionId || 'null/undefined');
                 console.log('   - 세션 ID (현재):', SESSION_ID);
-                triggerToast(
-                  `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
-                  'info', 
-                  Department.FRONT_DESK, 
-                  'NEW_ORDER'
-                );
-                console.log('   ✅ 알림 표시 완료');
+                console.log('   - 같은 기기:', isSelfMessage);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                
+                try {
+                  triggerToast(
+                    `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
+                    'info', 
+                    Department.FRONT_DESK, 
+                    'NEW_ORDER'
+                  );
+                  console.log('   ✅ triggerToast 호출 완료');
+                  console.log('   ✅ 알림 표시 완료');
+                } catch (toastError) {
+                  console.error('   ❌ triggerToast 호출 실패:', toastError);
+                  console.error('   - 에러 상세:', toastError);
+                }
               } else {
                 console.log('🔕 자신이 보낸 메시지 - 알림 스킵:', newOrder.roomNo);
                 console.log('   - 같은 기기에서 생성한 주문이므로 알림 표시하지 않음');
+                console.log('   - 현재 사용자:', user?.name, `(${user?.id})`);
+                console.log('   - 발신자:', senderId);
+                console.log('   - 세션 ID (수신):', sessionId || 'null/undefined');
+                console.log('   - 세션 ID (현재):', SESSION_ID);
               }
               
               // 실시간 동기화 확인 로그
