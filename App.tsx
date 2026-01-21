@@ -543,15 +543,31 @@ const App: React.FC = () => {
     console.log('   타임스탬프:', now.toISOString());
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    // 중복 알림 방지: 같은 메시지가 2초 이내에 이미 있으면 추가하지 않음
+    // 🚨 최우선 목표: 토스트 알림 보장
+    // 중복 알림 방지: 같은 주문 ID가 1초 이내에 이미 있으면 추가하지 않음
+    // 주문 ID로 구분하여 더 정확한 중복 방지
     setToasts(prev => {
+      // 주문 ID가 있으면 주문 ID로 중복 체크 (더 정확)
+      if (orderId) {
+        const duplicate = prev.find(t => {
+          const timeDiff = Math.abs(now.getTime() - t.timestamp.getTime());
+          return t.orderId === orderId && timeDiff < 1000; // 1초 이내, 같은 주문 ID
+        });
+        
+        if (duplicate) {
+          console.log('⏭️ 중복 알림 스킵 (같은 주문 ID):', orderId, message.substring(0, 50));
+          return prev; // 중복이면 기존 알림 유지
+        }
+      }
+      
+      // 주문 ID가 없으면 메시지로 중복 체크 (1초 이내)
       const duplicate = prev.find(t => {
         const timeDiff = Math.abs(now.getTime() - t.timestamp.getTime());
-        return t.message === message && t.type === type && t.dept === dept && timeDiff < 2000; // 2초 이내
+        return t.message === message && t.type === type && t.dept === dept && timeDiff < 1000; // 1초 이내
       });
       
       if (duplicate) {
-        console.log('⏭️ 중복 알림 스킵:', message.substring(0, 50));
+        console.log('⏭️ 중복 알림 스킵 (같은 메시지):', message.substring(0, 50));
         return prev; // 중복이면 기존 알림 유지
       }
       
