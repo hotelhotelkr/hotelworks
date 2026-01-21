@@ -13,7 +13,7 @@ const PROJECT_NAME = 'hotelworks';
     SUPABASE_URL: 'https://pnmkclrwmbmzrocyygwq.supabase.co',
     SUPABASE_ANON_KEY: 'sb_publishable_WdzcqWms_a8Cq623qNPWwQ_okBbp28Q',
     SUPABASE_SERVICE_ROLE_KEY: 'sb_secret_--g5k-uslPpXBLRMg7M6uA_k1jwlF5i',
-    VITE_WS_SERVER_URL: 'wss://hotelworks-websocket.onrender.com'
+    VITE_WS_SERVER_URL: 'wss://hotelworks-backend.onrender.com'
   };
 
 const environments = ['production', 'preview', 'development'];
