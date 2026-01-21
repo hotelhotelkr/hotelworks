@@ -156,9 +156,19 @@ io.on('connection', (socket) => {
         };
         
         console.log('   💾 DB 저장 시도:', payload.id);
-        const savedOrder = await OrderModel.create(orderData);
-        console.log('   💾 DB 저장 완료 (NEW_ORDER):', payload.id);
-        console.log('   💾 저장된 주문:', savedOrder ? '성공' : '실패');
+        console.log('   💾 주문 데이터:', JSON.stringify(orderData, null, 2));
+        try {
+          const savedOrder = await OrderModel.create(orderData);
+          console.log('   💾 DB 저장 완료 (NEW_ORDER):', payload.id);
+          console.log('   💾 저장된 주문:', savedOrder ? '성공' : '실패');
+          if (savedOrder) {
+            console.log('   💾 저장된 주문 상세:', JSON.stringify(savedOrder, null, 2));
+          }
+        } catch (dbError) {
+          console.error('   ❌ OrderModel.create 오류:', dbError.message);
+          console.error('   ❌ 오류 스택:', dbError.stack);
+          throw dbError; // 상위 catch로 전달
+        }
       } else if (type === 'STATUS_UPDATE') {
         const updateData = {
           status: payload.status,

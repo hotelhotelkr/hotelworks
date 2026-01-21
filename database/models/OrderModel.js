@@ -142,26 +142,38 @@ class OrderModel {
           : new Date().toISOString());
 
       // 주문 삽입
+      const insertData = {
+        id: orderData.id,
+        room_no: orderData.roomNo,
+        guest_name: orderData.guestName || null,
+        category: orderData.category,
+        item_name: orderData.itemName,
+        quantity: orderData.quantity || 1,
+        priority: orderData.priority || 'NORMAL',
+        status: orderData.status || 'REQUESTED',
+        requested_at: requestedAt,
+        created_by: orderData.createdBy,
+        request_channel: orderData.requestChannel || 'Phone',
+        request_note: orderData.requestNote || null
+      };
+      
+      console.log('📝 Supabase INSERT 시도:', orderData.id);
+      console.log('📝 INSERT 데이터:', JSON.stringify(insertData, null, 2));
+      
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          id: orderData.id,
-          room_no: orderData.roomNo,
-          guest_name: orderData.guestName || null,
-          category: orderData.category,
-          item_name: orderData.itemName,
-          quantity: orderData.quantity || 1,
-          priority: orderData.priority || 'NORMAL',
-          status: orderData.status || 'REQUESTED',
-          requested_at: requestedAt,
-          created_by: orderData.createdBy,
-          request_channel: orderData.requestChannel || 'Phone',
-          request_note: orderData.requestNote || null
-        })
+        .insert(insertData)
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('❌ Supabase INSERT 오류:', orderError.message);
+        console.error('❌ 오류 코드:', orderError.code);
+        console.error('❌ 오류 상세:', orderError);
+        throw orderError;
+      }
+      
+      console.log('✅ Supabase INSERT 성공:', orderData.id);
 
       // 메모가 있으면 삽입
       if (orderData.memos && Array.isArray(orderData.memos) && orderData.memos.length > 0) {
