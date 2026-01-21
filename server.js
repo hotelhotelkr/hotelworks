@@ -229,11 +229,21 @@ io.on('connection', (socket) => {
     console.log(`   📡 브로드캐스트 메시지:`, JSON.stringify(message, null, 2));
     
     try {
-      // io.emit은 모든 연결된 클라이언트(발신자 포함)에게 전송
+      // 🚨 io.emit은 모든 연결된 클라이언트(발신자 포함)에게 전송
+      // 중요: DB 저장 성공/실패와 무관하게 항상 브로드캐스트 (실시간 동기화 보장)
+      console.log('   📡 브로드캐스트 실행 전 최종 확인:');
+      console.log('   - 연결된 클라이언트 수:', clientCount);
+      console.log('   - 메시지 타입:', type);
+      console.log('   - 발신자:', senderId);
+      console.log('   - 세션 ID:', sessionId);
+      
       io.emit('hotelflow_sync', message);
+      
       console.log('   ✅ 브로드캐스트 완료');
       console.log('   전송된 클라이언트 수:', clientCount);
       console.log('   수신 시간:', new Date().toLocaleString('ko-KR'));
+      console.log('   브로드캐스트 메시지 타입:', type);
+      console.log('   브로드캐스트 발신자:', senderId);
       
       // 연결된 모든 클라이언트 정보 로그
       if (clientCount > 0) {

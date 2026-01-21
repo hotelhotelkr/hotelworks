@@ -1395,10 +1395,23 @@ const App: React.FC = () => {
         }
 
         // 🚨 로그인 상태: UI 업데이트 + 알림 표시 (모든 로그인된 사용자)
-      switch (type) {
+        // 중요: 로그인 상태에서만 UI 업데이트 및 알림 표시
+        console.log('🔐 로그인 상태 - UI 업데이트 및 알림 표시 시작');
+        console.log('   메시지 타입:', type);
+        console.log('   현재 사용자:', user?.name, `(${user?.id})`);
+        
+        switch (type) {
           case 'NEW_ORDER': {
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🆕 NEW_ORDER 처리 시작 (로그인 상태)');
+            console.log('   주문 ID:', payload?.id);
+            console.log('   방번호:', payload?.roomNo);
+            console.log('   아이템:', payload?.itemName);
+            console.log('   수량:', payload?.quantity);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            
             try {
-          const newOrder = {
+              const newOrder = {
             ...payload,
                 requestedAt: payload.requestedAt ? new Date(payload.requestedAt) : new Date(),
                 acceptedAt: payload.acceptedAt ? new Date(payload.acceptedAt) : undefined,
