@@ -1242,8 +1242,15 @@ const App: React.FC = () => {
         
         const user = currentUserRef.current;
         
-        // 🚨 간소화된 로그 (성능 최적화)
-        debugLog('📥 메시지 수신:', type, '발신자:', senderId, '세션:', sessionId || 'null');
+        // 🚨 항상 출력 (실시간 동기화 문제 디버깅용)
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📥 WebSocket 메시지 수신:', type);
+        console.log('   발신자:', senderId, '| 세션:', sessionId || 'null');
+        console.log('   현재 사용자:', user ? `${user.name} (${user.id})` : '로그아웃');
+        console.log('   현재 세션:', SESSION_ID);
+        console.log('   Socket ID:', socket.id);
+        console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         // currentUserRef를 통해 최신 로그인 상태 확인
         const isLoggedIn = currentUserRef.current !== null;
@@ -1425,9 +1432,10 @@ const App: React.FC = () => {
               };
               
               const user = currentUserRef.current;
-              // 🚨 알림 표시 조건: sessionId가 다르거나 없으면 항상 알림 표시
-              // - sessionId가 같고 senderId가 같으면 자신의 기기 (알림 X)
-              // - 그 외 모든 경우 알림 표시 (다른 기기, 다른 사용자, sessionId 없음)
+              // 🚨 알림 표시 조건 개선: sessionId가 없거나 다르면 항상 알림 표시
+              // - sessionId가 없으면 항상 알림 표시 (다른 기기로 간주)
+              // - sessionId가 있고 같고 senderId가 같으면 자신의 기기 (알림 X)
+              // - 그 외 모든 경우 알림 표시 (다른 기기, 다른 사용자)
               const isSelfMessage = Boolean(
                 user && 
                 senderId === user.id && 
@@ -1436,16 +1444,19 @@ const App: React.FC = () => {
               );
               
               // 🚨 항상 출력 (알림 문제 디버깅용)
-              console.log('🆕 NEW_ORDER 처리:', {
-                roomNo: newOrder.roomNo,
-                itemName: newOrder.itemName,
-                currentUser: user?.id,
-                senderId: senderId,
-                sessionId_received: sessionId || 'null',
-                sessionId_current: SESSION_ID,
-                isSelfMessage: isSelfMessage,
-                willShowNotification: !isSelfMessage
-              });
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('🆕 NEW_ORDER 처리 시작');
+              console.log('   주문 ID:', newOrder.id);
+              console.log('   방번호:', newOrder.roomNo);
+              console.log('   아이템:', newOrder.itemName);
+              console.log('   수량:', newOrder.quantity);
+              console.log('   현재 사용자:', user?.id, `(${user?.name})`);
+              console.log('   발신자:', senderId);
+              console.log('   세션 ID (수신):', sessionId || 'null/undefined');
+              console.log('   세션 ID (현재):', SESSION_ID);
+              console.log('   같은 기기:', isSelfMessage);
+              console.log('   알림 표시 여부:', !isSelfMessage ? '✅ YES' : '❌ NO (자신의 메시지)');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
               
               // 🚨 UI 업데이트 (모든 로그인된 사용자 - 자신의 메시지도 포함)
               // 실시간 동기화 보장: 모든 기기에서 즉시 UI 업데이트
