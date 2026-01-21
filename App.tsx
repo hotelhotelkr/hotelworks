@@ -1428,12 +1428,27 @@ const App: React.FC = () => {
                 if (exists) {
                   console.log('   기존 주문 발견 - 업데이트');
                   // 자신이 보낸 메시지도 업데이트 (다른 기기에서 온 경우)
-                  return prev.map(o => o.id === newOrder.id ? newOrder : o);
+                  const updated = prev.map(o => o.id === newOrder.id ? newOrder : o);
+                  // 🚨 localStorage도 함께 업데이트 (모든 기기에서 최신 데이터 유지)
+                  try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                    console.log('   💾 localStorage 업데이트 완료 (NEW_ORDER)');
+                  } catch (e) {
+                    console.error('   ❌ localStorage 업데이트 실패:', e);
+                  }
+                  return updated;
                 }
                 // 새 주문 추가 (모든 기기에서 추가)
                 console.log('   새 주문 추가 - 추가 전:', prev.length, '개');
                 const newOrders = [newOrder, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
                 console.log('   새 주문 추가 - 추가 후:', newOrders.length, '개');
+                // 🚨 localStorage도 함께 업데이트 (모든 기기에서 최신 데이터 유지)
+                try {
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrders));
+                  console.log('   💾 localStorage 업데이트 완료 (NEW_ORDER)');
+                } catch (e) {
+                  console.error('   ❌ localStorage 업데이트 실패:', e);
+                }
                 return newOrders;
               });
               
@@ -1632,6 +1647,15 @@ const App: React.FC = () => {
                 const targetOrder = updated.find(o => o.id === payload.orderId);
                 foundRoomNo = targetOrder ? targetOrder.roomNo : null;
               }
+              
+              // 🚨 localStorage도 함께 업데이트 (모든 기기에서 최신 데이터 유지)
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                console.log('   💾 localStorage 업데이트 완료 (NEW_MEMO)');
+              } catch (e) {
+                console.error('   ❌ localStorage 업데이트 실패:', e);
+              }
+              
               return updated;
             });
             
