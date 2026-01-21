@@ -2560,13 +2560,39 @@ const App: React.FC = () => {
             console.log('   채널:', SYNC_CHANNEL);
             console.log('   메시지 타입:', message.type);
             console.log('   주문 ID:', message.payload.id);
+            console.log('   Socket ID:', socket.id);
+            console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+            
+            // 🚨 연결 상태 확인 및 강제 재연결
+            if (!socket.connected) {
+              console.error('❌ WebSocket 연결되지 않음 - 재연결 시도');
+              try {
+                socket.connect();
+                // 재연결 대기 (최대 1초)
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                if (!socket.connected) {
+                  console.error('❌ 재연결 실패 - 오프라인 큐에 저장');
+                  saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+                  return;
+                }
+                console.log('✅ 재연결 성공 - 메시지 전송 계속');
+              } catch (reconnectError) {
+                console.error('❌ 재연결 실패:', reconnectError);
+                saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+                return;
+              }
+            }
             
             try {
+              // 🚨 메시지 전송 (연결 상태 확인 완료)
               socket.emit(SYNC_CHANNEL, message);
               console.log('✅ socket.emit 호출 완료:', order.id);
               console.log('   전송 시간:', new Date().toISOString());
               console.log('   Socket ID:', socket.id);
-              console.log('   연결 상태:', socket.connected);
+              console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+              console.log('   메시지 타입:', message.type);
+              console.log('   발신자:', message.senderId);
+              console.log('   세션 ID:', message.sessionId);
               debugLog('✅ 브로드캐스트 완료:', order.id);
               
               // 전송 확인을 위한 짧은 딜레이 후 연결 상태 확인
