@@ -555,6 +555,16 @@ const App: React.FC = () => {
         return prev; // 중복이면 기존 알림 유지
       }
       
+      console.log('✅ 새 토스트 추가:', {
+        id,
+        message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+        type,
+        dept,
+        orderId,
+        roomNo,
+        totalToasts: prev.length + 1
+      });
+      
       return [newToast, ...prev];
     });
     
