@@ -1,0 +1,32 @@
+Vercel 환경 변수 설정용 (복사하여 사용)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+환경 변수 이름과 값
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+변수 이름: SUPABASE_URL
+값: https://pnmkclrwmbmzrocyygwq.supabase.co
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+변수 이름: SUPABASE_ANON_KEY
+값: sb_publishable_WdzcqWms_a8Cq623qNPWwQ_okBbp28Q
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+변수 이름: SUPABASE_SERVICE_ROLE_KEY
+값: sb_secret_--g5k-uslPpXBLRMg7M6uA_k1jwlF5i
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+변수 이름: VITE_WS_SERVER_URL
+값: wss://hotelworks.kr
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+설정 방법:
+1. Vercel Dashboard 접속
+2. 프로젝트 선택 > Settings > Environment Variables
+3. 위의 변수들을 모두 추가 (Production, Preview, Development)
+4. Save 클릭
+5. Deployments > Redeploy
