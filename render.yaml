@@ -1,35 +1,26 @@
 services:
-  # WebSocket 백엔드 서버
+  # WebSocket 백엔드 서버 (Supabase 사용)
   - type: web
-    name: hotelworks-backend
+    name: hotelworks-websocket
     runtime: node
     env: node
-    buildCommand: npm install --production
+    buildCommand: npm install
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-      # MySQL 데이터베이스 설정
-      # ⚠️ 중요: 아래 값들은 Render Dashboard에서 실제 값으로 설정해야 합니다
-      # Render Dashboard → hotelworks-backend → Environment 탭에서 추가하세요
-      # 
-      # DB_HOST 예시:
-      #   - AWS RDS: your-db-instance.xxxxx.us-east-1.rds.amazonaws.com
-      #   - DigitalOcean: db-mysql-xxx-xxx.db.ondigitalocean.com
-      #   - PlanetScale: xxx.us-east-2.psdb.cloud
-      #   - 기타: your-mysql-host.com
-      - key: DB_HOST
-        sync: false  # Render Dashboard에서 직접 설정 필요
-      - key: DB_PORT
-        value: '3306'
-      - key: DB_USER
-        sync: false  # Render Dashboard에서 직접 설정 필요
-      - key: DB_PASSWORD
-        sync: false  # Render Dashboard에서 직접 설정 필요 (민감한 정보)
-      - key: DB_NAME
-        value: 'hotelworks'
+      - key: SUPABASE_URL
+        value: https://pnmkclrwmbmzrocyygwq.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_WdzcqWms_a8Cq623qNPWwQ_okBbp28Q
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: sb_secret_--g5k-uslPpXBLRMg7M6uA_k1jwlF5i
+      - key: SERVER_URL
+        value: https://hotelworks-websocket.onrender.com
+      - key: WS_SERVER_URL
+        value: wss://hotelworks-websocket.onrender.com
     
     # 헬스체크
     healthCheckPath: /health
