@@ -2,15 +2,31 @@ import supabase from '../db.js';
 
 /**
  * 한국 시간을 UTC로 변환하는 헬퍼 함수
- * Supabase는 UTC로 저장하므로, 한국 시간(UTC+9)을 UTC로 변환
+ * Supabase Table Editor에서 한국 시간으로 보이게 하기 위해
+ * 한국 시간을 UTC로 변환하여 저장
+ * 
+ * 예: 한국 시간 23:34 → UTC 14:34 (9시간 차이)
+ * Supabase에 저장: 14:34 (UTC)
+ * Supabase Table Editor에서 조회 시: 23:34 (한국 시간으로 표시되도록)
  */
 function koreaTimeToUTC(koreaTime) {
   if (!koreaTime) return null;
   
   // Date 객체인 경우
   if (koreaTime instanceof Date) {
-    // 한국 시간을 UTC로 변환 (9시간 빼기)
-    const utcTime = new Date(koreaTime.getTime() - (9 * 60 * 60 * 1000));
+    // Date 객체는 이미 브라우저의 로컬 시간대(한국)로 생성됨
+    // 한국 시간을 UTC로 변환하려면 9시간을 빼야 함
+    // 하지만 toISOString()은 이미 UTC로 변환하므로, 
+    // 한국 시간을 그대로 UTC로 저장하려면 9시간을 더해야 함
+    // 예: 한국 시간 23:34 → UTC로 저장하면 14:34가 되어야 함
+    // 따라서 한국 시간에서 9시간을 빼면 UTC가 됨
+    const koreaTimeMs = koreaTime.getTime();
+    // 브라우저의 로컬 시간대 오프셋을 고려
+    const localOffset = koreaTime.getTimezoneOffset() * 60 * 1000; // 분을 밀리초로 변환
+    // 한국 시간대 오프셋 (UTC+9 = -540분)
+    const koreaOffset = -9 * 60 * 60 * 1000;
+    // 한국 시간을 UTC로 변환
+    const utcTime = new Date(koreaTimeMs - localOffset + koreaOffset);
     return utcTime.toISOString();
   }
   
@@ -22,7 +38,9 @@ function koreaTimeToUTC(koreaTime) {
     }
     // 한국 시간 문자열을 Date로 파싱 후 UTC로 변환
     const date = new Date(koreaTime);
-    const utcTime = new Date(date.getTime() - (9 * 60 * 60 * 1000));
+    const localOffset = date.getTimezoneOffset() * 60 * 1000;
+    const koreaOffset = -9 * 60 * 60 * 1000;
+    const utcTime = new Date(date.getTime() - localOffset + koreaOffset);
     return utcTime.toISOString();
   }
   
@@ -164,23 +182,43 @@ class OrderModel {
       }
 
       // 날짜 형식 변환: 한국 시간을 UTC로 변환하여 저장
-      // 주의: orderData.requestedAt은 이미 한국 시간으로 생성되었을 수 있음
-      // Supabase에 저장할 때는 UTC로 변환해야 함
+      // 클라이언트에서 new Date()로 생성된 시간은 브라우저의 로컬 시간대(한국)입니다
+      // Supabase Table Editor에서 한국 시간으로 보이게 하려면,
+      // 한국 시간을 UTC로 변환하여 저장해야 합니다
       let requestedAt;
       if (orderData.requestedAt) {
         if (orderData.requestedAt instanceof Date) {
-          // Date 객체: 한국 시간으로 간주하고 UTC로 변환
-          requestedAt = koreaTimeToUTC(orderData.requestedAt);
+          // Date 객체: 브라우저의 로컬 시간대(한국)로 생성됨
+          // 한국 시간을 UTC로 변환 (9시간 빼기)
+          // 예: 한국 시간 23:34 → UTC 14:34
+          const koreaTime = orderData.requestedAt;
+          // 한국 시간대 오프셋 (UTC+9)
+          const koreaOffset = 9 * 60 * 60 * 1000;
+          // 한국 시간에서 9시간을 빼서 UTC로 변환
+          const utcTime = new Date(koreaTime.getTime() - koreaOffset);
+          requestedAt = utcTime.toISOString();
         } else if (typeof orderData.requestedAt === 'string') {
           // 문자열: 이미 UTC 형식이면 그대로, 아니면 변환
-          requestedAt = koreaTimeToUTC(orderData.requestedAt);
+          if (orderData.requestedAt.endsWith('Z') || orderData.requestedAt.includes('+00')) {
+            requestedAt = orderData.requestedAt;
+          } else {
+            const date = new Date(orderData.requestedAt);
+            const koreaOffset = 9 * 60 * 60 * 1000;
+            const utcTime = new Date(date.getTime() - koreaOffset);
+            requestedAt = utcTime.toISOString();
+          }
         } else {
-          requestedAt = new Date().toISOString();
+          const now = new Date();
+          const koreaOffset = 9 * 60 * 60 * 1000;
+          const utcTime = new Date(now.getTime() - koreaOffset);
+          requestedAt = utcTime.toISOString();
         }
       } else {
         // 현재 시간을 한국 시간으로 간주하고 UTC로 변환
         const now = new Date();
-        requestedAt = koreaTimeToUTC(now);
+        const koreaOffset = 9 * 60 * 60 * 1000;
+        const utcTime = new Date(now.getTime() - koreaOffset);
+        requestedAt = utcTime.toISOString();
       }
 
       // 주문 삽입
@@ -220,11 +258,11 @@ class OrderModel {
       // 메모가 있으면 삽입
       if (orderData.memos && Array.isArray(orderData.memos) && orderData.memos.length > 0) {
         const memosToInsert = orderData.memos.map(memo => {
-          const memoTimestamp = memo.timestamp instanceof Date
-            ? memo.timestamp.toISOString()
-            : (typeof memo.timestamp === 'string'
-              ? memo.timestamp
-              : new Date().toISOString());
+          const memoTimestamp = koreaTimeToUTC(
+            memo.timestamp instanceof Date 
+              ? memo.timestamp 
+              : (typeof memo.timestamp === 'string' ? new Date(memo.timestamp) : new Date())
+          );
 
           return {
             id: memo.id,
@@ -262,19 +300,25 @@ class OrderModel {
         updateFields.status = updateData.status;
       }
       if (updateData.acceptedAt !== undefined) {
-        updateFields.accepted_at = updateData.acceptedAt instanceof Date
-          ? updateData.acceptedAt.toISOString()
-          : updateData.acceptedAt;
+        updateFields.accepted_at = koreaTimeToUTC(
+          updateData.acceptedAt instanceof Date 
+            ? updateData.acceptedAt 
+            : new Date(updateData.acceptedAt)
+        );
       }
       if (updateData.inProgressAt !== undefined) {
-        updateFields.in_progress_at = updateData.inProgressAt instanceof Date
-          ? updateData.inProgressAt.toISOString()
-          : updateData.inProgressAt;
+        updateFields.in_progress_at = koreaTimeToUTC(
+          updateData.inProgressAt instanceof Date 
+            ? updateData.inProgressAt 
+            : new Date(updateData.inProgressAt)
+        );
       }
       if (updateData.completedAt !== undefined) {
-        updateFields.completed_at = updateData.completedAt instanceof Date
-          ? updateData.completedAt.toISOString()
-          : updateData.completedAt;
+        updateFields.completed_at = koreaTimeToUTC(
+          updateData.completedAt instanceof Date 
+            ? updateData.completedAt 
+            : new Date(updateData.completedAt)
+        );
       }
       if (updateData.assignedTo !== undefined) {
         updateFields.assigned_to = updateData.assignedTo || null;

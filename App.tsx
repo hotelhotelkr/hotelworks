@@ -2445,15 +2445,28 @@ const App: React.FC = () => {
           debugLog('📤 주문 브로드캐스트:', order.id, '| 방:', order.roomNo, '| 아이템:', order.itemName);
           
           try {
+            // 한국 시간을 UTC로 변환하여 전송
+            // order.requestedAt은 브라우저의 로컬 시간대(한국)로 생성됨
+            // Supabase Table Editor에서 한국 시간으로 보이게 하려면,
+            // 한국 시간을 UTC로 변환하여 전송해야 함
+            const koreaTimeToUTC = (date: Date): string => {
+              if (!date) return new Date().toISOString();
+              // 한국 시간대 오프셋 (UTC+9)
+              const koreaOffset = 9 * 60 * 60 * 1000;
+              // 한국 시간에서 9시간을 빼서 UTC로 변환
+              const utcTime = new Date(date.getTime() - koreaOffset);
+              return utcTime.toISOString();
+            };
+            
             const payload = {
               ...order,
-              requestedAt: order.requestedAt.toISOString(),
-              acceptedAt: order.acceptedAt?.toISOString(),
-              inProgressAt: order.inProgressAt?.toISOString(),
-              completedAt: order.completedAt?.toISOString(),
+              requestedAt: koreaTimeToUTC(order.requestedAt),
+              acceptedAt: order.acceptedAt ? koreaTimeToUTC(order.acceptedAt) : undefined,
+              inProgressAt: order.inProgressAt ? koreaTimeToUTC(order.inProgressAt) : undefined,
+              completedAt: order.completedAt ? koreaTimeToUTC(order.completedAt) : undefined,
               memos: order.memos.map(m => ({
                 ...m,
-                timestamp: m.timestamp.toISOString()
+                timestamp: koreaTimeToUTC(m.timestamp)
               }))
             };
             
