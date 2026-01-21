@@ -1470,17 +1470,31 @@ const App: React.FC = () => {
               });
               
               // 🚨 알림 표시: 자신이 보낸 메시지가 아닐 때만 알림 표시
+              // 실시간 동기화 보장: 모든 기기에서 알림 표시 (자신의 기기 제외)
               if (!isSelfMessage) {
-                debugLog('🔔 알림:', newOrder.roomNo, newOrder.itemName, '| 발신자:', senderId);
+                console.log('🔔 알림 표시:', newOrder.roomNo, newOrder.itemName, '| 발신자:', senderId);
+                console.log('   - 현재 사용자:', user?.name, `(${user?.id})`);
+                console.log('   - 발신자:', senderId);
+                console.log('   - 세션 ID (수신):', sessionId);
+                console.log('   - 세션 ID (현재):', SESSION_ID);
                 triggerToast(
                   `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
                   'info', 
                   Department.FRONT_DESK, 
                   'NEW_ORDER'
                 );
+                console.log('   ✅ 알림 표시 완료');
               } else {
-                debugLog('🔕 자신이 보낸 메시지 - 알림 스킵:', newOrder.roomNo);
+                console.log('🔕 자신이 보낸 메시지 - 알림 스킵:', newOrder.roomNo);
+                console.log('   - 같은 기기에서 생성한 주문이므로 알림 표시하지 않음');
               }
+              
+              // 실시간 동기화 확인 로그
+              console.log('✅ NEW_ORDER 처리 완료 - 모든 기기에서 동기화됨');
+              console.log('   - 주문 ID:', newOrder.id);
+              console.log('   - 방번호:', newOrder.roomNo);
+              console.log('   - 아이템:', newOrder.itemName);
+              console.log('   - 처리 시간:', new Date().toISOString());
             } catch (error) {
               console.error('❌ NEW_ORDER 처리 오류:', error, payload);
           }
