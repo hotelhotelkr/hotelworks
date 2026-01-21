@@ -1570,9 +1570,17 @@ const App: React.FC = () => {
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 
                 // 🚨 토스트 알림 강제 표시 (최우선 목표)
+                // 스크린샷 형식과 일치: "1033호(#20260110_21) 신규 요청 : 런드리 봉투 (수량: 1)"
                 try {
-                  const toastMessage = `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`;
+                  // 주문 ID 추출 (예: #20260110_21)
+                  const orderIdPart = newOrder.id ? `(#${newOrder.id.split('_')[1] || newOrder.id.split('_').slice(1).join('_') || newOrder.id})` : '';
+                  // 항상 수량 표시 (수량 1이어도 표시)
+                  const toastMessage = `${newOrder.roomNo}호${orderIdPart} 신규 요청 : ${newOrder.itemName} (수량: ${newOrder.quantity})`;
                   console.log('📤 triggerToast 호출:', toastMessage);
+                  console.log('   - 주문 ID:', newOrder.id);
+                  console.log('   - 방번호:', newOrder.roomNo);
+                  console.log('   - 아이템:', newOrder.itemName);
+                  console.log('   - 수량:', newOrder.quantity);
                   
                   triggerToast(
                     toastMessage, 
