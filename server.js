@@ -149,7 +149,7 @@ io.on('connection', (socket) => {
           acceptedAt: payload.acceptedAt ? (typeof payload.acceptedAt === 'string' ? payload.acceptedAt : new Date(payload.acceptedAt).toISOString()) : undefined,
           inProgressAt: payload.inProgressAt ? (typeof payload.inProgressAt === 'string' ? payload.inProgressAt : new Date(payload.inProgressAt).toISOString()) : undefined,
           completedAt: payload.completedAt ? (typeof payload.completedAt === 'string' ? payload.completedAt : new Date(payload.completedAt).toISOString()) : undefined,
-          memos: payload.memos ? payload.memos.map((memo: any) => ({
+          memos: payload.memos ? payload.memos.map((memo) => ({
             ...memo,
             timestamp: memo.timestamp ? (typeof memo.timestamp === 'string' ? memo.timestamp : new Date(memo.timestamp).toISOString()) : new Date().toISOString()
           })) : []
