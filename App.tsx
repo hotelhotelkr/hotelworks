@@ -1451,20 +1451,23 @@ const App: React.FC = () => {
               // - senderId가 다르면 → 항상 알림 표시 (다른 사용자)
               // - sessionId가 같고 senderId가 같으면 → 알림 스킵 (자신의 기기)
               // 중요: 모든 의심스러운 경우에는 알림 표시 (안전한 선택)
-              const isSelfMessage = Boolean(
-                user && 
-                senderId && 
-                senderId === user.id && 
-                sessionId && 
-                sessionId !== '' &&
-                sessionId === SESSION_ID &&
-                SESSION_ID && 
-                SESSION_ID !== ''
-              );
               
-              // 🚨 추가 안전장치: sessionId가 없으면 절대 자신의 메시지로 판단하지 않음
-              if (!sessionId || sessionId === '' || !SESSION_ID || SESSION_ID === '') {
-                console.log('⚠️ sessionId 없음 - 안전을 위해 알림 표시 (자신의 메시지로 판단하지 않음)');
+              // 🚨 sessionId가 없으면 절대 자신의 메시지로 판단하지 않음 (안전장치)
+              let isSelfMessage = false;
+              if (user && senderId && senderId === user.id) {
+                // senderId가 같아도 sessionId가 없으면 다른 기기로 간주
+                if (sessionId && sessionId !== '' && SESSION_ID && SESSION_ID !== '' && sessionId === SESSION_ID) {
+                  isSelfMessage = true;
+                  console.log('✅ 자신의 메시지 확인: sessionId와 senderId가 모두 일치');
+                } else {
+                  console.log('⚠️ sessionId 불일치 또는 없음 - 안전을 위해 알림 표시');
+                  console.log('   - sessionId (수신):', sessionId || 'null/undefined');
+                  console.log('   - sessionId (현재):', SESSION_ID || 'null/undefined');
+                  isSelfMessage = false;
+                }
+              } else {
+                console.log('✅ 다른 사용자의 메시지 - 알림 표시');
+                isSelfMessage = false;
               }
               
               // 🚨 항상 출력 (알림 문제 디버깅용)
