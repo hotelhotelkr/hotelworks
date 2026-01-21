@@ -1225,20 +1225,23 @@ const App: React.FC = () => {
         
         const user = currentUserRef.current;
         
-        // WebSocket 메시지 수신 로그 (디버그 모드에서만)
-        debugLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        debugLog('📥 WebSocket 메시지 수신:', type);
-        debugLog('   발신자:', senderId, '| 세션:', sessionId);
-        debugLog('   로그인:', user ? `${user.name} (${user.dept})` : '로그아웃');
+        // WebSocket 메시지 수신 로그 (항상 출력)
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📥 WebSocket 메시지 수신:', type);
+        console.log('   발신자:', senderId, '| 세션:', sessionId);
+        console.log('   현재 세션:', SESSION_ID);
+        console.log('   로그인:', user ? `${user.name} (${user.dept})` : '로그아웃');
+        console.log('   수신 시간:', new Date().toISOString());
         
         if (type === 'STATUS_UPDATE') {
-          debugLog('   주문:', payload?.id, '| 상태:', payload?.status, '| 방:', payload?.roomNo);
+          console.log('   주문:', payload?.id, '| 상태:', payload?.status, '| 방:', payload?.roomNo);
         } else if (type === 'NEW_ORDER') {
-          debugLog('   주문:', payload?.id, '| 방:', payload?.roomNo, '| 아이템:', payload?.itemName, '| 수량:', payload?.quantity);
+          console.log('   주문:', payload?.id, '| 방:', payload?.roomNo, '| 아이템:', payload?.itemName, '| 수량:', payload?.quantity);
         } else if (type === 'NEW_MEMO') {
-          debugLog('   주문:', payload?.orderId, '| 메모:', payload?.memo?.text);
+          console.log('   주문:', payload?.orderId, '| 메모:', payload?.memo?.text);
         }
-        debugLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('   전체 메시지:', JSON.stringify(data, null, 2));
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         // currentUserRef를 통해 최신 로그인 상태 확인
         const isLoggedIn = currentUserRef.current !== null;
@@ -2398,6 +2401,19 @@ const App: React.FC = () => {
           return;
         }
 
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📤 주문 전송 시작');
+        console.log('   주문 ID:', order.id);
+        console.log('   방번호:', order.roomNo);
+        console.log('   아이템:', order.itemName);
+        console.log('   수량:', order.quantity);
+        console.log('   발신자:', currentUser.id, `(${currentUser.name})`);
+        console.log('   세션 ID:', SESSION_ID);
+        console.log('   Socket ID:', socket.id);
+        console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+        console.log('   WebSocket URL:', wsUrl);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
         if (socket.connected) {
           debugLog('📤 주문 브로드캐스트:', order.id, '| 방:', order.roomNo, '| 아이템:', order.itemName);
           
@@ -2422,8 +2438,11 @@ const App: React.FC = () => {
               timestamp: new Date().toISOString()
             };
             
+            console.log('📨 전송할 메시지:', JSON.stringify(message, null, 2));
+            
             // 메시지 전송 (실시간 동기화)
             socket.emit(SYNC_CHANNEL, message);
+            console.log('✅ 브로드캐스트 전송 완료:', order.id);
             debugLog('✅ 브로드캐스트 완료:', order.id);
             
             // 전송 확인을 위한 짧은 딜레이 후 연결 상태 확인
@@ -2444,11 +2463,18 @@ const App: React.FC = () => {
             saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
           }
         } else {
-          console.warn('⚠️ WebSocket 연결되지 않음, 오프라인 큐에 저장:', order.id, order.roomNo);
-          console.warn('   - Socket ID:', socket.id);
-          console.warn('   - 연결 상태:', socket.connected);
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.error('❌ WebSocket 연결되지 않음!');
+          console.error('   주문 ID:', order.id);
+          console.error('   방번호:', order.roomNo);
+          console.error('   Socket ID:', socket.id);
+          console.error('   연결 상태:', socket.connected);
+          console.error('   WebSocket URL:', wsUrl);
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          
           // 오프라인 큐에 저장
           saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+          console.warn('💾 오프라인 큐에 저장됨. 연결 후 자동 전송됩니다.');
           
           // 연결 시도
           if (!socket.connected) {
