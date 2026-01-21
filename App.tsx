@@ -1431,14 +1431,18 @@ const App: React.FC = () => {
                 return newOrders;
               });
               
-              // 🚨 알림 표시: 모든 메시지에 대해 WebSocket 알림 표시
-              debugLog('🔔 알림:', newOrder.roomNo, newOrder.itemName, '| 발신자:', senderId);
-              triggerToast(
-                `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
-                'info', 
-                Department.FRONT_DESK, 
-                'NEW_ORDER'
-              );
+              // 🚨 알림 표시: 자신이 보낸 메시지가 아닐 때만 알림 표시
+              if (!isSelfMessage) {
+                debugLog('🔔 알림:', newOrder.roomNo, newOrder.itemName, '| 발신자:', senderId);
+                triggerToast(
+                  `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
+                  'info', 
+                  Department.FRONT_DESK, 
+                  'NEW_ORDER'
+                );
+              } else {
+                debugLog('🔕 자신이 보낸 메시지 - 알림 스킵:', newOrder.roomNo);
+              }
             } catch (error) {
               console.error('❌ NEW_ORDER 처리 오류:', error, payload);
           }

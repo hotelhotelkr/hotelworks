@@ -155,21 +155,31 @@ io.on('connection', (socket) => {
           })) : []
         };
         
-        await OrderModel.create(orderData);
+        console.log('   💾 DB 저장 시도:', payload.id);
+        const savedOrder = await OrderModel.create(orderData);
         console.log('   💾 DB 저장 완료 (NEW_ORDER):', payload.id);
+        console.log('   💾 저장된 주문:', savedOrder ? '성공' : '실패');
       } else if (type === 'STATUS_UPDATE') {
         const updateData = {
           status: payload.status,
-          acceptedAt: payload.acceptedAt ? new Date(payload.acceptedAt) : undefined,
-          inProgressAt: payload.inProgressAt ? new Date(payload.inProgressAt) : undefined,
-          completedAt: payload.completedAt ? new Date(payload.completedAt) : undefined,
+          acceptedAt: payload.acceptedAt ? (typeof payload.acceptedAt === 'string' ? payload.acceptedAt : new Date(payload.acceptedAt).toISOString()) : undefined,
+          inProgressAt: payload.inProgressAt ? (typeof payload.inProgressAt === 'string' ? payload.inProgressAt : new Date(payload.inProgressAt).toISOString()) : undefined,
+          completedAt: payload.completedAt ? (typeof payload.completedAt === 'string' ? payload.completedAt : new Date(payload.completedAt).toISOString()) : undefined,
           assignedTo: payload.assignedTo
         };
+        console.log('   💾 DB 업데이트 시도:', payload.id);
         await OrderModel.update(payload.id, updateData);
-        console.log('   💾 DB 저장 완료 (STATUS_UPDATE)');
+        console.log('   💾 DB 저장 완료 (STATUS_UPDATE):', payload.id);
+      } else if (type === 'NEW_MEMO') {
+        // 메모 저장
+        console.log('   💾 메모 저장 시도:', payload.orderId);
+        // 메모는 별도로 저장 (OrderModel에서 처리하지 않음)
+        // 필요시 여기서 직접 저장
       }
     } catch (error) {
       console.error('   ❌ DB 저장 오류:', error.message);
+      console.error('   ❌ 오류 상세:', error);
+      // DB 저장 실패해도 브로드캐스트는 계속 진행
     }
     
     const message = {
