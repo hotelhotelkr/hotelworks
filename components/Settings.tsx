@@ -205,6 +205,22 @@ const Settings: React.FC<SettingsProps> = ({
   // WebSocket URL 가져오기
   useEffect(() => {
     const getWebSocketURL = (): string => {
+      if (typeof window !== 'undefined' && window.location) {
+        const host = window.location.hostname;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        
+        // 프로덕션 도메인: hotelworks.kr
+        if (host === 'hotelworks.kr' || host === 'www.hotelworks.kr') {
+          return `${protocol}//${host}`;
+        }
+        
+        // 개발 환경
+        if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+          return `${protocol === 'wss:' ? 'ws:' : 'ws:'}//${host}:3001`;
+        }
+      }
+      
+      // 환경 변수 확인
       try {
         const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
         if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
@@ -212,17 +228,7 @@ const Settings: React.FC<SettingsProps> = ({
         }
       } catch (e) {}
       
-      if (typeof window !== 'undefined' && window.location) {
-        const host = window.location.hostname;
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        const port = window.location.port;
-        // WebSocket 서버는 항상 3001 포트에서 실행됨
-        // 프론트엔드가 3000 포트에서 실행되면 WebSocket은 3001 포트로 연결
-        const wsPort = port === '3000' ? '3001' : (port || '3001');
-        return `${protocol}//${host}:${wsPort}`;
-      }
-      
-      return 'http://localhost:3001';
+      return 'ws://localhost:3001';
     };
 
     setWsUrl(getWebSocketURL());

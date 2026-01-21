@@ -1,4 +1,4 @@
-import supabase from './db.js';
+import supabase from './supabase.js';
 
 /**
  * 데이터베이스에 초기 사용자 데이터 삽입

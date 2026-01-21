@@ -4,8 +4,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Supabase 클라이언트 설정
-const supabaseUrl = process.env.SUPABASE_URL || 'https://pnmkclrwmbmzrocyygwq.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_WdzcqWms_a8Cq623qNPWwQ_okBbp28Q';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Supabase 환경 변수가 설정되지 않았습니다.');
@@ -44,5 +44,3 @@ if (supabaseUrl && supabaseKey) {
 }
 
 export default supabase;
-
-

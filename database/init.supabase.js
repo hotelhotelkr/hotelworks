@@ -1,5 +1,5 @@
-import supabase from './db.js';
-import seedUsers from './seed.js';
+import supabase from './supabase.js';
+import seedUsers from './seed.supabase.js';
 
 async function initDatabase() {
   try {

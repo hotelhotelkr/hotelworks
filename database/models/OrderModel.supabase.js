@@ -1,4 +1,4 @@
-import supabase from '../db.js';
+import supabase from '../supabase.js';
 
 class OrderModel {
   // 모든 주문 조회

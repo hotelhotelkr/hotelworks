@@ -72,34 +72,30 @@ const SESSION_ID = `session_${Date.now()}_${Math.random().toString(36).substr(2,
 /**
  * WebSocket 서버 URL 동적 감지
  * - 로컬 환경(localhost, IP): 자동으로 포트 3001 사용
- * - 프로덕션: localStorage 또는 환경 변수에서 URL 가져옴
+ * - 프로덕션(hotelworks.kr): 같은 도메인 사용 (wss://hotelworks.kr)
  * - PC와 모바일 모두 같은 서버에 연결
  */
 const getWebSocketURL = (): string => {
-  // 🚨 개발 환경: localStorage 무시하고 자동 감지 우선
   if (typeof window !== 'undefined' && window.location) {
     const host = window.location.hostname;
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
-    // localhost 또는 로컬 IP 주소인 경우 무조건 로컬 서버 사용
+    // 🏨 프로덕션 도메인: hotelworks.kr
+    if (host === 'hotelworks.kr' || host === 'www.hotelworks.kr') {
+      const wsUrl = `${protocol}//${host}`;
+      console.log('🔌 프로덕션 WebSocket URL:', wsUrl);
+      return wsUrl;
+    }
+    
+    // 🚨 개발 환경: localhost 또는 로컬 IP 주소인 경우
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
-      const wsUrl = `${protocol}//${host}:8000`;
+      const wsUrl = `${protocol === 'wss:' ? 'ws:' : 'ws:'}//${host}:3001`;
       console.log('🔌 로컬 WebSocket URL:', wsUrl);
       return wsUrl;
     }
   }
   
-  // 🚨 프로덕션 환경: localStorage 또는 환경 변수 사용
-  try {
-    const savedUrl = localStorage.getItem('hotelflow_ws_url');
-    if (savedUrl && savedUrl.trim() !== '') {
-      console.log('🔌 저장된 WebSocket URL:', savedUrl.trim());
-      return savedUrl.trim();
-    }
-  } catch (e) {
-    // localStorage 접근 실패 시 무시
-  }
-  
+  // 🚨 환경 변수 우선 사용
   try {
     const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
     if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
@@ -110,8 +106,20 @@ const getWebSocketURL = (): string => {
     // 환경 변수 접근 실패 시 무시
   }
   
-  console.log('🔌 기본 WebSocket URL: http://localhost:8000');
-  return 'http://localhost:8000';
+  // 🚨 localStorage에 저장된 URL 사용
+  try {
+    const savedUrl = localStorage.getItem('hotelflow_ws_url');
+    if (savedUrl && savedUrl.trim() !== '') {
+      console.log('🔌 저장된 WebSocket URL:', savedUrl.trim());
+      return savedUrl.trim();
+    }
+  } catch (e) {
+    // localStorage 접근 실패 시 무시
+  }
+  
+  // 기본값: 로컬 개발 서버
+  console.log('🔌 기본 WebSocket URL: ws://localhost:3001');
+  return 'ws://localhost:3001';
 };
 
 /**

@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import OrderModel from './database/models/OrderModel.js';
 import apiRoutes from './database/routes.js';
-import pool from './database/db.js';
+import supabase from './database/db.js';
 import initDatabase from './database/init.js';
 
 dotenv.config();
@@ -60,9 +60,11 @@ app.get('/health', async (req, res) => {
   let dbError = null;
   
   try {
-    const connection = await pool.getConnection();
-    await connection.ping();
-    connection.release();
+    const { error } = await supabase
+      .from('orders')
+      .select('count', { count: 'exact', head: true });
+    
+    if (error) throw error;
     dbStatus = 'connected';
   } catch (error) {
     dbStatus = 'disconnected';
@@ -79,10 +81,9 @@ app.get('/health', async (req, res) => {
       status: dbStatus,
       error: dbError,
       config: {
-        host: process.env.DB_HOST || 'localhost',
-        database: process.env.DB_NAME || 'hotelworks',
-        user: process.env.DB_USER || 'root',
-        hasConfig: !!(process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASSWORD)
+        url: process.env.SUPABASE_URL ? '설정됨' : '미설정',
+        key: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY ? '설정됨' : '미설정',
+        hasConfig: !!(process.env.SUPABASE_URL && (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY))
       }
     }
   });

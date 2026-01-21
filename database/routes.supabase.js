@@ -1,7 +1,7 @@
 import express from 'express';
-import supabase from './db.js';
-import OrderModel from './models/OrderModel.js';
-import userRoutes from './routes-users.js';
+import supabase from './supabase.js';
+import OrderModel from './models/OrderModel.supabase.js';
+import userRoutes from './routes-users.supabase.js';
 
 const router = express.Router();
 
