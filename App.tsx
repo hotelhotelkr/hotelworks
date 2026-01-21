@@ -576,24 +576,29 @@ const App: React.FC = () => {
   const syncOfflineQueue = useCallback(() => {
     const socket = socketRef.current;
     if (!socket || !socket.connected) {
-      debugLog('⚠️ WebSocket 연결되지 않음, 오프라인 큐 동기화 불가');
+      console.warn('⚠️ WebSocket 연결되지 않음, 오프라인 큐 동기화 불가');
+      console.warn('   Socket 존재:', !!socket);
+      console.warn('   연결 상태:', socket?.connected);
       return;
     }
 
+    console.log('🔄 오프라인 큐 동기화 시작');
+    
     try {
       const saved = localStorage.getItem(OFFLINE_QUEUE_KEY);
       if (!saved) {
-        debugLog('📭 오프라인 큐가 비어있음');
+        console.log('📭 오프라인 큐가 비어있음');
         return;
       }
 
       const queue = JSON.parse(saved);
       if (queue.length === 0) {
-        debugLog('📭 오프라인 큐가 비어있음');
+        console.log('📭 오프라인 큐가 비어있음');
         return;
       }
 
-      debugLog(`🔄 오프라인 큐 동기화 시작: ${queue.length}개 메시지`);
+      console.log(`🔄 오프라인 큐 동기화 시작: ${queue.length}개 메시지`);
+      console.log('   큐 내용:', JSON.stringify(queue, null, 2));
       
       // 큐에 저장된 모든 메시지를 전송
       queue.forEach((message: any, index: number) => {
@@ -606,23 +611,21 @@ const App: React.FC = () => {
             timestamp: message.timestamp || new Date().toISOString()
           };
           
-          const wsMessageLogging = localStorage.getItem('hotelflow_ws_message_logging') === 'true';
-          if (wsMessageLogging) {
-            debugLog(`📤 오프라인 큐 메시지 전송 [${index + 1}/${queue.length}]:`, wsMessage.type);
-          }
+          console.log(`📤 오프라인 큐 메시지 전송 [${index + 1}/${queue.length}]:`, wsMessage.type);
+          console.log('   메시지 내용:', JSON.stringify(wsMessage, null, 2));
           
           socket.emit(SYNC_CHANNEL, wsMessage);
-          debugLog(`✅ 오프라인 메시지 전송 (${index + 1}/${queue.length}):`, message.type, message.payload.id || message.payload.orderId);
+          console.log(`✅ 오프라인 메시지 전송 완료 (${index + 1}/${queue.length}):`, message.type, message.payload.id || message.payload.orderId);
         } catch (error) {
-          debugError(`❌ 오프라인 메시지 전송 실패 (${index + 1}/${queue.length}):`, error);
+          console.error(`❌ 오프라인 메시지 전송 실패 (${index + 1}/${queue.length}):`, error);
         }
       });
 
       // 전송 완료 후 큐 비우기
       localStorage.removeItem(OFFLINE_QUEUE_KEY);
-      debugLog('✅ 오프라인 큐 동기화 완료, 큐 비움');
+      console.log('✅ 오프라인 큐 동기화 완료, 큐 비움');
     } catch (e) {
-      debugError('❌ 오프라인 큐 동기화 실패:', e);
+      console.error('❌ 오프라인 큐 동기화 실패:', e);
     }
   }, []);
 
@@ -2467,6 +2470,8 @@ const App: React.FC = () => {
             // 메시지 전송 (실시간 동기화)
             socket.emit(SYNC_CHANNEL, message);
             console.log('✅ 브로드캐스트 전송 완료:', order.id);
+            console.log('   전송 시간:', new Date().toISOString());
+            console.log('   Socket ID:', socket.id);
             debugLog('✅ 브로드캐스트 완료:', order.id);
             
             // 전송 확인을 위한 짧은 딜레이 후 연결 상태 확인
@@ -2474,6 +2479,9 @@ const App: React.FC = () => {
               if (!socket.connected) {
                 console.error('❌ 메시지 전송 후 WebSocket 연결 끊김 감지');
                 console.error('   - 재연결 시도 필요');
+                console.error('   - 오프라인 큐에 저장됨');
+                // 오프라인 큐에 저장 (전송 실패 가능성)
+                saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
               } else {
                 console.log('✅ 메시지 전송 후 WebSocket 연결 유지 확인');
               }
@@ -2500,10 +2508,22 @@ const App: React.FC = () => {
           saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
           console.warn('💾 오프라인 큐에 저장됨. 연결 후 자동 전송됩니다.');
           
-          // 연결 시도
-          if (!socket.connected) {
-            console.log('🔄 WebSocket 재연결 시도');
+          // 연결 시도 (강제 재연결)
+          console.log('🔄 WebSocket 재연결 시도');
+          try {
             socket.connect();
+            // 재연결 대기 후 다시 시도
+            setTimeout(() => {
+              if (socket.connected) {
+                console.log('✅ 재연결 성공, 주문 재전송 시도');
+                // 재전송 로직은 syncOfflineQueue에서 처리됨
+                syncOfflineQueue();
+              } else {
+                console.error('❌ 재연결 실패, 오프라인 큐에 유지');
+              }
+            }, 2000);
+          } catch (reconnectError) {
+            console.error('❌ 재연결 시도 실패:', reconnectError);
           }
         }
       }, 0);
