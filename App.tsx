@@ -1489,7 +1489,16 @@ const App: React.FC = () => {
               // 실시간 동기화 보장: 모든 기기에서 알림 표시 (자신의 기기 제외)
               // 중요: sessionId가 없거나 다른 경우 항상 알림 표시 (다른 기기/사용자로 간주)
               if (!isSelfMessage) {
-                console.log('🔔 알림 표시 시작:', newOrder.roomNo, newOrder.itemName);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('🔔 알림 표시 시작');
+                console.log('   주문:', newOrder.roomNo, newOrder.itemName);
+                console.log('   현재 사용자:', user?.name, `(${user?.id})`);
+                console.log('   발신자:', senderId);
+                console.log('   세션 ID (수신):', sessionId || 'null/undefined');
+                console.log('   세션 ID (현재):', SESSION_ID);
+                console.log('   같은 기기:', isSelfMessage);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                
                 try {
                   triggerToast(
                     `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
@@ -1500,8 +1509,10 @@ const App: React.FC = () => {
                     newOrder.roomNo
                   );
                   console.log('✅ triggerToast 호출 완료');
+                  console.log('✅ 알림 표시 완료');
                 } catch (toastError) {
                   console.error('❌ triggerToast 호출 실패:', toastError);
+                  console.error('   - 에러 상세:', toastError);
                 }
               } else {
                 console.log('⏭️ 알림 스킵 (자신의 메시지):', {
@@ -1512,6 +1523,8 @@ const App: React.FC = () => {
                   sessionId_current: SESSION_ID
                 });
               }
+              
+              console.log('✅ NEW_ORDER 처리 완료');
             } catch (error) {
               console.error('❌ NEW_ORDER 처리 오류:', error, payload);
           }
