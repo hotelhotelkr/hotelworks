@@ -71,54 +71,58 @@ const SESSION_ID = `session_${Date.now()}_${Math.random().toString(36).substr(2,
 
 /**
  * WebSocket 서버 URL 동적 감지
- * - 로컬 환경(localhost, IP): 자동으로 포트 3001 사용
- * - 프로덕션(hotelworks.kr): 같은 도메인 사용 (wss://hotelworks.kr)
+ * - 환경 변수(VITE_WS_SERVER_URL) 최우선 사용
+ * - localStorage 저장된 URL 사용
+ * - 프로덕션(hotelworks.kr): Render 서버 사용 (wss://hotelworks-websocket.onrender.com)
+ * - 로컬 환경: 자동으로 포트 3001 사용
  * - PC와 모바일 모두 같은 서버에 연결
  */
 const getWebSocketURL = (): string => {
-  if (typeof window !== 'undefined' && window.location) {
-    const host = window.location.hostname;
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    
-    // 🏨 프로덕션 도메인: hotelworks.kr
-    if (host === 'hotelworks.kr' || host === 'www.hotelworks.kr') {
-      const wsUrl = `${protocol}//${host}`;
-      console.log('🔌 프로덕션 WebSocket URL:', wsUrl);
-      return wsUrl;
-    }
-    
-    // 🚨 개발 환경: localhost 또는 로컬 IP 주소인 경우
-    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
-      const wsUrl = `${protocol === 'wss:' ? 'ws:' : 'ws:'}//${host}:3001`;
-      console.log('🔌 로컬 WebSocket URL:', wsUrl);
-      return wsUrl;
-    }
-  }
-  
-  // 🚨 환경 변수 우선 사용
+  // 🚨 1순위: 환경 변수 우선 사용 (Vercel에서 설정한 값)
   try {
     const envUrl = (import.meta.env as any).VITE_WS_SERVER_URL;
     if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
-      console.log('🔌 환경 변수 WebSocket URL:', envUrl);
-      return envUrl;
+      console.log('🔌 [1순위] 환경 변수 WebSocket URL:', envUrl);
+      return envUrl.trim();
     }
   } catch (e) {
     // 환경 변수 접근 실패 시 무시
   }
   
-  // 🚨 localStorage에 저장된 URL 사용
+  // 🚨 2순위: localStorage에 저장된 URL 사용 (사용자가 설정한 값)
   try {
     const savedUrl = localStorage.getItem('hotelflow_ws_url');
     if (savedUrl && savedUrl.trim() !== '') {
-      console.log('🔌 저장된 WebSocket URL:', savedUrl.trim());
+      console.log('🔌 [2순위] 저장된 WebSocket URL:', savedUrl.trim());
       return savedUrl.trim();
     }
   } catch (e) {
     // localStorage 접근 실패 시 무시
   }
   
-  // 기본값: 로컬 개발 서버
-  console.log('🔌 기본 WebSocket URL: ws://localhost:3001');
+  // 🚨 3순위: 프로덕션 도메인 감지
+  if (typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
+    // 🏨 프로덕션 도메인: hotelworks.kr → Render 서버 사용
+    if (host === 'hotelworks.kr' || host === 'www.hotelworks.kr') {
+      // Render 서버 URL 사용 (환경 변수가 없을 때)
+      const renderUrl = 'wss://hotelworks-websocket.onrender.com';
+      console.log('🔌 [3순위] 프로덕션 WebSocket URL (Render):', renderUrl);
+      return renderUrl;
+    }
+    
+    // 🚨 개발 환경: localhost 또는 로컬 IP 주소인 경우
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+      const wsUrl = `${protocol === 'wss:' ? 'ws:' : 'ws:'}//${host}:3001`;
+      console.log('🔌 [3순위] 로컬 WebSocket URL:', wsUrl);
+      return wsUrl;
+    }
+  }
+  
+  // 🚨 기본값: 로컬 개발 서버
+  console.log('🔌 [기본값] 기본 WebSocket URL: ws://localhost:3001');
   return 'ws://localhost:3001';
 };
 
