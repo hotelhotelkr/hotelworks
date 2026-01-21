@@ -1605,15 +1605,19 @@ const App: React.FC = () => {
                   console.error('   - 에러 스택:', (toastError as Error).stack);
                   // 에러 발생 시에도 재시도
                   try {
+                    // 주문 ID 추출 (예: #20260110_21)
+                    const orderIdPart = newOrder.id ? `(#${newOrder.id.split('_')[1] || newOrder.id.split('_').slice(1).join('_') || newOrder.id})` : '';
+                    // 항상 수량 표시 (수량 1이어도 표시)
+                    const retryMessage = `${newOrder.roomNo}호${orderIdPart} 신규 요청 : ${newOrder.itemName} (수량: ${newOrder.quantity})`;
                     triggerToast(
-                      `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
+                      retryMessage, 
                       'info', 
                       Department.FRONT_DESK, 
                       'NEW_ORDER',
                       newOrder.id,
                       newOrder.roomNo
                     );
-                    console.log('✅ 재시도 성공');
+                    console.log('✅ 재시도 성공:', retryMessage);
                   } catch (retryError) {
                     console.error('❌ 재시도 실패:', retryError);
                   }
