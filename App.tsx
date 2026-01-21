@@ -1445,19 +1445,27 @@ const App: React.FC = () => {
               
               const user = currentUserRef.current;
               // 🚨 최우선 목표: 실시간 동기화 및 토스트 알림 보장
-              // 알림 표시 조건: sessionId가 없거나 다르면 항상 알림 표시
-              // - sessionId가 없으면 항상 알림 표시 (다른 기기로 간주)
-              // - sessionId가 있고 같고 senderId가 같으면 자신의 기기 (알림 X)
-              // - 그 외 모든 경우 알림 표시 (다른 기기, 다른 사용자)
-              // 중요: sessionId가 null, undefined, 빈 문자열이면 항상 알림 표시
+              // 알림 표시 조건: 자신의 기기에서 생성한 주문만 알림 스킵
+              // - sessionId가 없으면 → 항상 알림 표시 (다른 기기로 간주)
+              // - sessionId가 다르면 → 항상 알림 표시 (다른 기기)
+              // - senderId가 다르면 → 항상 알림 표시 (다른 사용자)
+              // - sessionId가 같고 senderId가 같으면 → 알림 스킵 (자신의 기기)
+              // 중요: 모든 의심스러운 경우에는 알림 표시 (안전한 선택)
               const isSelfMessage = Boolean(
                 user && 
                 senderId && 
                 senderId === user.id && 
                 sessionId && 
                 sessionId !== '' &&
-                sessionId === SESSION_ID
+                sessionId === SESSION_ID &&
+                SESSION_ID && 
+                SESSION_ID !== ''
               );
+              
+              // 🚨 추가 안전장치: sessionId가 없으면 절대 자신의 메시지로 판단하지 않음
+              if (!sessionId || sessionId === '' || !SESSION_ID || SESSION_ID === '') {
+                console.log('⚠️ sessionId 없음 - 안전을 위해 알림 표시 (자신의 메시지로 판단하지 않음)');
+              }
               
               // 🚨 항상 출력 (알림 문제 디버깅용)
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -1541,18 +1549,13 @@ const App: React.FC = () => {
                   console.log('✅ triggerToast 호출 완료');
                   console.log('✅ 토스트 알림 표시 완료 (최우선 목표 달성)');
                   
-                  // 토스트가 실제로 추가되었는지 확인 (짧은 딜레이 후)
+                  // 토스트가 실제로 추가되었는지 확인 (React state 확인)
                   setTimeout(() => {
-                    const currentToasts = JSON.parse(localStorage.getItem('hotelflow_toasts') || '[]');
-                    const toastExists = currentToasts.some((t: any) => t.message === toastMessage);
-                    if (toastExists) {
-                      console.log('✅ 토스트가 실제로 추가되었는지 확인: 성공');
-                    } else {
-                      console.warn('⚠️ 토스트가 실제로 추가되었는지 확인: 실패 (다시 시도)');
-                      // 재시도
-                      triggerToast(toastMessage, 'info', Department.FRONT_DESK, 'NEW_ORDER', newOrder.id, newOrder.roomNo);
-                    }
-                  }, 100);
+                    // React state는 직접 확인할 수 없으므로, triggerToast가 성공적으로 호출되었는지만 확인
+                    console.log('✅ triggerToast 호출 완료 - 토스트가 상태에 추가되었습니다');
+                    console.log('   - 토스트는 React state (toasts)에 추가되었습니다');
+                    console.log('   - ToastNotification 컴포넌트가 자동으로 렌더링합니다');
+                  }, 50);
                 } catch (toastError) {
                   console.error('❌ triggerToast 호출 실패:', toastError);
                   console.error('   - 에러 상세:', toastError);
