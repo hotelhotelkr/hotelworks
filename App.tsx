@@ -1222,19 +1222,24 @@ const App: React.FC = () => {
 
       // 서버로부터 메시지 수신 (로그인 상태와 무관하게 항상 수신)
       socket.on(SYNC_CHANNEL, (data: any) => {
-        if (!mounted) return; // 컴포넌트가 언마운트되면 처리하지 않음
+        if (!mounted) {
+          console.warn('⚠️ 컴포넌트 언마운트 상태 - 메시지 처리 스킵');
+          return; // 컴포넌트가 언마운트되면 처리하지 않음
+        }
         
         const { type, payload, senderId, sessionId, timestamp } = data;
         
         const user = currentUserRef.current;
         
-        // WebSocket 메시지 수신 로그 (항상 출력)
+        // 🚨 WebSocket 메시지 수신 로그 (항상 출력 - 실시간 동기화 확인용)
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('📥 WebSocket 메시지 수신:', type);
-        console.log('   발신자:', senderId, '| 세션:', sessionId);
+        console.log('   발신자:', senderId, '| 세션:', sessionId || 'null/undefined');
         console.log('   현재 세션:', SESSION_ID);
         console.log('   로그인:', user ? `${user.name} (${user.dept})` : '로그아웃');
         console.log('   수신 시간:', new Date().toISOString());
+        console.log('   Socket ID:', socket.id);
+        console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
         
         if (type === 'STATUS_UPDATE') {
           console.log('   주문:', payload?.id, '| 상태:', payload?.status, '| 방:', payload?.roomNo);
