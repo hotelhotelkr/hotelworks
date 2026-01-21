@@ -1231,25 +1231,8 @@ const App: React.FC = () => {
         
         const user = currentUserRef.current;
         
-        // 🚨 WebSocket 메시지 수신 로그 (항상 출력 - 실시간 동기화 확인용)
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('📥 WebSocket 메시지 수신:', type);
-        console.log('   발신자:', senderId, '| 세션:', sessionId || 'null/undefined');
-        console.log('   현재 세션:', SESSION_ID);
-        console.log('   로그인:', user ? `${user.name} (${user.dept})` : '로그아웃');
-        console.log('   수신 시간:', new Date().toISOString());
-        console.log('   Socket ID:', socket.id);
-        console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
-        
-        if (type === 'STATUS_UPDATE') {
-          console.log('   주문:', payload?.id, '| 상태:', payload?.status, '| 방:', payload?.roomNo);
-        } else if (type === 'NEW_ORDER') {
-          console.log('   주문:', payload?.id, '| 방:', payload?.roomNo, '| 아이템:', payload?.itemName, '| 수량:', payload?.quantity);
-        } else if (type === 'NEW_MEMO') {
-          console.log('   주문:', payload?.orderId, '| 메모:', payload?.memo?.text);
-        }
-        console.log('   전체 메시지:', JSON.stringify(data, null, 2));
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        // 🚨 간소화된 로그 (성능 최적화)
+        debugLog('📥 메시지 수신:', type, '발신자:', senderId, '세션:', sessionId || 'null');
         
         // currentUserRef를 통해 최신 로그인 상태 확인
         const isLoggedIn = currentUserRef.current !== null;
@@ -1435,56 +1418,31 @@ const App: React.FC = () => {
               // 중요: sessionId가 null이거나 undefined일 수 있으므로 명시적으로 확인
               const isSelfMessage = user && senderId === user.id && sessionId && sessionId === SESSION_ID;
               
-              console.log('🆕 NEW_ORDER 처리 시작');
-              console.log('   현재 사용자:', user?.name, `(${user?.id})`);
-              console.log('   발신자:', senderId);
-              console.log('   세션 ID (수신):', sessionId || 'null/undefined');
-              console.log('   세션 ID (현재):', SESSION_ID);
-              console.log('   같은 기기:', isSelfMessage);
-              console.log('   알림 표시 여부:', !isSelfMessage ? 'YES (다른 기기/사용자)' : 'NO (같은 기기)');
-              console.log('   주문 ID:', newOrder.id);
-              console.log('   방번호:', newOrder.roomNo);
+              debugLog('🆕 NEW_ORDER:', newOrder.roomNo, newOrder.itemName, '| 자신:', isSelfMessage, '| 알림:', !isSelfMessage);
               
               // 🚨 UI 업데이트 (모든 로그인된 사용자 - 자신의 메시지도 포함)
               // 실시간 동기화 보장: 모든 기기에서 즉시 UI 업데이트
               setOrders(prev => {
                 const exists = prev.find(o => o.id === newOrder.id);
                 if (exists) {
-                  console.log('   ⚠️ 기존 주문 발견 - 업데이트 (중복 방지)');
-                  console.log('   - 기존 주문:', exists.roomNo, exists.itemName);
-                  console.log('   - 새 주문:', newOrder.roomNo, newOrder.itemName);
-                  // 기존 주문이 있으면 새 주문으로 업데이트 (다른 기기에서 온 경우)
+                  debugLog('⚠️ 기존 주문 업데이트:', exists.id);
                   const updated = prev.map(o => o.id === newOrder.id ? newOrder : o);
-                  // 🚨 localStorage도 함께 업데이트 (모든 기기에서 최신 데이터 유지)
                   try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-                    console.log('   💾 localStorage 업데이트 완료 (NEW_ORDER - 기존 주문 업데이트)');
                   } catch (e) {
-                    console.error('   ❌ localStorage 업데이트 실패:', e);
+                    debugError('❌ localStorage 저장 실패:', e);
                   }
                   return updated;
                 }
-                // 새 주문 추가 (모든 기기에서 추가)
-                console.log('   ✅ 새 주문 추가 시작');
-                console.log('   - 추가 전 주문 수:', prev.length, '개');
-                console.log('   - 새 주문 ID:', newOrder.id);
-                console.log('   - 새 주문 방번호:', newOrder.roomNo);
-                console.log('   - 새 주문 아이템:', newOrder.itemName);
                 
+                debugLog('✅ 새 주문 추가:', newOrder.id, newOrder.roomNo, newOrder.itemName);
                 const newOrders = [newOrder, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
-                console.log('   ✅ 새 주문 추가 완료');
-                console.log('   - 추가 후 주문 수:', newOrders.length, '개');
                 
-                // 🚨 localStorage도 함께 업데이트 (모든 기기에서 최신 데이터 유지)
                 try {
                   localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrders));
-                  console.log('   💾 localStorage 업데이트 완료 (NEW_ORDER - 새 주문 추가)');
                 } catch (e) {
-                  console.error('   ❌ localStorage 업데이트 실패:', e);
+                  debugError('❌ localStorage 저장 실패:', e);
                 }
-                
-                // UI 업데이트 확인 로그
-                console.log('   ✅ UI 상태 업데이트 완료 - React 리렌더링 예정');
                 
                 return newOrders;
               });
@@ -1493,44 +1451,16 @@ const App: React.FC = () => {
               // 실시간 동기화 보장: 모든 기기에서 알림 표시 (자신의 기기 제외)
               // 중요: sessionId가 없거나 다른 경우 항상 알림 표시 (다른 기기/사용자로 간주)
               if (!isSelfMessage) {
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                console.log('🔔 알림 표시 시작');
-                console.log('   - 주문:', newOrder.roomNo, newOrder.itemName);
-                console.log('   - 현재 사용자:', user?.name, `(${user?.id})`);
-                console.log('   - 발신자:', senderId);
-                console.log('   - 세션 ID (수신):', sessionId || 'null/undefined');
-                console.log('   - 세션 ID (현재):', SESSION_ID);
-                console.log('   - 같은 기기:', isSelfMessage);
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                
-                try {
-                  triggerToast(
-                    `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
-                    'info', 
-                    Department.FRONT_DESK, 
-                    'NEW_ORDER'
-                  );
-                  console.log('   ✅ triggerToast 호출 완료');
-                  console.log('   ✅ 알림 표시 완료');
-                } catch (toastError) {
-                  console.error('   ❌ triggerToast 호출 실패:', toastError);
-                  console.error('   - 에러 상세:', toastError);
-                }
+                debugLog('🔔 알림 표시:', newOrder.roomNo, newOrder.itemName);
+                triggerToast(
+                  `${newOrder.roomNo}호 신규 요청: ${newOrder.itemName} (수량: ${newOrder.quantity})`, 
+                  'info', 
+                  Department.FRONT_DESK, 
+                  'NEW_ORDER'
+                );
               } else {
-                console.log('🔕 자신이 보낸 메시지 - 알림 스킵:', newOrder.roomNo);
-                console.log('   - 같은 기기에서 생성한 주문이므로 알림 표시하지 않음');
-                console.log('   - 현재 사용자:', user?.name, `(${user?.id})`);
-                console.log('   - 발신자:', senderId);
-                console.log('   - 세션 ID (수신):', sessionId || 'null/undefined');
-                console.log('   - 세션 ID (현재):', SESSION_ID);
+                debugLog('⏭️ 알림 스킵 (자신의 메시지)');
               }
-              
-              // 실시간 동기화 확인 로그
-              console.log('✅ NEW_ORDER 처리 완료 - 모든 기기에서 동기화됨');
-              console.log('   - 주문 ID:', newOrder.id);
-              console.log('   - 방번호:', newOrder.roomNo);
-              console.log('   - 아이템:', newOrder.itemName);
-              console.log('   - 처리 시간:', new Date().toISOString());
             } catch (error) {
               console.error('❌ NEW_ORDER 처리 오류:', error, payload);
           }
