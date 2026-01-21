@@ -1,5 +1,34 @@
 import supabase from '../db.js';
 
+/**
+ * 한국 시간을 UTC로 변환하는 헬퍼 함수
+ * Supabase는 UTC로 저장하므로, 한국 시간(UTC+9)을 UTC로 변환
+ */
+function koreaTimeToUTC(koreaTime) {
+  if (!koreaTime) return null;
+  
+  // Date 객체인 경우
+  if (koreaTime instanceof Date) {
+    // 한국 시간을 UTC로 변환 (9시간 빼기)
+    const utcTime = new Date(koreaTime.getTime() - (9 * 60 * 60 * 1000));
+    return utcTime.toISOString();
+  }
+  
+  // 문자열인 경우 (이미 ISO 형식)
+  if (typeof koreaTime === 'string') {
+    // 이미 UTC 형식이면 그대로 반환
+    if (koreaTime.endsWith('Z') || koreaTime.includes('+00') || koreaTime.includes('+00:00')) {
+      return koreaTime;
+    }
+    // 한국 시간 문자열을 Date로 파싱 후 UTC로 변환
+    const date = new Date(koreaTime);
+    const utcTime = new Date(date.getTime() - (9 * 60 * 60 * 1000));
+    return utcTime.toISOString();
+  }
+  
+  return new Date().toISOString();
+}
+
 class OrderModel {
   // 모든 주문 조회
   static async findAll() {
@@ -134,12 +163,25 @@ class OrderModel {
         return existing;
       }
 
-      // 날짜 형식 변환
-      const requestedAt = orderData.requestedAt instanceof Date
-        ? orderData.requestedAt.toISOString()
-        : (typeof orderData.requestedAt === 'string'
-          ? orderData.requestedAt
-          : new Date().toISOString());
+      // 날짜 형식 변환: 한국 시간을 UTC로 변환하여 저장
+      // 주의: orderData.requestedAt은 이미 한국 시간으로 생성되었을 수 있음
+      // Supabase에 저장할 때는 UTC로 변환해야 함
+      let requestedAt;
+      if (orderData.requestedAt) {
+        if (orderData.requestedAt instanceof Date) {
+          // Date 객체: 한국 시간으로 간주하고 UTC로 변환
+          requestedAt = koreaTimeToUTC(orderData.requestedAt);
+        } else if (typeof orderData.requestedAt === 'string') {
+          // 문자열: 이미 UTC 형식이면 그대로, 아니면 변환
+          requestedAt = koreaTimeToUTC(orderData.requestedAt);
+        } else {
+          requestedAt = new Date().toISOString();
+        }
+      } else {
+        // 현재 시간을 한국 시간으로 간주하고 UTC로 변환
+        const now = new Date();
+        requestedAt = koreaTimeToUTC(now);
+      }
 
       // 주문 삽입
       const insertData = {

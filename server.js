@@ -142,16 +142,37 @@ io.on('connection', (socket) => {
     // 데이터베이스 저장
     try {
       if (type === 'NEW_ORDER') {
-        // 날짜 형식 변환
+        // 날짜 형식 변환: 한국 시간을 UTC로 변환하여 저장
+        // payload의 시간은 한국 시간으로 간주하고, Supabase에 저장할 때 UTC로 변환
+        const koreaTimeToUTC = (koreaTime) => {
+          if (!koreaTime) return null;
+          if (koreaTime instanceof Date) {
+            // 한국 시간을 UTC로 변환 (9시간 빼기)
+            const utcTime = new Date(koreaTime.getTime() - (9 * 60 * 60 * 1000));
+            return utcTime.toISOString();
+          }
+          if (typeof koreaTime === 'string') {
+            // 이미 UTC 형식이면 그대로 반환
+            if (koreaTime.endsWith('Z') || koreaTime.includes('+00') || koreaTime.includes('+00:00')) {
+              return koreaTime;
+            }
+            // 한국 시간 문자열을 Date로 파싱 후 UTC로 변환
+            const date = new Date(koreaTime);
+            const utcTime = new Date(date.getTime() - (9 * 60 * 60 * 1000));
+            return utcTime.toISOString();
+          }
+          return new Date().toISOString();
+        };
+        
         const orderData = {
           ...payload,
-          requestedAt: payload.requestedAt ? (typeof payload.requestedAt === 'string' ? payload.requestedAt : new Date(payload.requestedAt).toISOString()) : new Date().toISOString(),
-          acceptedAt: payload.acceptedAt ? (typeof payload.acceptedAt === 'string' ? payload.acceptedAt : new Date(payload.acceptedAt).toISOString()) : undefined,
-          inProgressAt: payload.inProgressAt ? (typeof payload.inProgressAt === 'string' ? payload.inProgressAt : new Date(payload.inProgressAt).toISOString()) : undefined,
-          completedAt: payload.completedAt ? (typeof payload.completedAt === 'string' ? payload.completedAt : new Date(payload.completedAt).toISOString()) : undefined,
+          requestedAt: payload.requestedAt ? koreaTimeToUTC(payload.requestedAt instanceof Date ? payload.requestedAt : new Date(payload.requestedAt)) : koreaTimeToUTC(new Date()),
+          acceptedAt: payload.acceptedAt ? koreaTimeToUTC(payload.acceptedAt instanceof Date ? payload.acceptedAt : new Date(payload.acceptedAt)) : undefined,
+          inProgressAt: payload.inProgressAt ? koreaTimeToUTC(payload.inProgressAt instanceof Date ? payload.inProgressAt : new Date(payload.inProgressAt)) : undefined,
+          completedAt: payload.completedAt ? koreaTimeToUTC(payload.completedAt instanceof Date ? payload.completedAt : new Date(payload.completedAt)) : undefined,
           memos: payload.memos ? payload.memos.map((memo) => ({
             ...memo,
-            timestamp: memo.timestamp ? (typeof memo.timestamp === 'string' ? memo.timestamp : new Date(memo.timestamp).toISOString()) : new Date().toISOString()
+            timestamp: memo.timestamp ? koreaTimeToUTC(memo.timestamp instanceof Date ? memo.timestamp : new Date(memo.timestamp)) : koreaTimeToUTC(new Date())
           })) : []
         };
         
