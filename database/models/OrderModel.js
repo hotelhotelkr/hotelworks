@@ -2,31 +2,39 @@ import supabase from '../db.js';
 
 /**
  * 한국 시간을 UTC로 변환하는 헬퍼 함수
- * Supabase Table Editor에서 한국 시간으로 보이게 하기 위해
- * 한국 시간을 UTC로 변환하여 저장
  * 
- * 예: 한국 시간 23:34 → UTC 14:34 (9시간 차이)
- * Supabase에 저장: 14:34 (UTC)
- * Supabase Table Editor에서 조회 시: 23:34 (한국 시간으로 표시되도록)
+ * 중요: JavaScript의 Date 객체는 내부적으로 UTC 기준으로 저장되지만,
+ * 로컬 시간대(한국)로 표시됩니다.
+ * 
+ * 예: 한국에서 new Date()로 23:34를 생성하면
+ * - 내부적으로는 UTC 14:34로 저장됨 (한국은 UTC+9)
+ * - toISOString()은 UTC 14:34를 반환
+ * 
+ * Supabase Table Editor에서 한국 시간으로 보이게 하려면:
+ * - 한국 시간을 UTC로 변환하여 저장해야 함
+ * - 예: 한국 시간 23:34 → UTC 14:34로 저장
+ * - 하지만 toISOString()이 이미 UTC로 변환하므로,
+ *   추가 변환이 필요 없습니다.
+ * 
+ * 따라서: toISOString()을 그대로 사용하면 됩니다.
+ * 하지만 사용자가 원하는 것은 Supabase Table Editor에서 한국 시간으로 보이는 것이므로,
+ * 한국 시간을 그대로 UTC로 저장하려면 9시간을 더해야 합니다.
+ * 
+ * 실제로는: 한국 시간에서 9시간을 빼서 UTC로 변환
  */
 function koreaTimeToUTC(koreaTime) {
   if (!koreaTime) return null;
   
   // Date 객체인 경우
   if (koreaTime instanceof Date) {
-    // Date 객체는 이미 브라우저의 로컬 시간대(한국)로 생성됨
-    // 한국 시간을 UTC로 변환하려면 9시간을 빼야 함
-    // 하지만 toISOString()은 이미 UTC로 변환하므로, 
-    // 한국 시간을 그대로 UTC로 저장하려면 9시간을 더해야 함
-    // 예: 한국 시간 23:34 → UTC로 저장하면 14:34가 되어야 함
+    // Date 객체는 내부적으로 UTC로 저장되지만, 로컬 시간대로 표시됨
+    // 한국에서 생성된 Date는 로컬 시간(한국 시간)으로 표시됨
+    // toISOString()은 UTC로 변환하므로, 한국 시간을 UTC로 저장하려면
+    // 한국 시간에서 9시간을 더해야 함
+    // 예: 한국 시간 23:34 → UTC로 저장하려면 14:34가 되어야 함
     // 따라서 한국 시간에서 9시간을 빼면 UTC가 됨
-    const koreaTimeMs = koreaTime.getTime();
-    // 브라우저의 로컬 시간대 오프셋을 고려
-    const localOffset = koreaTime.getTimezoneOffset() * 60 * 1000; // 분을 밀리초로 변환
-    // 한국 시간대 오프셋 (UTC+9 = -540분)
-    const koreaOffset = -9 * 60 * 60 * 1000;
-    // 한국 시간을 UTC로 변환
-    const utcTime = new Date(koreaTimeMs - localOffset + koreaOffset);
+    const koreaOffset = 9 * 60 * 60 * 1000;
+    const utcTime = new Date(koreaTime.getTime() - koreaOffset);
     return utcTime.toISOString();
   }
   
@@ -38,9 +46,8 @@ function koreaTimeToUTC(koreaTime) {
     }
     // 한국 시간 문자열을 Date로 파싱 후 UTC로 변환
     const date = new Date(koreaTime);
-    const localOffset = date.getTimezoneOffset() * 60 * 1000;
-    const koreaOffset = -9 * 60 * 60 * 1000;
-    const utcTime = new Date(date.getTime() - localOffset + koreaOffset);
+    const koreaOffset = 9 * 60 * 60 * 1000;
+    const utcTime = new Date(date.getTime() - koreaOffset);
     return utcTime.toISOString();
   }
   

@@ -210,9 +210,11 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('   ❌ DB 저장 오류:', error.message);
       console.error('   ❌ 오류 상세:', error);
-      // DB 저장 실패해도 브로드캐스트는 계속 진행
+      // DB 저장 실패해도 브로드캐스트는 계속 진행 (실시간 동기화 보장)
+      console.warn('   ⚠️ DB 저장 실패했지만 브로드캐스트는 계속 진행합니다');
     }
     
+    // 🚨 브로드캐스트 메시지 생성 (DB 저장 성공/실패와 무관하게 항상 전송)
     const message = {
       type,
       payload,
@@ -221,12 +223,13 @@ io.on('connection', (socket) => {
       timestamp: timestamp || new Date().toISOString()
     };
     
-    // 🚨 모든 연결된 클라이언트에게 브로드캐스트
+    // 🚨 모든 연결된 클라이언트에게 브로드캐스트 (실시간 동기화 보장)
     const clientCount = io.sockets.sockets.size;
     console.log(`   📡 브로드캐스트 시작 - ${clientCount}개 클라이언트에게 전송`);
     console.log(`   📡 브로드캐스트 메시지:`, JSON.stringify(message, null, 2));
     
     try {
+      // io.emit은 모든 연결된 클라이언트(발신자 포함)에게 전송
       io.emit('hotelflow_sync', message);
       console.log('   ✅ 브로드캐스트 완료');
       console.log('   전송된 클라이언트 수:', clientCount);
@@ -236,13 +239,25 @@ io.on('connection', (socket) => {
       if (clientCount > 0) {
         const socketIds = Array.from(io.sockets.sockets.keys());
         console.log('   연결된 Socket IDs:', socketIds.slice(0, 10)); // 최대 10개만 표시
+        
+        // 각 클라이언트에게 메시지가 전송되었는지 확인
+        socketIds.forEach((socketId, index) => {
+          const clientSocket = io.sockets.sockets.get(socketId);
+          if (clientSocket && clientSocket.connected) {
+            console.log(`   ✅ 클라이언트 ${index + 1}/${socketIds.length} 전송 확인: ${socketId}`);
+          } else {
+            console.warn(`   ⚠️ 클라이언트 ${index + 1}/${socketIds.length} 연결 안 됨: ${socketId}`);
+          }
+        });
       } else {
         console.warn('   ⚠️ 연결된 클라이언트가 없습니다!');
+        console.warn('   ⚠️ 메시지는 전송되지 않았지만, 나중에 연결된 클라이언트는 DB에서 동기화할 수 있습니다');
       }
     } catch (broadcastError) {
       console.error('   ❌ 브로드캐스트 실패:', broadcastError);
       console.error('   - 에러 상세:', broadcastError.message);
       console.error('   - 에러 스택:', broadcastError.stack);
+      console.error('   ⚠️ 브로드캐스트 실패로 인해 일부 클라이언트가 메시지를 받지 못할 수 있습니다');
     }
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

@@ -1426,32 +1426,46 @@ const App: React.FC = () => {
               console.log('   방번호:', newOrder.roomNo);
               
               // 🚨 UI 업데이트 (모든 로그인된 사용자 - 자신의 메시지도 포함)
+              // 실시간 동기화 보장: 모든 기기에서 즉시 UI 업데이트
               setOrders(prev => {
                 const exists = prev.find(o => o.id === newOrder.id);
                 if (exists) {
-                  console.log('   기존 주문 발견 - 업데이트');
-                  // 자신이 보낸 메시지도 업데이트 (다른 기기에서 온 경우)
+                  console.log('   ⚠️ 기존 주문 발견 - 업데이트 (중복 방지)');
+                  console.log('   - 기존 주문:', exists.roomNo, exists.itemName);
+                  console.log('   - 새 주문:', newOrder.roomNo, newOrder.itemName);
+                  // 기존 주문이 있으면 새 주문으로 업데이트 (다른 기기에서 온 경우)
                   const updated = prev.map(o => o.id === newOrder.id ? newOrder : o);
                   // 🚨 localStorage도 함께 업데이트 (모든 기기에서 최신 데이터 유지)
                   try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-                    console.log('   💾 localStorage 업데이트 완료 (NEW_ORDER)');
+                    console.log('   💾 localStorage 업데이트 완료 (NEW_ORDER - 기존 주문 업데이트)');
                   } catch (e) {
                     console.error('   ❌ localStorage 업데이트 실패:', e);
                   }
                   return updated;
                 }
                 // 새 주문 추가 (모든 기기에서 추가)
-                console.log('   새 주문 추가 - 추가 전:', prev.length, '개');
+                console.log('   ✅ 새 주문 추가 시작');
+                console.log('   - 추가 전 주문 수:', prev.length, '개');
+                console.log('   - 새 주문 ID:', newOrder.id);
+                console.log('   - 새 주문 방번호:', newOrder.roomNo);
+                console.log('   - 새 주문 아이템:', newOrder.itemName);
+                
                 const newOrders = [newOrder, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
-                console.log('   새 주문 추가 - 추가 후:', newOrders.length, '개');
+                console.log('   ✅ 새 주문 추가 완료');
+                console.log('   - 추가 후 주문 수:', newOrders.length, '개');
+                
                 // 🚨 localStorage도 함께 업데이트 (모든 기기에서 최신 데이터 유지)
                 try {
                   localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrders));
-                  console.log('   💾 localStorage 업데이트 완료 (NEW_ORDER)');
+                  console.log('   💾 localStorage 업데이트 완료 (NEW_ORDER - 새 주문 추가)');
                 } catch (e) {
                   console.error('   ❌ localStorage 업데이트 실패:', e);
                 }
+                
+                // UI 업데이트 확인 로그
+                console.log('   ✅ UI 상태 업데이트 완료 - React 리렌더링 예정');
+                
                 return newOrders;
               });
               
