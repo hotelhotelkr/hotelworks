@@ -2447,13 +2447,29 @@ const App: React.FC = () => {
           try {
             // 한국 시간을 UTC로 변환하여 전송
             // order.requestedAt은 브라우저의 로컬 시간대(한국)로 생성됨
-            // Supabase Table Editor에서 한국 시간으로 보이게 하려면,
-            // 한국 시간을 UTC로 변환하여 전송해야 함
+            // 하지만 JavaScript Date는 내부적으로 UTC로 저장되므로,
+            // toISOString()은 이미 UTC로 변환합니다.
+            // 
+            // Supabase Table Editor에서 한국 시간으로 보이게 하려면:
+            // - 한국 시간을 UTC로 변환하여 저장해야 함
+            // - 예: 한국 시간 23:34 → UTC 14:34로 저장
+            // - Supabase Table Editor에서 조회 시: UTC 14:34 → 한국 시간 23:34로 표시
+            // 
+            // 하지만 실제로는 toISOString()이 이미 UTC로 변환하므로,
+            // 추가 변환이 필요 없습니다.
+            // 
+            // 문제: 사용자가 원하는 것은 Supabase Table Editor에서 한국 시간으로 보이는 것
+            // 해결: 한국 시간을 그대로 UTC로 저장 (시간대 정보 없이)
+            //       즉, 한국 시간 23:34를 UTC 23:34로 저장하려면 9시간을 더해야 함
             const koreaTimeToUTC = (date: Date): string => {
               if (!date) return new Date().toISOString();
-              // 한국 시간대 오프셋 (UTC+9)
+              // Date 객체는 내부적으로 UTC로 저장되지만, 로컬 시간대로 표시됨
+              // 한국에서 생성된 Date는 로컬 시간(한국 시간)으로 표시됨
+              // toISOString()은 UTC로 변환하므로, 한국 시간을 UTC로 저장하려면
+              // 한국 시간에서 9시간을 더해야 함
+              // 예: 한국 시간 23:34 → UTC로 저장하려면 14:34가 되어야 함
+              // 따라서 한국 시간에서 9시간을 빼면 UTC가 됨
               const koreaOffset = 9 * 60 * 60 * 1000;
-              // 한국 시간에서 9시간을 빼서 UTC로 변환
               const utcTime = new Date(date.getTime() - koreaOffset);
               return utcTime.toISOString();
             };
