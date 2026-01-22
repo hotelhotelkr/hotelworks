@@ -355,6 +355,7 @@ const App: React.FC = () => {
   const ordersRef = useRef<Order[]>(orders);
   const usersRef = useRef<User[]>(users);
   const pendingMessagesProcessingRef = useRef<boolean>(false);
+  const wsUrlRef = useRef<string>('');
   const [isConnected, setIsConnected] = useState(false);
 
   // 실시간 날짜/시간 업데이트
@@ -792,6 +793,7 @@ const App: React.FC = () => {
     
     try {
       const wsUrl = getWebSocketURL();
+      wsUrlRef.current = wsUrl; // useRef에 저장
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('🔌 WebSocket 초기화 시작');
       console.log('   대상 URL:', wsUrl);
@@ -867,7 +869,7 @@ const App: React.FC = () => {
       });
 
       socket.on('connect_error', (error) => {
-        console.error('❌ WebSocket 연결 오류:', error.message, '| URL:', wsUrl);
+        console.error('❌ WebSocket 연결 오류:', error.message, '| URL:', wsUrlRef.current || getWebSocketURL());
         setIsConnected(false);
         
         // 사용자에게 연결 문제 알림 (디버그 모드에서만)
@@ -879,7 +881,8 @@ const App: React.FC = () => {
         // Socket.IO가 자동으로 재연결을 시도하지만, 명시적으로도 시도
         setTimeout(() => {
           if (socket && !socket.connected) {
-            debugLog('🔄 연결 오류 후 자동 재연결 시도:', wsUrl);
+            const currentWsUrl = wsUrlRef.current || getWebSocketURL();
+            debugLog('🔄 연결 오류 후 자동 재연결 시도:', currentWsUrl);
             socket.connect();
           }
         }, 3000); // 3초 후 재시도
@@ -2718,7 +2721,7 @@ const App: React.FC = () => {
         console.log('   세션 ID:', SESSION_ID);
         console.log('   Socket ID:', socket.id);
         console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
-        console.log('   WebSocket URL:', wsUrl);
+        console.log('   WebSocket URL:', wsUrlRef.current || getWebSocketURL());
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         if (socket.connected) {
@@ -2885,7 +2888,7 @@ const App: React.FC = () => {
           console.error('   방번호:', order.roomNo);
           console.error('   Socket ID:', socket.id);
           console.error('   연결 상태:', socket.connected);
-          console.error('   WebSocket URL:', wsUrl);
+          console.error('   WebSocket URL:', wsUrlRef.current || getWebSocketURL());
           console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           
           // 오프라인 큐에 저장

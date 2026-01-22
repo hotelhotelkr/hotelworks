@@ -62,6 +62,71 @@ app.get('/health', async (req, res) => {
   });
 });
 
+// 주문 동기화 엔드포인트 (오프라인 큐 동기화용)
+app.post('/api/orders/sync', async (req, res) => {
+  try {
+    const { orders } = req.body;
+    
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return res.json({
+        success: true,
+        results: {
+          created: 0,
+          skipped: 0,
+          errors: []
+        }
+      });
+    }
+    
+    const results = {
+      created: 0,
+      skipped: 0,
+      errors: [] as Array<{ orderId: string; error: string }>
+    };
+    
+    for (const order of orders) {
+      try {
+        // 주문이 이미 존재하는지 확인
+        const { data: existingOrder } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('id', order.id)
+          .single();
+        
+        if (existingOrder) {
+          results.skipped++;
+          continue;
+        }
+        
+        // 새 주문 생성
+        const { error: insertError } = await OrderModel.create(order);
+        
+        if (insertError) {
+          throw insertError;
+        }
+        
+        results.created++;
+      } catch (error: any) {
+        results.errors.push({
+          orderId: order.id || 'unknown',
+          error: error.message || String(error)
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      results
+    });
+  } catch (error: any) {
+    console.error('❌ 주문 동기화 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '주문 동기화 실패'
+    });
+  }
+});
+
 // ========== Socket.IO 이벤트 핸들러 ==========
 
 io.on('connection', (socket) => {
