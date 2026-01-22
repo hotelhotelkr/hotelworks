@@ -71,14 +71,14 @@ app.get('/api/orders', async (req, res) => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // Supabase에서 모든 주문 가져오기 (최신순 정렬)
-    const { data: orders, error } = await supabase
+    const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select('*')
       .order('requested_at', { ascending: false }); // 최신순 정렬
     
-    if (error) {
-      console.error('❌ [최신순 정렬] Supabase 주문 조회 실패:', error);
-      throw error;
+    if (ordersError) {
+      console.error('❌ [최신순 정렬] Supabase 주문 조회 실패:', ordersError);
+      throw ordersError;
     }
     
     console.log('✅ [최신순 정렬] Supabase에서 주문 조회 완료:', orders?.length || 0, '개');
@@ -91,8 +91,28 @@ app.get('/api/orders', async (req, res) => {
       });
     }
     
+    // 각 주문의 메모 가져오기
+    const ordersWithMemos = await Promise.all(
+      (orders || []).map(async (order) => {
+        const { data: memos, error: memosError } = await supabase
+          .from('memos')
+          .select('*')
+          .eq('order_id', order.id)
+          .order('timestamp', { ascending: true });
+        
+        if (memosError) {
+          console.warn(`⚠️ 메모 조회 오류 (주문 ${order.id}):`, memosError);
+        }
+        
+        return {
+          ...order,
+          memos: memos || []
+        };
+      })
+    );
+    
     // 클라이언트가 기대하는 형식으로 변환
-    const formattedOrders = (orders || []).map(o => ({
+    const formattedOrders = ordersWithMemos.map(o => ({
       id: o.id,
       roomNo: o.room_no,
       guestName: o.guest_name || '',
