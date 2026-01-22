@@ -155,7 +155,7 @@ const debugError = (...args: any[]) => {
 const App: React.FC = () => {
   // 🚨 [최신순 정렬 수정] localStorage 데이터 버전 관리
   // 기존 localStorage 데이터가 오래되었을 수 있으므로 버전 체크
-  const ORDERS_VERSION = 'v2_20260122'; // 날짜별 버전 관리
+  const ORDERS_VERSION = 'v3_20260122_2130'; // 시간별 버전 관리 (INITIAL_ORDERS 문제 해결)
   
   // Load initial state from localStorage if available
   const [orders, setOrders] = useState<Order[]>(() => {
@@ -171,7 +171,10 @@ const App: React.FC = () => {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.setItem(`${STORAGE_KEY}_version`, ORDERS_VERSION);
       console.log('✅ [최신순 정렬] localStorage 초기화 완료');
-      return INITIAL_ORDERS;
+      // INITIAL_ORDERS도 최신순으로 정렬하여 반환
+      const sortedInitial = [...INITIAL_ORDERS].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+      console.log('✅ [최신순 정렬] INITIAL_ORDERS 정렬 완료:', sortedInitial.length, '개');
+      return sortedInitial;
     }
     
     if (saved) {
@@ -2700,7 +2703,23 @@ const App: React.FC = () => {
           })).sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
           
           console.log('✅ [최신순 정렬] Supabase에서 데이터 로드 완료:', fetchedOrders.length, '개 주문');
-          console.log('   최신 주문:', fetchedOrders[0]?.id, fetchedOrders[0]?.roomNo, fetchedOrders[0]?.itemName);
+          console.log('   최신 주문 (맨 위):', {
+            id: fetchedOrders[0]?.id,
+            roomNo: fetchedOrders[0]?.roomNo,
+            itemName: fetchedOrders[0]?.itemName,
+            requestedAt: fetchedOrders[0]?.requestedAt,
+            timestamp: fetchedOrders[0]?.requestedAt.getTime()
+          });
+          if (fetchedOrders.length > 1) {
+            console.log('   2번째 주문:', {
+              id: fetchedOrders[1]?.id,
+              roomNo: fetchedOrders[1]?.roomNo,
+              itemName: fetchedOrders[1]?.itemName,
+              requestedAt: fetchedOrders[1]?.requestedAt,
+              timestamp: fetchedOrders[1]?.requestedAt.getTime()
+            });
+          }
+          console.log('   ⏰ 현재 시간:', new Date(), new Date().getTime());
           setOrders(fetchedOrders);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(fetchedOrders));
           console.log('✅ [최신순 정렬] localStorage 업데이트 완료');
