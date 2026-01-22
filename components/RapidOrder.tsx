@@ -547,17 +547,20 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
             {/* 요약 정보 */}
             {selectedRoom && selectedItems.size > 0 ? (
               <div className="mb-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-xl">
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   {Array.from(selectedItems.entries()).map(([itemName, qty], index) => (
-                    <span key={index} className="text-sm font-black text-indigo-700">
-                      {itemName} <span className="text-indigo-600">{qty}개</span>
+                    <span 
+                      key={index} 
+                      className="inline-flex items-center px-3 py-1.5 bg-white border border-indigo-300 rounded-lg text-sm font-black text-indigo-700 shadow-sm"
+                    >
+                      {itemName} <span className="ml-1 text-indigo-600">{qty}개</span>
                     </span>
                   ))}
                 </div>
               </div>
             ) : (
               <div className="mb-3 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center">
-                <span className="text-xs font-bold text-slate-400">방과 아이템을 선택해주세요</span>
+                <span className="text-xs font-bold text-slate-400">아이템을 선택해주세요</span>
               </div>
             )}
             <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-2 text-center">Preview</label>
