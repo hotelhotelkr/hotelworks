@@ -122,6 +122,7 @@ app.get('/api/orders', async (req, res) => {
       priority: o.priority,
       status: o.status,
       requestedAt: o.requested_at,
+      createdAt: o.created_at || o.requested_at, // created_at 우선, 없으면 requested_at 사용
       acceptedAt: o.accepted_at || undefined,
       inProgressAt: o.in_progress_at || undefined,
       completedAt: o.completed_at || undefined,

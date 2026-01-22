@@ -52,6 +52,7 @@ export interface Order {
   priority: Priority;
   status: OrderStatus;
   requestedAt: Date;
+  createdAt?: Date; // 주문 생성 시간 (Supabase created_at)
   acceptedAt?: Date;
   inProgressAt?: Date;
   completedAt?: Date;

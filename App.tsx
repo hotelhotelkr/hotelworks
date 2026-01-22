@@ -196,8 +196,12 @@ const App: React.FC = () => {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.setItem(`${STORAGE_KEY}_version`, ORDERS_VERSION);
       console.log('✅ [최신순 정렬] localStorage 초기화 완료');
-      // INITIAL_ORDERS도 최신순으로 정렬하여 반환
-      const sortedInitial = [...INITIAL_ORDERS].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+      // INITIAL_ORDERS도 최신순으로 정렬하여 반환 (created_at 기준)
+      const sortedInitial = [...INITIAL_ORDERS].sort((a, b) => {
+        const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+        const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+        return bTime - aTime; // DESC (최신순)
+      });
       console.log('✅ [최신순 정렬] INITIAL_ORDERS 정렬 완료:', sortedInitial.length, '개');
       return sortedInitial;
     }
@@ -209,13 +213,18 @@ const App: React.FC = () => {
         const ordersWithDates = parsed.map((o: any) => ({
           ...o,
           requestedAt: new Date(o.requestedAt),
+          createdAt: o.createdAt ? new Date(o.createdAt) : new Date(o.requestedAt), // created_at 우선, 없으면 requestedAt 사용
           acceptedAt: o.acceptedAt ? new Date(o.acceptedAt) : undefined,
           inProgressAt: o.inProgressAt ? new Date(o.inProgressAt) : undefined,
           completedAt: o.completedAt ? new Date(o.completedAt) : undefined,
             memos: (o.memos && Array.isArray(o.memos)) ? o.memos.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) : []
         }));
-        // 🚨 최신순 정렬 (최우선 목표: 모든 사용자에게 최신 오더가 위에 표시)
-        const sorted = ordersWithDates.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+        // 🚨 최신순 정렬 (최우선 목표: 모든 사용자에게 최신 오더가 위에 표시, created_at 기준)
+        const sorted = ordersWithDates.sort((a, b) => {
+          const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+          const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+          return bTime - aTime; // DESC (최신순)
+        });
         console.log('✅ [최신순 정렬] localStorage에서 로드 완료:', sorted.length, '개 주문');
         return sorted;
       } catch (e) {
@@ -1452,11 +1461,16 @@ const App: React.FC = () => {
             let currentOrders: Order[] = savedOrders ? JSON.parse(savedOrders).map((o: any) => ({
               ...o,
               requestedAt: new Date(o.requestedAt),
+              createdAt: o.createdAt ? new Date(o.createdAt) : new Date(o.requestedAt), // created_at 우선, 없으면 requestedAt 사용
               acceptedAt: o.acceptedAt ? new Date(o.acceptedAt) : undefined,
               inProgressAt: o.inProgressAt ? new Date(o.inProgressAt) : undefined,
               completedAt: o.completedAt ? new Date(o.completedAt) : undefined,
               memos: (o.memos && Array.isArray(o.memos)) ? o.memos.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) : []
-            })).sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime()) : [];
+            })).sort((a, b) => {
+              const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+              const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+              return bTime - aTime; // DESC (최신순)
+            }) : [];
             
             // 메시지 타입에 따라 orders 또는 users 업데이트
             let updatedOrders = currentOrders;
@@ -1466,6 +1480,7 @@ const App: React.FC = () => {
                 const newOrder = {
                   ...payload,
                   requestedAt: payload.requestedAt ? new Date(payload.requestedAt) : new Date(),
+                  createdAt: payload.createdAt ? new Date(payload.createdAt) : (payload.requestedAt ? new Date(payload.requestedAt) : new Date()), // created_at 우선, 없으면 requestedAt 사용
                   acceptedAt: payload.acceptedAt ? new Date(payload.acceptedAt) : undefined,
                   inProgressAt: payload.inProgressAt ? new Date(payload.inProgressAt) : undefined,
                   completedAt: payload.completedAt ? new Date(payload.completedAt) : undefined,
@@ -1475,7 +1490,12 @@ const App: React.FC = () => {
                 };
                 const exists = updatedOrders.find(o => o.id === newOrder.id);
                 if (!exists) {
-                  updatedOrders = [newOrder, ...updatedOrders].sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime());
+                  // created_at 기준으로 정렬 (Supabase와 동일)
+                  updatedOrders = [newOrder, ...updatedOrders].sort((a, b) => {
+                    const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.requestedAt).getTime());
+                    const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.requestedAt).getTime());
+                    return bTime - aTime; // DESC (최신순)
+                  });
                 }
                 break;
               }
@@ -1718,11 +1738,12 @@ const App: React.FC = () => {
                 const exists = prev.find(o => o.id === newOrder.id);
                 if (exists) {
                   console.log('⚠️ 기존 주문 업데이트:', exists.id, exists.roomNo, exists.itemName);
+                  // created_at 기준으로 정렬 (Supabase와 동일)
                   const updated = prev.map(o => o.id === newOrder.id ? newOrder : o)
                     .sort((a, b) => {
-                      const timeA = a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime();
-                      const timeB = b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime();
-                      return timeB - timeA;
+                      const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : (a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime()));
+                      const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : (b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime()));
+                      return bTime - aTime; // DESC (최신순)
                     });
                   try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -1736,10 +1757,11 @@ const App: React.FC = () => {
                 }
                 
                 console.log('✅ 새 주문 추가:', newOrder.id, newOrder.roomNo, newOrder.itemName);
+                // created_at 기준으로 정렬 (Supabase와 동일)
                 const newOrders = [newOrder, ...prev].sort((a, b) => {
-                  const timeA = a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime();
-                  const timeB = b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime();
-                  return timeB - timeA;
+                  const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : (a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime()));
+                  const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : (b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime()));
+                  return bTime - aTime; // DESC (최신순)
                 });
                 
                 try {
@@ -1933,9 +1955,14 @@ const App: React.FC = () => {
                         })),
                         requestedAt: foundInStorage.requestedAt ? new Date(foundInStorage.requestedAt) : new Date()
                       };
-                      const newOrders = [updatedOrder, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+                      // created_at 기준으로 정렬 (Supabase와 동일)
+                      const newOrders = [updatedOrder, ...prev].sort((a, b) => {
+                        const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+                        const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+                        return bTime - aTime; // DESC (최신순)
+                      });
                       localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrders));
-                      console.log('✅ localStorage에서 주문 복원 후 상태 업데이트 완료');
+                      console.log('✅ localStorage에서 주문 복원 후 상태 업데이트 완료 (created_at 기준 정렬)');
                       return newOrders;
                     }
                   }
@@ -1993,10 +2020,15 @@ const App: React.FC = () => {
               });
               
               // 🚨 최신순 정렬 후 localStorage 저장 (PC와 모바일 동기화 보장)
-              const sortedUpdated = updated.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+              // created_at 기준으로 정렬 (Supabase와 동일)
+              const sortedUpdated = updated.sort((a, b) => {
+                const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+                const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+                return bTime - aTime; // DESC (최신순)
+              });
               try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(sortedUpdated));
-                console.log('💾 상태 업데이트 후 localStorage 저장 완료');
+                console.log('💾 상태 업데이트 후 localStorage 저장 완료 (created_at 기준 정렬)');
               } catch (e) {
                 console.warn('⚠️ localStorage 저장 실패:', e);
               }
@@ -2068,10 +2100,15 @@ const App: React.FC = () => {
               }
               
               // 🚨 최신순 정렬 후 localStorage 업데이트 (모든 기기에서 최신 데이터 유지)
-              const sortedUpdated = updated.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+              // created_at 기준으로 정렬 (Supabase와 동일)
+              const sortedUpdated = updated.sort((a, b) => {
+                const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+                const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+                return bTime - aTime; // DESC (최신순)
+              });
               try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(sortedUpdated));
-                console.log('   💾 localStorage 업데이트 완료 (NEW_MEMO)');
+                console.log('   💾 localStorage 업데이트 완료 (NEW_MEMO, created_at 기준 정렬)');
               } catch (e) {
                 console.error('   ❌ localStorage 업데이트 실패:', e);
               }
@@ -2538,8 +2575,12 @@ const App: React.FC = () => {
                     return o;
                   });
                 }
-                // 최신순으로 정렬하여 반환
-                return [newOrder, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+                // 최신순으로 정렬하여 반환 (created_at 기준)
+                return [newOrder, ...prev].sort((a, b) => {
+                  const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+                  const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+                  return bTime - aTime; // DESC (최신순)
+                });
               });
             } catch (error) {
               console.error('❌ 임시 NEW_ORDER 처리 오류:', error);
@@ -2745,6 +2786,7 @@ const App: React.FC = () => {
           const ordersFromSupabase = data.orders.map((o: any) => ({
             ...o,
             requestedAt: new Date(o.requestedAt),
+            createdAt: o.createdAt ? new Date(o.createdAt) : new Date(o.requestedAt), // created_at 우선, 없으면 requestedAt 사용
             acceptedAt: o.acceptedAt ? new Date(o.acceptedAt) : undefined,
             inProgressAt: o.inProgressAt ? new Date(o.inProgressAt) : undefined,
             completedAt: o.completedAt ? new Date(o.completedAt) : undefined,
@@ -2892,8 +2934,12 @@ const App: React.FC = () => {
         return prev;
       }
       
-      // 최신순으로 정렬 (위에서 아래로: 가장 최근 주문이 위에)
-      const newOrders = [order, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+      // 최신순으로 정렬 (위에서 아래로: 가장 최근 주문이 위에, created_at 기준)
+      const newOrders = [order, ...prev].sort((a, b) => {
+        const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+        const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+        return bTime - aTime; // DESC (최신순)
+      });
       debugLog('✅ 주문 상태 업데이트 완료:', order.id, '총 주문 수:', newOrders.length);
       debugLog('   - 방번호:', order.roomNo);
       debugLog('   - 아이템:', order.itemName);
