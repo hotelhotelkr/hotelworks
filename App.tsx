@@ -37,7 +37,8 @@ const NoteModal = lazy(() => import('./components/NoteModal'));
 const Login = lazy(() => import('./components/Login'));
 const AdminStaffManager = lazy(() => import('./components/AdminStaffManager'));
 const Settings = lazy(() => import('./components/Settings'));
-const MemoHistory = lazy(() => import('./components/MemoHistory'));
+// MemoHistory 컴포넌트는 아직 구현되지 않았으므로 주석 처리
+// const MemoHistory = lazy(() => import('./components/MemoHistory'));
 const ToastNotification = lazy(() => import('./components/ToastNotification'));
 
 // Toast 타입은 types.ts에서 import
@@ -3970,12 +3971,14 @@ const App: React.FC = () => {
                     onOpenMemo={(order) => setMemoOrder(order)}
                   />
                 } />
+                {/* MemoHistory 컴포넌트는 아직 구현되지 않았으므로 주석 처리
                 <Route path="/memos" element={
                   <MemoHistory 
                     orders={orders}
                     onOpenMemo={(order) => setMemoOrder(order)}
                   />
                 } />
+                */}
                 <Route path="/staff" element={
                   currentUser && currentUser.dept === Department.ADMIN ? (
                     <AdminStaffManager 
