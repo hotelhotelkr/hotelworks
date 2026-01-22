@@ -24,6 +24,13 @@ export const PRIORITY_COLORS = {
   [Priority.URGENT]: 'text-rose-600 font-bold animate-pulse',
 };
 
+export const CATEGORIES = [
+  'Amenities',
+  'Delivery',
+  'Maintenance',
+  'Cleaning',
+  'Other'
+];
 
 export interface ItemDetail {
   name: string;
