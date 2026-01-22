@@ -3254,9 +3254,9 @@ const App: React.FC = () => {
       updatedPayload.completedAt = undefined;
     }
 
-    // 상태 업데이트
+    // 상태 업데이트 (created_at 기준 정렬 유지)
     setOrders(prevOrders => {
-      return prevOrders.map(order => {
+      const updated = prevOrders.map(order => {
         if (order.id === orderId) {
           return {
             ...order,
@@ -3270,6 +3270,23 @@ const App: React.FC = () => {
         }
         return order;
       });
+      
+      // created_at 기준으로 정렬 (Supabase와 동일, 최신순 유지)
+      const sorted = updated.sort((a, b) => {
+        const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+        const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+        return bTime - aTime; // DESC (최신순)
+      });
+      
+      // localStorage 업데이트
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sorted));
+        console.log('💾 상태 업데이트 후 localStorage 저장 완료 (created_at 기준 정렬)');
+      } catch (e) {
+        console.warn('⚠️ localStorage 저장 실패:', e);
+      }
+      
+      return sorted;
     });
 
     // 로컬에서 토스트 생성하지 않음 - WebSocket을 통해 모든 기기에서 알림 표시
