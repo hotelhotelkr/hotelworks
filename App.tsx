@@ -3591,8 +3591,8 @@ const App: React.FC = () => {
       '항목': o.itemName,
       '수량': o.quantity,
       '우선순위': o.priority,
-      '요청시간': o.requestedAt.toLocaleString(),
-      '완료시간': o.completedAt ? o.completedAt.toLocaleString() : '-',
+      '요청시간': o.requestedAt.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+      '완료시간': o.completedAt ? o.completedAt.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '-',
       '담당자': users.find(u => u.id === o.assignedTo)?.name || '-',
       '메모내역': o.memos.map(m => `[${m.senderDept}] ${m.senderName}: ${m.text}`).join(' / ')
     }));
