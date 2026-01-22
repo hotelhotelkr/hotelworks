@@ -1252,6 +1252,9 @@ const App: React.FC = () => {
         });
       });
 
+      // ❌ all_orders_response 핸들러 비활성화
+      // 이유: Supabase가 Single Source of Truth이므로 다른 클라이언트의 localStorage 데이터로 덮어쓰면 안 됨
+      // 실시간 업데이트는 NEW_ORDER, ORDER_UPDATE 등의 이벤트로 처리됨
       socket.on('all_orders_response', (data: any) => {
         if (!mounted) return;
         const { orders: receivedOrders, senderId } = data;
@@ -1259,6 +1262,14 @@ const App: React.FC = () => {
         
         // 로그인 상태일 때만 처리
         if (!user) return;
+        
+        // 🚨 Supabase 데이터가 이미 로드된 경우 무시 (Supabase = Single Source of Truth)
+        // handleLogin에서 Supabase 데이터를 로드했으므로, 다른 클라이언트의 localStorage 데이터로 덮어쓰면 안 됨
+        const supabaseDataLoaded = localStorage.getItem('hotelflow_supabase_data_loaded') === 'true';
+        if (supabaseDataLoaded) {
+          debugLog(`🚫 all_orders_response 무시: Supabase 데이터가 이미 로드됨 (from ${senderId})`);
+          return;
+        }
         
         // 자신이 보낸 응답은 무시 (단, 서버 응답은 항상 처리)
         if (senderId === user.id && senderId !== 'server') return;
@@ -1350,12 +1361,12 @@ const App: React.FC = () => {
             }
           });
           
-          // 시간순으로 정렬 (최신순)
-          const merged = Array.from(orderMap.values()).sort((a, b) => 
-            b.requestedAt.getTime() - a.requestedAt.getTime()
-          );
+          // ⚠️ 정렬 제거: Supabase 순서를 유지하기 위해 클라이언트 정렬 안 함
+          // Supabase가 Single Source of Truth이므로 서버 순서를 그대로 유지
+          const merged = Array.from(orderMap.values());
           
           debugLog(`✅ 주문 목록 병합 완료: 기존 ${prev.length}개 + 수신 ${parsedOrders.length}개 = 총 ${merged.length}개`);
+          debugLog(`⚠️ 정렬 안 함: Supabase 순서 유지 (Single Source of Truth)`);
           return merged;
         });
       });
@@ -2765,6 +2776,10 @@ const App: React.FC = () => {
           // localStorage에 캐시 저장 (다음 새로고침 시 사용)
           localStorage.setItem(STORAGE_KEY, JSON.stringify(ordersFromSupabase));
           console.log('✅ localStorage 캐시 업데이트 완료 (Supabase 순서 그대로)');
+          
+          // 🚨 Supabase 데이터 로드 플래그 설정 (all_orders_response 핸들러가 무시하도록)
+          localStorage.setItem('hotelflow_supabase_data_loaded', 'true');
+          console.log('✅ Supabase 데이터 로드 플래그 설정 완료 (all_orders_response 무시)');
         }
       } else {
         console.warn('⚠️ Supabase 데이터 로드 실패:', response.status);
@@ -2799,6 +2814,8 @@ const App: React.FC = () => {
     try {
       localStorage.removeItem('hotelflow_debug_logging_unlocked');
       localStorage.removeItem('hotelflow_ws_logging_unlocked');
+      // 🚨 Supabase 데이터 로드 플래그 초기화 (다음 로그인 시 다시 설정됨)
+      localStorage.removeItem('hotelflow_supabase_data_loaded');
     } catch (e) {
       console.warn('Failed to reset Settings unlock states:', e);
     }
