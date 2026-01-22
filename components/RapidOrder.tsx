@@ -546,10 +546,19 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
           <div className="shrink-0">
             {/* 요약 정보 */}
             {selectedRoom && selectedItems.size > 0 ? (
-              <div className="mb-3 px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-center gap-2">
-                <span className="text-sm font-black text-indigo-700">{selectedRoom}호</span>
-                <span className="text-xs text-indigo-400">·</span>
-                <span className="text-sm font-bold text-indigo-600">{selectedItems.size}개 아이템</span>
+              <div className="mb-3 px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl">
+                <div className="flex items-center justify-center gap-2 mb-1.5">
+                  <span className="text-sm font-black text-indigo-700">{selectedRoom}호</span>
+                  <span className="text-xs text-indigo-400">·</span>
+                  <span className="text-xs font-bold text-indigo-500">{Array.from(selectedItems.values()).reduce((sum, qty) => sum + qty, 0)}개</span>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                  {Array.from(selectedItems.entries()).map(([itemName, qty], index) => (
+                    <span key={index} className="text-xs font-semibold text-indigo-600">
+                      {itemName} {qty}개{index < selectedItems.size - 1 ? ',' : ''}
+                    </span>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="mb-3 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center">
