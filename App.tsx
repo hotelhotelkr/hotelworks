@@ -356,6 +356,7 @@ const App: React.FC = () => {
   const usersRef = useRef<User[]>(users);
   const pendingMessagesProcessingRef = useRef<boolean>(false);
   const wsUrlRef = useRef<string>('');
+  const messageHandlerRef = useRef<((data: any) => void) | null>(null); // 🚨 messageHandler 참조 저장
   const [isConnected, setIsConnected] = useState(false);
 
   // 실시간 날짜/시간 업데이트
@@ -824,6 +825,16 @@ const App: React.FC = () => {
         return originalEmit(...args);
       };
 
+      // 🚨 중요: messageHandler를 connect/reconnect 등록 **전**에 정의!
+      // 래퍼 함수를 먼저 정의하고, 실제 핸들러는 나중에 messageHandlerRef에 저장
+      const messageHandlerWrapper = (data: any) => {
+        if (messageHandlerRef.current) {
+          messageHandlerRef.current(data);
+        } else {
+          console.error('❌ messageHandlerRef.current가 null - 메시지 처리 불가');
+        }
+      };
+
       socket.on('connect', () => {
         console.log('✅ WebSocket 연결 성공:', socket.id, '| URL:', wsUrlRef.current || getWebSocketURL());
         console.log('✅ 세션 ID:', SESSION_ID);
@@ -838,8 +849,13 @@ const App: React.FC = () => {
         if (existingListeners === 0) {
           console.warn('⚠️ 리스너가 없음 - 재등록 시도');
           try {
-            socket.on(SYNC_CHANNEL, messageHandler);
-            console.log('✅ 리스너 재등록 완료');
+            // messageHandlerRef.current가 있으면 사용, 없으면 나중에 등록될 것임
+            if (messageHandlerRef.current) {
+              socket.on(SYNC_CHANNEL, messageHandlerRef.current);
+              console.log('✅ 리스너 재등록 완료 (messageHandlerRef 사용)');
+            } else {
+              console.warn('⚠️ messageHandlerRef.current가 아직 없음 - 나중에 등록될 예정');
+            }
           } catch (error) {
             console.error('❌ 리스너 재등록 실패:', error);
           }
@@ -924,8 +940,9 @@ const App: React.FC = () => {
         if (existingListeners === 0) {
           console.warn('⚠️ 리스너가 없음 - 재등록 시도');
           try {
-            socket.on(SYNC_CHANNEL, messageHandler);
-            console.log('✅ 리스너 재등록 완료');
+            // 래퍼 함수를 사용하여 리스너 등록
+            socket.on(SYNC_CHANNEL, messageHandlerWrapper);
+            console.log('✅ 리스너 재등록 완료 (messageHandlerWrapper 사용)');
           } catch (error) {
             console.error('❌ 리스너 재등록 실패:', error);
           }
@@ -1327,6 +1344,7 @@ const App: React.FC = () => {
       // 🚨 최우선 목표: 실시간 동기화 및 토스트 알림 보장
       // 서버로부터 메시지 수신 (로그인 상태와 무관하게 항상 수신)
       // 중요: 이벤트 리스너는 한 번만 등록되어야 함
+      // 🚨 중요: messageHandler를 먼저 정의하고 messageHandlerRef에 저장 (connect/reconnect에서 사용)
       const messageHandler = (data: any) => {
         // 🚨 최우선: 메시지 수신 확인 로그 (항상 출력 - 가장 중요!)
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -2155,9 +2173,11 @@ const App: React.FC = () => {
         const beforeCount = socket.listeners(SYNC_CHANNEL).length;
         console.log('   - 등록 전 리스너 수:', beforeCount);
         
-        // 리스너 등록
-        socket.on(SYNC_CHANNEL, messageHandler);
-        console.log('✅ socket.on() 호출 완료');
+        // 리스너 등록 (래퍼 함수 사용)
+        socket.on(SYNC_CHANNEL, messageHandlerWrapper);
+        // 실제 messageHandler를 messageHandlerRef에 저장
+        messageHandlerRef.current = messageHandler;
+        console.log('✅ socket.on() 호출 완료 (messageHandlerWrapper 등록 및 messageHandlerRef 저장)');
         
         // 🚨 리스너 등록 즉시 확인 (디버깅용)
         const afterCount = socket.listeners(SYNC_CHANNEL).length;
@@ -2198,7 +2218,8 @@ const App: React.FC = () => {
         console.error('   - 이는 심각한 문제입니다. 실시간 동기화가 작동하지 않을 수 있습니다.');
         console.error('   - socket.on()을 다시 시도합니다...');
         try {
-          socket.on(SYNC_CHANNEL, messageHandler);
+          // 래퍼 함수를 사용하여 리스너 등록
+          socket.on(SYNC_CHANNEL, messageHandlerWrapper);
           const retryCount = socket.listeners(SYNC_CHANNEL).length;
           console.log('   - 재시도 후 리스너 수:', retryCount);
           if (retryCount > 0) {
