@@ -935,13 +935,7 @@ const App: React.FC = () => {
           });
         }, 1000); // 1초 후 실행 (다른 기기들이 준비될 시간 확보)
         
-        if (user) {
-          // 주문 목록 동기화 요청 (로그인 상태일 때만)
-          socket.emit('request_all_orders', {
-            senderId: user.id,
-            timestamp: new Date().toISOString()
-          });
-        }
+        // 주문 목록 동기화는 WebSocket 실시간 메시지로 자동 처리되므로 별도 요청 불필요
       });
 
       socket.on('disconnect', (reason) => {
@@ -1028,20 +1022,9 @@ const App: React.FC = () => {
           });
         }, 1000); // 1초 후 실행 (다른 기기들이 준비될 시간 확보)
         
+        // 주문 목록 동기화는 WebSocket 실시간 메시지로 자동 처리되므로 별도 요청 불필요
         if (user) {
-          console.log('📤 WebSocket 재연결 후 전체 주문 목록 동기화 요청');
-          
-          const requestData = {
-            senderId: user.id,
-            timestamp: new Date().toISOString()
-          };
-          
-          console.log('📤 WebSocket 메시지 전송 - request_all_orders (재연결)');
-          console.log('   - 발신자:', requestData.senderId);
-          console.log('   - Socket ID:', socket.id);
-          console.log('   - 연결 상태:', socket.connected);
-          
-          socket.emit('request_all_orders', requestData);
+          console.log('📤 WebSocket 재연결 성공 (로그인 상태) - 실시간 동기화 준비 완료');
         } else {
           console.log('📤 WebSocket 재연결 성공 (로그아웃 상태) - 실시간 동기화 준비 완료');
         }
@@ -2398,16 +2381,7 @@ const App: React.FC = () => {
           } else {
             // 연결되어 있으면 오프라인 큐 동기화
             syncOfflineQueue();
-            
-            // 로그인 상태이고 연결 성공 시 전체 주문 목록 동기화 요청
-            const user = currentUserRef.current;
-            if (user && socketRef.current.connected) {
-              debugLog('📤 페이지 가시성 복원 후 전체 주문 목록 동기화 요청');
-              socketRef.current.emit('request_all_orders', {
-                senderId: user.id,
-                timestamp: new Date().toISOString()
-              });
-            }
+            // 주문 목록 동기화는 WebSocket 실시간 메시지로 자동 처리되므로 별도 요청 불필요
           }
         }
       } else {
@@ -2424,13 +2398,7 @@ const App: React.FC = () => {
         socketRef.current.connect();
       } else if (socketRef.current && socketRef.current.connected) {
         syncOfflineQueue();
-        const user = currentUserRef.current;
-        if (user) {
-          socketRef.current.emit('request_all_orders', {
-            senderId: user.id,
-            timestamp: new Date().toISOString()
-          });
-        }
+        // 주문 목록 동기화는 WebSocket 실시간 메시지로 자동 처리되므로 별도 요청 불필요
       }
     };
 
@@ -2827,30 +2795,10 @@ const App: React.FC = () => {
     }
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    // 로그인 시 전체 주문 목록 동기화 요청
+    // 로그인 시 사용자 목록 동기화 요청만 수행
+    // 주문 목록은 이미 Supabase에서 최신순으로 로드되었으므로 request_all_orders 불필요
     const socket = socketRef.current;
     if (socket && socket.connected) {
-      debugLog('📤 전체 주문 목록 동기화 요청');
-      
-      const requestData = {
-        senderId: user.id,
-        timestamp: new Date().toISOString()
-      };
-      
-      // WebSocket 메시지 로깅 설정 확인
-      const wsMessageLogging = localStorage.getItem('hotelflow_ws_message_logging') === 'true';
-      if (wsMessageLogging) {
-        console.group('📤 WebSocket 메시지 전송 (상세) - request_all_orders (로그인)');
-        console.log('타입: request_all_orders');
-        console.log('발신자:', requestData.senderId);
-        console.log('타임스탬프:', requestData.timestamp);
-        console.log('Socket ID:', socket.id);
-        console.log('연결 상태:', socket.connected);
-        console.groupEnd();
-      }
-      
-      socket.emit('request_all_orders', requestData);
-      
       // 사용자 목록 동기화 요청
       setTimeout(() => {
         socket.emit('request_all_users', {
