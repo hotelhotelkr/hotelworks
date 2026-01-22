@@ -778,18 +778,16 @@ const App: React.FC = () => {
     // WebSocket 서버에 연결 (서버가 없어도 앱은 작동하도록)
     let mounted = true;
     
-    // 기존 연결이 있고 연결되어 있으면 재사용
-    if (socketRef.current && socketRef.current.connected) {
-      debugLog('🔌 WebSocket 연결 재사용');
-      return () => {
-        mounted = false;
-      };
-    }
-    
-    // 기존 연결이 있지만 연결되지 않았으면 정리
+    // 🚨 중요: 기존 연결이 있어도 항상 정리하고 새로 생성
+    // 이벤트 리스너 중복 등록 방지를 위해
     if (socketRef.current) {
+      console.log('🧹 기존 WebSocket 연결 정리 중...');
+      // 모든 이벤트 리스너 제거
+      socketRef.current.removeAllListeners();
+      // 연결 해제
       socketRef.current.disconnect();
       socketRef.current = null;
+      console.log('✅ 기존 WebSocket 연결 정리 완료');
     }
     
     try {
@@ -1269,12 +1267,22 @@ const App: React.FC = () => {
         });
       });
 
-      // 🚨 중복 리스너 방지: 기존 리스너 제거 후 새로 등록
-      socket.off(SYNC_CHANNEL); // 기존 리스너 제거 (중복 방지)
+      // 🚨 중복 리스너 방지: 모든 리스너 제거 후 새로 등록
+      // 중요: socket.off()만으로는 부족할 수 있으므로 removeAllListeners() 사용
+      socket.removeAllListeners(SYNC_CHANNEL); // 모든 SYNC_CHANNEL 리스너 제거
+      socket.off(SYNC_CHANNEL); // 추가 안전장치
+      
+      console.log('🔌 WebSocket 이벤트 리스너 등록 시작');
+      console.log('   - 기존 리스너 제거 완료');
+      console.log('   - 새 리스너 등록 중...');
+      console.log('   - 채널:', SYNC_CHANNEL);
+      console.log('   - Socket ID:', socket.id);
+      console.log('   - 연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
       
       // 🚨 최우선 목표: 실시간 동기화 및 토스트 알림 보장
       // 서버로부터 메시지 수신 (로그인 상태와 무관하게 항상 수신)
-      socket.on(SYNC_CHANNEL, (data: any) => {
+      // 중요: 이벤트 리스너는 한 번만 등록되어야 함
+      const messageHandler = (data: any) => {
         if (!mounted) {
           console.warn('⚠️ 컴포넌트 언마운트 상태 - 메시지 처리 스킵');
           return; // 컴포넌트가 언마운트되면 처리하지 않음
@@ -1287,6 +1295,7 @@ const App: React.FC = () => {
         console.log('   수신 시간:', new Date().toISOString());
         console.log('   Socket ID:', socket.id);
         console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+        console.log('   리스너 등록 확인: ✅ 정상 작동 중');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         const { type, payload, senderId, sessionId, timestamp } = data;
@@ -1582,7 +1591,8 @@ const App: React.FC = () => {
               console.log('   방번호:', newOrder.roomNo);
               console.log('   아이템:', newOrder.itemName);
               console.log('   수량:', newOrder.quantity);
-              console.log('   현재 주문 수 (업데이트 전):', orders.length);
+              // orders.length는 클로저 문제가 있을 수 있으므로 prev.length 사용
+              // (실제로는 setOrders 내부에서 prev를 사용하므로 문제 없음)
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
               
               // 🚨 React 상태 업데이트 (즉시 실행)
@@ -2073,7 +2083,31 @@ const App: React.FC = () => {
             break;
           }
         }
-      });
+      };
+      
+      // 🚨 이벤트 리스너 등록 (한 번만)
+      // 최우선 목표: 실시간 동기화 및 토스트 알림 보장
+      socket.on(SYNC_CHANNEL, messageHandler);
+      
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('✅ WebSocket 이벤트 리스너 등록 완료');
+      console.log('   - 채널:', SYNC_CHANNEL);
+      console.log('   - 핸들러:', 'messageHandler');
+      console.log('   - Socket ID:', socket.id);
+      console.log('   - 연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+      console.log('   - 리스너 등록 시간:', new Date().toISOString());
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      // 🚨 리스너 등록 확인 (디버깅용)
+      const listenerCount = socket.listeners(SYNC_CHANNEL).length;
+      console.log('   - 등록된 리스너 수:', listenerCount);
+      if (listenerCount > 1) {
+        console.warn('⚠️ 리스너가 중복 등록되었을 수 있습니다!');
+      } else if (listenerCount === 1) {
+        console.log('✅ 리스너가 정상적으로 1개만 등록되었습니다');
+      } else {
+        console.error('❌ 리스너가 등록되지 않았습니다!');
+      }
 
     } catch (error) {
       console.warn('⚠️ WebSocket 초기화 실패:', error);
@@ -2086,8 +2120,10 @@ const App: React.FC = () => {
       if (socketRef.current) {
         console.log('🧹 WebSocket 연결 정리 (컴포넌트 언마운트)');
         console.log('   - 이벤트 리스너 제거:', SYNC_CHANNEL);
-        socketRef.current.off(SYNC_CHANNEL); // 모든 SYNC_CHANNEL 리스너 제거
-        socketRef.current.removeAllListeners(); // 모든 리스너 제거 (안전)
+        // 모든 리스너 제거 (안전)
+        socketRef.current.removeAllListeners(SYNC_CHANNEL);
+        socketRef.current.off(SYNC_CHANNEL);
+        socketRef.current.removeAllListeners(); // 모든 리스너 제거
         socketRef.current.disconnect();
         socketRef.current = null;
         setIsConnected(false);
@@ -2789,6 +2825,7 @@ const App: React.FC = () => {
               console.log('   세션 ID:', message.sessionId);
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
               
+              // 🚨 메시지 전송 (최우선 목표: 실시간 동기화 보장)
               socket.emit(SYNC_CHANNEL, message);
               
               console.log('✅ socket.emit 호출 완료:', order.id);
@@ -2798,7 +2835,19 @@ const App: React.FC = () => {
               console.log('   메시지 타입:', message.type);
               console.log('   발신자:', message.senderId);
               console.log('   세션 ID:', message.sessionId);
+              console.log('   채널:', SYNC_CHANNEL);
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              
+              // 🚨 전송 후 즉시 확인
+              if (!socket.connected) {
+                console.error('❌ 메시지 전송 후 연결 끊김 감지!');
+                console.error('   - 재연결 필요');
+                console.error('   - 오프라인 큐에 저장됨');
+                saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+              } else {
+                console.log('✅ 메시지 전송 후 연결 상태 확인: 정상');
+              }
+              
               debugLog('✅ 브로드캐스트 완료:', order.id);
               
               // 전송 확인을 위한 짧은 딜레이 후 연결 상태 확인

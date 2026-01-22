@@ -154,7 +154,18 @@ io.on('connection', (socket) => {
       
       // 🚨 즉시 브로드캐스트 (DB 저장 전)
       // io.emit은 모든 연결된 클라이언트에게 동기적으로 전송
-      io.emit('hotelflow_sync', message);
+      // 최우선 목표: 실시간 동기화 보장
+      try {
+        io.emit('hotelflow_sync', message);
+        // 브로드캐스트 후 즉시 확인
+        const actualClientCount = io.sockets.sockets.size;
+        if (actualClientCount !== clientCount) {
+          console.warn(`⚠️ 클라이언트 수 불일치: 예상 ${clientCount}, 실제 ${actualClientCount}`);
+        }
+      } catch (emitError) {
+        console.error('❌ io.emit 실패:', emitError);
+        throw emitError; // 에러를 다시 throw하여 상위에서 처리
+      }
       
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('✅ 브로드캐스트 완료 (즉시 실행)');
