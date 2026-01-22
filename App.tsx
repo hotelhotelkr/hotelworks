@@ -2770,28 +2770,53 @@ const App: React.FC = () => {
               ...m, 
               timestamp: new Date(m.timestamp) 
             })) : []
-          })).sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+          }));
+          
+          // localStorage에 있는 오더 중 Supabase에 없는 오더 찾기 (로그아웃 중 받은 오더)
+          const localStorageOrders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+          const localOnlyOrders = localStorageOrders
+            .filter((localOrder: any) => !fetchedOrders.find(o => o.id === localOrder.id))
+            .map((o: any) => ({
+              ...o,
+              requestedAt: new Date(o.requestedAt),
+              acceptedAt: o.acceptedAt ? new Date(o.acceptedAt) : undefined,
+              inProgressAt: o.inProgressAt ? new Date(o.inProgressAt) : undefined,
+              completedAt: o.completedAt ? new Date(o.completedAt) : undefined,
+              memos: (o.memos && Array.isArray(o.memos)) ? o.memos.map((m: any) => ({ 
+                ...m, 
+                timestamp: new Date(m.timestamp) 
+              })) : []
+            }));
+          
+          // Supabase 오더 + localStorage 전용 오더 병합 후 최신순 정렬
+          const allOrders = [...fetchedOrders, ...localOnlyOrders].sort((a, b) => {
+            const timeA = a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime();
+            const timeB = b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime();
+            return timeB - timeA;
+          });
           
           console.log('✅ [최신순 정렬] Supabase에서 데이터 로드 완료:', fetchedOrders.length, '개 주문');
+          console.log('   localStorage 전용 오더:', localOnlyOrders.length, '개 (로그아웃 중 받은 오더)');
+          console.log('   총 오더 수:', allOrders.length, '개');
           console.log('   최신 주문 (맨 위):', {
-            id: fetchedOrders[0]?.id,
-            roomNo: fetchedOrders[0]?.roomNo,
-            itemName: fetchedOrders[0]?.itemName,
-            requestedAt: fetchedOrders[0]?.requestedAt,
-            timestamp: fetchedOrders[0]?.requestedAt.getTime()
+            id: allOrders[0]?.id,
+            roomNo: allOrders[0]?.roomNo,
+            itemName: allOrders[0]?.itemName,
+            requestedAt: allOrders[0]?.requestedAt,
+            timestamp: allOrders[0]?.requestedAt instanceof Date ? allOrders[0]?.requestedAt.getTime() : new Date(allOrders[0]?.requestedAt).getTime()
           });
-          if (fetchedOrders.length > 1) {
+          if (allOrders.length > 1) {
             console.log('   2번째 주문:', {
-              id: fetchedOrders[1]?.id,
-              roomNo: fetchedOrders[1]?.roomNo,
-              itemName: fetchedOrders[1]?.itemName,
-              requestedAt: fetchedOrders[1]?.requestedAt,
-              timestamp: fetchedOrders[1]?.requestedAt.getTime()
+              id: allOrders[1]?.id,
+              roomNo: allOrders[1]?.roomNo,
+              itemName: allOrders[1]?.itemName,
+              requestedAt: allOrders[1]?.requestedAt,
+              timestamp: allOrders[1]?.requestedAt instanceof Date ? allOrders[1]?.requestedAt.getTime() : new Date(allOrders[1]?.requestedAt).getTime()
             });
           }
           console.log('   ⏰ 현재 시간:', new Date(), new Date().getTime());
-          setOrders(fetchedOrders);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(fetchedOrders));
+          setOrders(allOrders);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(allOrders));
           console.log('✅ [최신순 정렬] localStorage 업데이트 완료');
         }
       } else {
