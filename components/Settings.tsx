@@ -322,11 +322,11 @@ const Settings: React.FC<SettingsProps> = ({
     }
   }, []);
 
-  // 캐시 정리
+  // 캐시 최적화
   const clearCache = () => {
-    if (window.confirm('⚠️ 캐시를 정리하시겠습니까?\n페이지를 새로고침해야 완전히 적용됩니다.')) {
+    if (window.confirm('⚠️ 캐시를 최적화하시겠습니까?\n페이지를 새로고침해야 완전히 적용됩니다.')) {
       try {
-        // 오프라인 큐와 임시 메시지만 유지하고 나머지 캐시 정리
+        // 오프라인 큐와 임시 메시지만 유지하고 나머지 캐시 최적화
         const offlineQueue = localStorage.getItem('hotelflow_offline_queue');
         const pendingMessages = localStorage.getItem('hotelflow_pending_messages');
         const wsUrl = localStorage.getItem('hotelflow_ws_url');
@@ -337,10 +337,10 @@ const Settings: React.FC<SettingsProps> = ({
         if (pendingMessages) localStorage.setItem('hotelflow_pending_messages', pendingMessages);
         if (wsUrl) localStorage.setItem('hotelflow_ws_url', wsUrl);
         
-        alert('✅ 캐시가 정리되었습니다. 페이지를 새로고침하세요.');
+        alert('✅ 캐시가 최적화되었습니다. 페이지를 새로고침하세요.');
         window.location.reload();
       } catch (e) {
-        alert('❌ 캐시 정리 실패: ' + (e as Error).message);
+        alert('❌ 캐시 최적화 실패: ' + (e as Error).message);
       }
     }
   };
@@ -668,7 +668,7 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </section>
 
-        {/* 기타 설정 (캐시 정리) */}
+        {/* 기타 설정 (캐시 최적화) */}
         <section>
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-amber-600" />
@@ -773,12 +773,12 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
 
-            {/* 캐시 정리 버튼 - 상태별 스타일 */}
+            {/* 캐시 최적화 버튼 - 상태별 스타일 */}
             <button
               onClick={clearCache}
               className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${
                 localStorageSize < 102400
-                  ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                   : localStorageSize < 512000
                   ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-2 border-amber-200'
                   : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-2 border-rose-200 animate-pulse'
@@ -787,10 +787,10 @@ const Settings: React.FC<SettingsProps> = ({
               <RefreshCw className="w-5 h-5" />
               <span>
                 {localStorageSize < 102400 
-                  ? '캐시 정리 (선택사항)' 
+                  ? '캐시 최적화 (선택사항)' 
                   : localStorageSize < 512000 
-                  ? '캐시 정리 (권장)' 
-                  : '⚠️ 캐시 정리 (필수)'}
+                  ? '캐시 최적화 (권장)' 
+                  : '⚠️ 캐시 최적화 (필수)'}
               </span>
             </button>
           </div>
