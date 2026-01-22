@@ -1,0 +1,5 @@
+# Vercel Rebuild Trigger
+# This file forces a new build on Vercel
+# Created at: 2026-01-22T19:46:00+09:00
+timestamp=${new Date().toISOString()}
+buildId=${Math.random().toString(36).substr(2, 9)}
