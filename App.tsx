@@ -2728,8 +2728,10 @@ const App: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success && Array.isArray(data.orders)) {
-          // ✅ Supabase 데이터를 절대적 기준으로 사용 (서버에서 이미 최신순 정렬됨)
-          const fetchedOrders = data.orders.map((o: any) => ({
+          // ✅ 방법 1: Supabase를 절대적 기준으로 사용 (단순하고 확실함)
+          // 서버에서 이미 최신순으로 정렬된 데이터를 그대로 사용
+          // localStorage 병합하지 않음 (Supabase가 Single Source of Truth)
+          const ordersFromSupabase = data.orders.map((o: any) => ({
             ...o,
             requestedAt: new Date(o.requestedAt),
             acceptedAt: o.acceptedAt ? new Date(o.acceptedAt) : undefined,
@@ -2741,76 +2743,31 @@ const App: React.FC = () => {
             })) : []
           }));
           
-          // localStorage에 있는 오더 중 Supabase에 없는 오더만 찾기 (로그아웃 중 받은 오더)
-          const localStorageOrders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-          const localOnlyOrders = localStorageOrders
-            .filter((localOrder: any) => !fetchedOrders.find(o => o.id === localOrder.id))
-            .map((o: any) => ({
-              ...o,
-              requestedAt: new Date(o.requestedAt),
-              acceptedAt: o.acceptedAt ? new Date(o.acceptedAt) : undefined,
-              inProgressAt: o.inProgressAt ? new Date(o.inProgressAt) : undefined,
-              completedAt: o.completedAt ? new Date(o.completedAt) : undefined,
-              memos: (o.memos && Array.isArray(o.memos)) ? o.memos.map((m: any) => ({ 
-                ...m, 
-                timestamp: new Date(m.timestamp) 
-              })) : []
-            }));
+          console.log('✅ [Supabase 절대 우선] 데이터 로드 완료:', ordersFromSupabase.length, '개 주문');
+          console.log('   📌 서버 정렬 순서를 100% 신뢰 (재정렬 안 함, localStorage 병합 안 함)');
           
-          // ✅ Supabase 순서를 절대적 기준으로 사용 (서버에서 이미 최신순 정렬됨)
-          // localStorage 전용 오더만 맨 위에 추가 (최신순 정렬)
-          const sortedLocalOnlyOrders = localOnlyOrders.sort((a, b) => {
-            let timeA = 0;
-            let timeB = 0;
-            
-            try {
-              timeA = a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime();
-              if (isNaN(timeA)) timeA = 0;
-            } catch {
-              timeA = 0;
-            }
-            
-            try {
-              timeB = b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime();
-              if (isNaN(timeB)) timeB = 0;
-            } catch {
-              timeB = 0;
-            }
-            
-            if (timeB !== timeA) {
-              return timeB - timeA;
-            }
-            
-            return b.id.localeCompare(a.id);
-          });
-          
-          // Supabase 오더 (이미 정렬됨) + localStorage 전용 오더 (정렬됨)
-          const allOrders = [...sortedLocalOnlyOrders, ...fetchedOrders];
-          
-          console.log('✅ [최신순 정렬] Supabase에서 데이터 로드 완료:', fetchedOrders.length, '개 주문 (서버에서 이미 최신순 정렬됨)');
-          console.log('   localStorage 전용 오더:', sortedLocalOnlyOrders.length, '개 (로그아웃 중 받은 오더)');
-          console.log('   총 오더 수:', allOrders.length, '개');
-          console.log('   📌 Supabase 순서를 절대적 기준으로 사용 (재정렬 안 함)');
-          
-          // 상위 5개 오더 로깅 (시간대 확인용)
-          console.log('📊 [최신순 정렬] 상위 5개 오더:');
-          allOrders.slice(0, 5).forEach((order, idx) => {
+          // 상위 5개 오더 로깅
+          console.log('📊 상위 5개 오더 (서버 정렬 순서):');
+          ordersFromSupabase.slice(0, 5).forEach((order, idx) => {
             const reqTime = order.requestedAt instanceof Date 
               ? order.requestedAt 
               : new Date(order.requestedAt);
-            const source = sortedLocalOnlyOrders.find(o => o.id === order.id) ? '📦 localStorage' : '☁️ Supabase';
-            console.log(`   ${idx + 1}. ${source} | ID: ${order.id} | 방: ${order.roomNo} | 아이템: ${order.itemName}`);
+            console.log(`   ${idx + 1}. ☁️ Supabase | ID: ${order.id} | 방: ${order.roomNo} | 아이템: ${order.itemName}`);
             console.log(`      시간: ${reqTime.toISOString()} (KST: ${reqTime.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })})`);
             console.log(`      타임스탬프: ${reqTime.getTime()}`);
           });
           
           console.log('   ⏰ 현재 시간:', new Date().toISOString(), '(KST:', new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) + ')');
-          setOrders(allOrders);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(allOrders));
-          console.log('✅ [최신순 정렬] localStorage 업데이트 완료');
+          
+          // Supabase 데이터를 그대로 사용 (서버 순서 유지)
+          setOrders(ordersFromSupabase);
+          
+          // localStorage에 캐시 저장 (다음 새로고침 시 사용)
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(ordersFromSupabase));
+          console.log('✅ localStorage 캐시 업데이트 완료 (Supabase 순서 그대로)');
         }
       } else {
-        console.warn('⚠️ [최신순 정렬] Supabase 데이터 로드 실패:', response.status);
+        console.warn('⚠️ Supabase 데이터 로드 실패:', response.status);
       }
     } catch (error) {
       console.error('❌ [최신순 정렬] Supabase 데이터 로드 오류:', error);
