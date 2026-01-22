@@ -70,11 +70,11 @@ app.get('/api/orders', async (req, res) => {
     console.log('   요청 시간:', new Date().toISOString());
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    // Supabase에서 모든 주문 가져오기 (최신순 정렬)
+    // Supabase에서 모든 주문 가져오기 (최신순 정렬 - created_at 기준)
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select('*')
-      .order('requested_at', { ascending: false }); // 최신순 정렬
+      .order('created_at', { ascending: false }); // 최신순 정렬 (생성 시간 기준)
     
     if (ordersError) {
       console.error('❌ [최신순 정렬] Supabase 주문 조회 실패:', ordersError);
