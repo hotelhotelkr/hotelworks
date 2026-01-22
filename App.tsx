@@ -3983,25 +3983,6 @@ const App: React.FC = () => {
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                   <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">알림</h3>
                   <div className="flex items-center gap-2">
-                    {notificationHistory.length > 0 && (
-                      <button 
-                        onClick={() => {
-                          // 모든 활성 알림 제거
-                          toasts.forEach(t => removeToast(t.id));
-                          // 히스토리도 모두 제거
-                          setNotificationHistory([]);
-                          try {
-                            localStorage.removeItem('hotelflow_notifications');
-                          } catch (e) {
-                            console.warn('Failed to clear notification history:', e);
-                          }
-                          setNotificationPanelOpen(false);
-                        }}
-                        className="text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-wider transition-colors px-2 py-1"
-                      >
-                        모두 지우기
-                      </button>
-                    )}
                     <button 
                       onClick={() => setNotificationPanelOpen(false)}
                       className="p-1 hover:bg-slate-100 rounded-lg transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
@@ -4078,27 +4059,6 @@ const App: React.FC = () => {
                     </div>
                   )}
                 </div>
-                {notificationHistory.length > 0 && (
-                  <div className="p-3 border-t border-slate-100">
-                    <button 
-                      onClick={() => {
-                        // 모든 활성 알림 제거
-                        toasts.forEach(t => removeToast(t.id));
-                        // 히스토리도 모두 제거
-                        setNotificationHistory([]);
-                        try {
-                          localStorage.removeItem('hotelflow_notifications');
-                        } catch (e) {
-                          console.warn('Failed to clear notification history:', e);
-                        }
-                        setNotificationPanelOpen(false);
-                      }}
-                      className="w-full text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-wider transition-colors"
-                    >
-                      모두 지우기
-                    </button>
-                  </div>
-                )}
               </div>
             </>
           )}
