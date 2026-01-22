@@ -107,26 +107,6 @@ const OrderList: React.FC<OrderListProps> = ({
     return filtered.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
   }, [orders, filters, searchTerm]);
 
-  // 한국 시간대(UTC+9)로 변환하는 헬퍼 함수
-  const toKoreaTime = (date: Date): Date => {
-    // UTC 시간을 한국 시간으로 변환 (UTC+9)
-    const koreaTime = new Date(date.getTime() + (9 * 60 * 60 * 1000));
-    return koreaTime;
-  };
-
-  // 한국 시간으로 포맷팅
-  const formatKoreaTime = (date: Date): string => {
-    return date.toLocaleString('ko-KR', { 
-      timeZone: 'Asia/Seoul',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
   const getElapsedTime = (requestedAt: Date) => {
     // 한국 시간 기준으로 경과 시간 계산
     const now = new Date();
