@@ -161,7 +161,7 @@ const App: React.FC = () => {
       try {
         const parsed = JSON.parse(saved);
         // Convert ISO strings back to Date objects
-        return parsed.map((o: any) => ({
+        const ordersWithDates = parsed.map((o: any) => ({
           ...o,
           requestedAt: new Date(o.requestedAt),
           acceptedAt: o.acceptedAt ? new Date(o.acceptedAt) : undefined,
@@ -169,6 +169,8 @@ const App: React.FC = () => {
           completedAt: o.completedAt ? new Date(o.completedAt) : undefined,
             memos: (o.memos && Array.isArray(o.memos)) ? o.memos.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) : []
         }));
+        // 🚨 최신순 정렬 (최우선 목표: 모든 사용자에게 최신 오더가 위에 표시)
+        return ordersWithDates.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
       } catch (e) {
         debugWarn('Failed to parse orders from localStorage:', e);
         return INITIAL_ORDERS;
@@ -1400,7 +1402,7 @@ const App: React.FC = () => {
         // currentUserRef를 통해 최신 로그인 상태 확인
         const isLoggedIn = currentUserRef.current !== null;
         
-        // 🚨 로그아웃 상태: localStorage만 업데이트하고 pending_messages에 저장
+          // 🚨 로그아웃 상태: localStorage만 업데이트하고 pending_messages에 저장
         if (!isLoggedIn) {
           console.log('💾 로그아웃 상태 - localStorage만 업데이트');
           try {
@@ -1413,7 +1415,7 @@ const App: React.FC = () => {
               inProgressAt: o.inProgressAt ? new Date(o.inProgressAt) : undefined,
               completedAt: o.completedAt ? new Date(o.completedAt) : undefined,
               memos: (o.memos && Array.isArray(o.memos)) ? o.memos.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) : []
-            })) : [];
+            })).sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime()) : [];
             
             // 메시지 타입에 따라 orders 또는 users 업데이트
             let updatedOrders = currentOrders;
