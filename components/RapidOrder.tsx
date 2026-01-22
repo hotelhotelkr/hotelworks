@@ -120,8 +120,9 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
 
     // 🚨 여러 아이템 동시 생성 시 ID 충돌 방지: 순차적으로 생성
     // 각 주문이 이전 주문을 포함한 상태에서 ID 생성되도록 보장
+    // React 배치 업데이트를 고려하여 충분한 지연 시간 사용 (50ms)
     itemsToDispatch.forEach(([name, qty], index) => {
-      // 각 주문마다 약간의 지연을 두어 ID 충돌 방지 (1ms씩)
+      // 각 주문마다 충분한 지연을 두어 React 배치 업데이트 방지
       setTimeout(() => {
         onDispatch({
           roomNo: selectedRoom,
@@ -130,7 +131,7 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
           priority,
           category: 'Amenities'
         });
-      }, index * 1); // 1ms씩 지연하여 순차적 생성 보장
+      }, index * 50); // 50ms씩 지연하여 순차적 생성 보장 (React 배치 업데이트 방지)
     });
 
     // 상태 초기화는 모든 주문 생성 후 수행
@@ -140,7 +141,7 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
       setPriority(Priority.NORMAL);
       setIsDispatching(false);
       dispatchTimeoutRef.current = null;
-    }, itemsToDispatch.length * 1 + 10); // 모든 주문 생성 후 초기화
+    }, itemsToDispatch.length * 50 + 100); // 모든 주문 생성 후 초기화
   };
 
   const handleRoomSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
