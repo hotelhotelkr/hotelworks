@@ -76,10 +76,13 @@ io.on('connection', (socket) => {
     const { type, payload, senderId, sessionId, timestamp } = data;
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📨 서버 메시지 수신:', type);
+    console.log('📨 서버 메시지 수신 (즉시 처리)');
+    console.log('   메시지 타입:', type);
     console.log('   발신자:', senderId);
+    console.log('   세션 ID:', sessionId || 'null');
     console.log('   Socket ID:', socket.id);
     console.log('   타임스탬프:', timestamp);
+    console.log('   수신 시간:', new Date().toISOString());
     
     if (type === 'NEW_ORDER') {
       console.log('   주문 ID:', payload?.id);
