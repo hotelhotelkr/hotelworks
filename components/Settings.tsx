@@ -441,10 +441,31 @@ const Settings: React.FC<SettingsProps> = ({
             3. 오더 동기화 (Order Sync)
           </h3>
           
-          <div className="space-y-3">
-            <p className="text-sm text-slate-600 mb-4">
-              localStorage에 저장된 오더들을 데이터베이스로 동기화합니다.
-            </p>
+          <div className="space-y-4">
+            {/* 오더 수 표시 카드 */}
+            <div className="p-4 bg-slate-50 rounded-xl border-2 border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-bold text-slate-700">localStorage 오더 수</span>
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-black text-indigo-600">
+                    {(() => {
+                      try {
+                        const ordersJson = localStorage.getItem('hotelflow_orders_v1');
+                        if (!ordersJson) return '0개';
+                        const orders = JSON.parse(ordersJson);
+                        return Array.isArray(orders) ? `${orders.length}개` : '0개';
+                      } catch {
+                        return '확인 불가';
+                      }
+                    })()}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">
+                💡 브라우저에 저장된 오더를 Supabase로 백업할 수 있어요
+              </p>
+            </div>
             
             <button
               onClick={async () => {
@@ -619,19 +640,6 @@ const Settings: React.FC<SettingsProps> = ({
                 )}
               </div>
             )}
-            
-            <div className="text-xs text-slate-500 mt-2">
-              💡 localStorage에 저장된 오더 수: {(() => {
-                try {
-                  const ordersJson = localStorage.getItem('hotelflow_orders_v1');
-                  if (!ordersJson) return '0개';
-                  const orders = JSON.parse(ordersJson);
-                  return Array.isArray(orders) ? `${orders.length}개` : '0개';
-                } catch {
-                  return '확인 불가';
-                }
-              })()}
-            </div>
           </div>
         </section>
 
