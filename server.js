@@ -344,33 +344,24 @@ io.on('connection', (socket) => {
     (async () => {
       try {
         if (type === 'NEW_ORDER') {
-          // 날짜 형식 변환: 한국 시간을 UTC로 변환하여 저장
-          const koreaTimeToUTC = (koreaTime) => {
-            if (!koreaTime) return null;
-            if (koreaTime instanceof Date) {
-              const utcTime = new Date(koreaTime.getTime() - (9 * 60 * 60 * 1000));
-              return utcTime.toISOString();
-            }
-            if (typeof koreaTime === 'string') {
-              if (koreaTime.endsWith('Z') || koreaTime.includes('+00') || koreaTime.includes('+00:00')) {
-                return koreaTime;
-              }
-              const date = new Date(koreaTime);
-              const utcTime = new Date(date.getTime() - (9 * 60 * 60 * 1000));
-              return utcTime.toISOString();
-            }
+          // ✅ 한국 시간 그대로 저장 (Supabase 타임존이 Asia/Seoul로 설정됨)
+          // 클라이언트가 이미 한국 시간으로 보내므로 변환 없이 그대로 사용
+          const toISO = (time) => {
+            if (!time) return null;
+            if (time instanceof Date) return time.toISOString();
+            if (typeof time === 'string') return time; // 이미 ISO 문자열
             return new Date().toISOString();
           };
           
           const orderData = {
             ...payload,
-            requestedAt: payload.requestedAt ? koreaTimeToUTC(payload.requestedAt instanceof Date ? payload.requestedAt : new Date(payload.requestedAt)) : koreaTimeToUTC(new Date()),
-            acceptedAt: payload.acceptedAt ? koreaTimeToUTC(payload.acceptedAt instanceof Date ? payload.acceptedAt : new Date(payload.acceptedAt)) : undefined,
-            inProgressAt: payload.inProgressAt ? koreaTimeToUTC(payload.inProgressAt instanceof Date ? payload.inProgressAt : new Date(payload.inProgressAt)) : undefined,
-            completedAt: payload.completedAt ? koreaTimeToUTC(payload.completedAt instanceof Date ? payload.completedAt : new Date(payload.completedAt)) : undefined,
+            requestedAt: payload.requestedAt ? toISO(payload.requestedAt) : toISO(new Date()),
+            acceptedAt: payload.acceptedAt ? toISO(payload.acceptedAt) : undefined,
+            inProgressAt: payload.inProgressAt ? toISO(payload.inProgressAt) : undefined,
+            completedAt: payload.completedAt ? toISO(payload.completedAt) : undefined,
             memos: payload.memos ? payload.memos.map((memo) => ({
               ...memo,
-              timestamp: memo.timestamp ? koreaTimeToUTC(memo.timestamp instanceof Date ? memo.timestamp : new Date(memo.timestamp)) : koreaTimeToUTC(new Date())
+              timestamp: memo.timestamp ? toISO(memo.timestamp) : toISO(new Date())
             })) : []
           };
           
@@ -388,11 +379,19 @@ io.on('connection', (socket) => {
             console.error('   ❌ 오류 스택:', dbError.stack);
           }
         } else if (type === 'STATUS_UPDATE') {
+          // ✅ 한국 시간 그대로 저장 (Supabase 타임존이 Asia/Seoul로 설정됨)
+          const toISO = (time) => {
+            if (!time) return null;
+            if (time instanceof Date) return time.toISOString();
+            if (typeof time === 'string') return time;
+            return new Date().toISOString();
+          };
+          
           const updateData = {
             status: payload.status,
-            acceptedAt: payload.acceptedAt ? (typeof payload.acceptedAt === 'string' ? payload.acceptedAt : new Date(payload.acceptedAt).toISOString()) : undefined,
-            inProgressAt: payload.inProgressAt ? (typeof payload.inProgressAt === 'string' ? payload.inProgressAt : new Date(payload.inProgressAt).toISOString()) : undefined,
-            completedAt: payload.completedAt ? (typeof payload.completedAt === 'string' ? payload.completedAt : new Date(payload.completedAt).toISOString()) : undefined,
+            acceptedAt: payload.acceptedAt ? toISO(payload.acceptedAt) : undefined,
+            inProgressAt: payload.inProgressAt ? toISO(payload.inProgressAt) : undefined,
+            completedAt: payload.completedAt ? toISO(payload.completedAt) : undefined,
             assignedTo: payload.assignedTo
           };
           console.log('   💾 DB 업데이트 시도 (비동기):', payload.id);
