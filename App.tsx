@@ -37,6 +37,7 @@ const NoteModal = lazy(() => import('./components/NoteModal'));
 const Login = lazy(() => import('./components/Login'));
 const AdminStaffManager = lazy(() => import('./components/AdminStaffManager'));
 const Settings = lazy(() => import('./components/Settings'));
+const MemoHistory = lazy(() => import('./components/MemoHistory'));
 const ToastNotification = lazy(() => import('./components/ToastNotification'));
 
 // Toast 타입은 types.ts에서 import
