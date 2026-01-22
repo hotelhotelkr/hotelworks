@@ -78,6 +78,18 @@ const OrderList: React.FC<OrderListProps> = ({
     onOpenMemo(order);
   };
 
+  // 완료 상태로 변경 시 메모 입력 처리
+  const handleCompleteWithNote = (orderId: string) => {
+    try {
+      const note = prompt("메모 (선택):");
+      const finalNote = (note !== null && note.trim()) ? note.trim() : undefined;
+      onUpdateStatus(orderId, OrderStatus.COMPLETED, finalNote);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      onUpdateStatus(orderId, OrderStatus.COMPLETED);
+    }
+  };
+
   const filteredOrders = useMemo(() => {
     const filtered = orders.filter(order => {
     const matchesStatus = filters.status === 'ALL' || order.status === filters.status;
@@ -373,13 +385,7 @@ const OrderList: React.FC<OrderListProps> = ({
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      try {
-                                        const note = prompt("메모 (선택):");
-                                        const finalNote = (note !== null && note.trim()) ? note.trim() : undefined;
-                                        onUpdateStatus(order.id, OrderStatus.COMPLETED, finalNote);
-                                      } catch (error) {
-                                        onUpdateStatus(order.id, OrderStatus.COMPLETED);
-                                      }
+                                      handleCompleteWithNote(order.id);
                                     }}
                                     className="text-[10px] sm:text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-3 sm:px-4 py-2.5 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[44px] sm:min-h-[36px]"
                                   >
@@ -394,14 +400,7 @@ const OrderList: React.FC<OrderListProps> = ({
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    try {
-                                      const note = prompt("메모 (선택):");
-                                      const finalNote = (note !== null && note.trim()) ? note.trim() : undefined;
-                                      onUpdateStatus(order.id, OrderStatus.COMPLETED, finalNote);
-                                    } catch (error) {
-                                      console.error('Error updating status:', error);
-                                      onUpdateStatus(order.id, OrderStatus.COMPLETED);
-                                    }
+                                    handleCompleteWithNote(order.id);
                                   }}
                                   className="text-[10px] sm:text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[40px] sm:min-h-[36px]"
                                 >
@@ -567,14 +566,7 @@ const OrderList: React.FC<OrderListProps> = ({
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                try {
-                                  const note = prompt("메모 (선택):");
-                                  const finalNote = (note !== null && note.trim()) ? note.trim() : undefined;
-                                  onUpdateStatus(order.id, OrderStatus.COMPLETED, finalNote);
-                                } catch (error) {
-                                  console.error('Error updating status:', error);
-                                  onUpdateStatus(order.id, OrderStatus.COMPLETED);
-                                }
+                                handleCompleteWithNote(order.id);
                               }}
                               className="text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[44px]"
                             >
@@ -597,14 +589,7 @@ const OrderList: React.FC<OrderListProps> = ({
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                try {
-                                  const note = prompt("메모 (선택):");
-                                  const finalNote = (note !== null && note.trim()) ? note.trim() : undefined;
-                                  onUpdateStatus(order.id, OrderStatus.COMPLETED, finalNote);
-                                } catch (error) {
-                                  console.error('Error updating status:', error);
-                                  onUpdateStatus(order.id, OrderStatus.COMPLETED);
-                                }
+                                handleCompleteWithNote(order.id);
                               }}
                               className="text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[44px]"
                             >
@@ -618,14 +603,7 @@ const OrderList: React.FC<OrderListProps> = ({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              try {
-                                const note = prompt("메모 (선택):");
-                                const finalNote = (note !== null && note.trim()) ? note.trim() : undefined;
-                                onUpdateStatus(order.id, OrderStatus.COMPLETED, finalNote);
-                              } catch (error) {
-                                console.error('Error updating status:', error);
-                                onUpdateStatus(order.id, OrderStatus.COMPLETED);
-                              }
+                              handleCompleteWithNote(order.id);
                             }}
                             className="text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[44px]"
                           >
