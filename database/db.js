@@ -29,20 +29,6 @@ const supabase = createClient(
   }
 );
 
-// 연결 테스트
-if (supabaseUrl && supabaseKey) {
-  supabase
-    .from('orders')
-    .select('count', { count: 'exact', head: true })
-    .then(() => {
-      console.log('✅ Supabase 연결 성공');
-    })
-    .catch((error) => {
-      console.error('❌ Supabase 연결 실패:', error.message);
-      console.error('💡 Supabase 프로젝트가 생성되었는지, 테이블이 생성되었는지 확인하세요.');
-    });
-}
-
 export default supabase;
 
 

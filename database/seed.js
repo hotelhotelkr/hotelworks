@@ -81,17 +81,4 @@ async function seedUsers() {
   }
 }
 
-// 직접 실행 시
-if (import.meta.url === `file://${process.argv[1]}`) {
-  seedUsers()
-    .then(() => {
-      console.log('✅ 시드 스크립트 실행 완료');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('❌ 시드 스크립트 실행 실패:', error);
-      process.exit(1);
-    });
-}
-
 export default seedUsers;

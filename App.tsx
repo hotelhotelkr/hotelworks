@@ -2833,9 +2833,6 @@ const App: React.FC = () => {
       
       return newOrders;
     });
-    
-    // setCreateModalOpen은 OrderCreateModal에서만 사용되므로 여기서는 호출하지 않음
-    // (RapidOrder에서는 사용되지 않음)
   };
 
   const handleUpdateStatus = (orderId: string, nextStatus: OrderStatus, note?: string) => {

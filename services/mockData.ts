@@ -8,8 +8,6 @@ export const USERS: User[] = [
   { id: 'u4', username: 'admin', name: 'Admin User', dept: Department.ADMIN, role: Role.ADMIN },
 ];
 
-export const CURRENT_USER = USERS[0]; // Simulation as 프론트수
-
 const now = new Date();
 const year = now.getFullYear();
 const month = String(now.getMonth() + 1).padStart(2, '0');
