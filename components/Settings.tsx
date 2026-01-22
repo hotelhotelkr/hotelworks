@@ -773,18 +773,12 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
 
-            {/* 캐시 최적화 버튼 - 상태별 스타일 */}
+            {/* 캐시 최적화 버튼 */}
             <button
               onClick={clearCache}
-              className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${
-                localStorageSize < 102400
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  : localStorageSize < 512000
-                  ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-2 border-amber-200'
-                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-2 border-rose-200 animate-pulse'
-              }`}
+              className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className="w-4 h-4" />
               <span>
                 {localStorageSize < 102400 
                   ? '캐시 최적화 (선택사항)' 
