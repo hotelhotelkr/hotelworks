@@ -104,7 +104,12 @@ const OrderList: React.FC<OrderListProps> = ({
   });
     
     // 최신순으로 정렬 (위에서 아래로: 가장 최근 주문이 위에)
-    return filtered.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+    // requestedAt이 Date 객체가 아닐 수 있으므로 안전하게 변환
+    return filtered.sort((a, b) => {
+      const timeA = a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime();
+      const timeB = b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime();
+      return timeB - timeA;
+    });
   }, [orders, filters, searchTerm]);
 
   const getElapsedTime = (requestedAt: Date) => {

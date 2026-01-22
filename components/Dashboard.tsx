@@ -72,7 +72,12 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onExport, currentUser, on
   ];
 
   const sortedOrders = useMemo(() => {
-    return [...orders].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+    // requestedAt이 Date 객체가 아닐 수 있으므로 안전하게 변환
+    return [...orders].sort((a, b) => {
+      const timeA = a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime();
+      const timeB = b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime();
+      return timeB - timeA;
+    });
   }, [orders]);
 
   // 24시간 시간대별 주문 통계 계산 (실시간 업데이트)
