@@ -71,6 +71,31 @@ const DEFAULT_PASSWORDS: Record<string, string> = {
 const SESSION_ID = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 /**
+ * 한국 시간(KST) 유틸리티 함수
+ * - 모든 사용자가 한국에 있으므로 한국 시간(KST) 기준으로 작동
+ * - 한국에서 실행되는 브라우저의 new Date()는 이미 한국 시간입니다
+ * - 서버(Supabase)에 저장할 때도 한국 시간 그대로 저장합니다
+ */
+const getKoreaTime = (): Date => {
+  // 한국에서 실행되는 브라우저는 이미 한국 시간(KST)을 반환합니다
+  return new Date();
+};
+
+const toKoreaISO = (date: Date): string => {
+  // Date를 ISO 문자열로 변환 (한국 시간 그대로)
+  // toISOString()은 UTC로 변환하므로, 대신 로컬 시간 문자열 사용
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  const ms = String(date.getMilliseconds()).padStart(3, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${ms}+09:00`;
+};
+
+/**
  * WebSocket 서버 URL 동적 감지
  * - 환경 변수(VITE_WS_SERVER_URL) 최우선 사용
  * - localStorage 저장된 URL 사용
@@ -155,7 +180,7 @@ const debugError = (...args: any[]) => {
 const App: React.FC = () => {
   // 🚨 [최신순 정렬 수정] localStorage 데이터 버전 관리
   // 기존 localStorage 데이터가 오래되었을 수 있으므로 버전 체크
-  const ORDERS_VERSION = 'v4_20260122_2235'; // 시간별 버전 관리 (UTC 시간 변환 오류 수정)
+  const ORDERS_VERSION = 'v5_20260122_2250_KST'; // 시간별 버전 관리 (한국 시간 기준으로 전환)
   
   // Load initial state from localStorage if available
   const [orders, setOrders] = useState<Order[]>(() => {
@@ -1050,10 +1075,10 @@ const App: React.FC = () => {
           const responseData = {
             orders: currentOrders.map(o => ({
               ...o,
-              requestedAt: o.requestedAt.toISOString(),
-              acceptedAt: o.acceptedAt?.toISOString(),
-              inProgressAt: o.inProgressAt?.toISOString(),
-              completedAt: o.completedAt?.toISOString(),
+              requestedAt: toKoreaISO(o.requestedAt),
+              acceptedAt: o.acceptedAt ? toKoreaISO(o.acceptedAt) : undefined,
+              inProgressAt: o.inProgressAt ? toKoreaISO(o.inProgressAt) : undefined,
+              completedAt: o.completedAt ? toKoreaISO(o.completedAt) : undefined,
               memos: o.memos.map(m => ({
                 ...m,
                 timestamp: m.timestamp.toISOString()
@@ -2612,15 +2637,15 @@ const App: React.FC = () => {
         return;
       }
 
-      // Date 객체를 ISO 문자열로 변환
+      // Date 객체를 한국 시간 ISO 문자열로 변환
       const formattedOrders = orders.map((order: any) => ({
         ...order,
         requestedAt: order.requestedAt instanceof Date 
-          ? order.requestedAt.toISOString() 
-          : (typeof order.requestedAt === 'string' ? order.requestedAt : new Date(order.requestedAt).toISOString()),
-        acceptedAt: order.acceptedAt ? (order.acceptedAt instanceof Date ? order.acceptedAt.toISOString() : order.acceptedAt) : undefined,
-        inProgressAt: order.inProgressAt ? (order.inProgressAt instanceof Date ? order.inProgressAt.toISOString() : order.inProgressAt) : undefined,
-        completedAt: order.completedAt ? (order.completedAt instanceof Date ? order.completedAt.toISOString() : order.completedAt) : undefined,
+          ? toKoreaISO(order.requestedAt)
+          : (typeof order.requestedAt === 'string' ? order.requestedAt : toKoreaISO(new Date(order.requestedAt))),
+        acceptedAt: order.acceptedAt ? (order.acceptedAt instanceof Date ? toKoreaISO(order.acceptedAt) : order.acceptedAt) : undefined,
+        inProgressAt: order.inProgressAt ? (order.inProgressAt instanceof Date ? toKoreaISO(order.inProgressAt) : order.inProgressAt) : undefined,
+        completedAt: order.completedAt ? (order.completedAt instanceof Date ? toKoreaISO(order.completedAt) : order.completedAt) : undefined,
         memos: (order.memos || []).map((memo: any) => ({
           ...memo,
           timestamp: memo.timestamp instanceof Date 
@@ -2878,10 +2903,10 @@ const App: React.FC = () => {
               type,
               payload: {
                 ...payload,
-                requestedAt: payload.requestedAt?.toISOString(),
-                acceptedAt: payload.acceptedAt?.toISOString(),
-                inProgressAt: payload.inProgressAt?.toISOString(),
-                completedAt: payload.completedAt?.toISOString(),
+                requestedAt: payload.requestedAt ? toKoreaISO(payload.requestedAt) : undefined,
+                acceptedAt: payload.acceptedAt ? toKoreaISO(payload.acceptedAt) : undefined,
+                inProgressAt: payload.inProgressAt ? toKoreaISO(payload.inProgressAt) : undefined,
+                completedAt: payload.completedAt ? toKoreaISO(payload.completedAt) : undefined,
                 memos: payload.memos?.map((m: any) => ({
                   ...m,
                   timestamp: m.timestamp?.toISOString()
@@ -2958,14 +2983,13 @@ const App: React.FC = () => {
             // 문제: 사용자가 원하는 것은 Supabase Table Editor에서 한국 시간으로 보이는 것
             // 해결: 한국 시간을 그대로 UTC로 저장 (시간대 정보 없이)
             //       즉, 한국 시간 23:34를 UTC 23:34로 저장하려면 9시간을 더해야 함
-            // Date 객체는 이미 UTC 타임스탬프를 내부적으로 저장하고 있으므로
-            // toISOString()을 직접 사용하면 올바른 UTC 시간이 나옵니다
+            // 한국 시간(KST) 그대로 ISO 문자열로 변환하여 저장
             const payload = {
               ...order,
-              requestedAt: order.requestedAt.toISOString(),
-              acceptedAt: order.acceptedAt?.toISOString(),
-              inProgressAt: order.inProgressAt?.toISOString(),
-              completedAt: order.completedAt?.toISOString(),
+              requestedAt: toKoreaISO(order.requestedAt),
+              acceptedAt: order.acceptedAt ? toKoreaISO(order.acceptedAt) : undefined,
+              inProgressAt: order.inProgressAt ? toKoreaISO(order.inProgressAt) : undefined,
+              completedAt: order.completedAt ? toKoreaISO(order.completedAt) : undefined,
               memos: order.memos.map(m => ({
                 ...m,
                 timestamp: koreaTimeToUTC(m.timestamp)
