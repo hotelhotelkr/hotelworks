@@ -1758,6 +1758,43 @@ const App: React.FC = () => {
               console.log('   - React는 비동기적으로 상태를 업데이트합니다');
               console.log('   - UI는 다음 렌더링 사이클에서 자동으로 업데이트됩니다');
               
+              // 🚨 모든 주문을 알림 히스토리에 추가 (모든 기기, 자신 포함)
+              const orderIdPart = newOrder.id ? `(#${newOrder.id})` : '';
+              const orderNotificationMessage = `${newOrder.roomNo}호${orderIdPart} 신규 요청 : ${newOrder.itemName} (수량: ${newOrder.quantity})`;
+              
+              // 알림 히스토리에 모든 주문 추가 (중복 방지)
+              setNotificationHistory(prev => {
+                const duplicate = prev.find(t => t.orderId === newOrder.id);
+                if (duplicate) {
+                  return prev; // 이미 있으면 추가하지 않음
+                }
+                
+                const newNotification: Toast = {
+                  id: `order_${newOrder.id}_${Date.now()}`,
+                  message: orderNotificationMessage,
+                  type: 'info',
+                  dept: Department.FRONT_DESK,
+                  timestamp: new Date(),
+                  orderId: newOrder.id,
+                  roomNo: newOrder.roomNo,
+                  soundEffect: 'NEW_ORDER'
+                };
+                
+                const updated = [newNotification, ...prev].slice(0, 1000); // 최대 1000개 유지
+                
+                // localStorage에 저장
+                try {
+                  localStorage.setItem('hotelflow_notifications', JSON.stringify(updated.map(t => ({
+                    ...t,
+                    timestamp: t.timestamp.toISOString()
+                  }))));
+                } catch (e) {
+                  console.warn('Failed to save notification history:', e);
+                }
+                
+                return updated;
+              });
+              
               // 🚨 최우선 목표: 토스트 알림 보장
               // 알림 표시: 자신이 보낸 메시지가 아닐 때만 알림 표시
               // 실시간 동기화 보장: 모든 기기에서 알림 표시 (자신의 기기 제외)
