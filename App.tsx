@@ -153,10 +153,27 @@ const debugError = (...args: any[]) => {
 };
 
 const App: React.FC = () => {
+  // 🚨 [최신순 정렬 수정] localStorage 데이터 버전 관리
+  // 기존 localStorage 데이터가 오래되었을 수 있으므로 버전 체크
+  const ORDERS_VERSION = 'v2_20260122'; // 날짜별 버전 관리
+  
   // Load initial state from localStorage if available
   const [orders, setOrders] = useState<Order[]>(() => {
     try {
     const saved = localStorage.getItem(STORAGE_KEY);
+    const savedVersion = localStorage.getItem(`${STORAGE_KEY}_version`);
+    
+    // 🚨 버전이 다르면 localStorage 초기화 (최신 데이터 동기화 보장)
+    if (savedVersion !== ORDERS_VERSION) {
+      console.log('🔄 [최신순 정렬] localStorage 버전 불일치 - 초기화 중...');
+      console.log('   이전 버전:', savedVersion);
+      console.log('   현재 버전:', ORDERS_VERSION);
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(`${STORAGE_KEY}_version`, ORDERS_VERSION);
+      console.log('✅ [최신순 정렬] localStorage 초기화 완료');
+      return INITIAL_ORDERS;
+    }
+    
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -170,7 +187,9 @@ const App: React.FC = () => {
             memos: (o.memos && Array.isArray(o.memos)) ? o.memos.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) : []
         }));
         // 🚨 최신순 정렬 (최우선 목표: 모든 사용자에게 최신 오더가 위에 표시)
-        return ordersWithDates.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+        const sorted = ordersWithDates.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+        console.log('✅ [최신순 정렬] localStorage에서 로드 완료:', sorted.length, '개 주문');
+        return sorted;
       } catch (e) {
         debugWarn('Failed to parse orders from localStorage:', e);
         return INITIAL_ORDERS;
@@ -2640,7 +2659,7 @@ const App: React.FC = () => {
     }
   }, [getApiBaseUrl, triggerToast]);
 
-  const handleLogin = (user: User) => {
+  const handleLogin = async (user: User) => {
     currentUserRef.current = user;
     setCurrentUser(user);
     triggerToast(`${user.name} 님이 로그인했습니다.`, 'success', user.dept, 'LOGIN');
@@ -2652,6 +2671,47 @@ const App: React.FC = () => {
     if (typeof window !== 'undefined') {
       window.location.hash = '#/';
     }
+    
+    // 🚨 [최신순 정렬 수정] Supabase에서 최신 주문 데이터 가져오기
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔄 [최신순 정렬] Supabase에서 최신 데이터 가져오기 시작...');
+    try {
+      const apiUrl = getApiBaseUrl();
+      const response = await fetch(`${apiUrl}/api/orders`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.orders)) {
+          const fetchedOrders = data.orders.map((o: any) => ({
+            ...o,
+            requestedAt: new Date(o.requestedAt),
+            acceptedAt: o.acceptedAt ? new Date(o.acceptedAt) : undefined,
+            inProgressAt: o.inProgressAt ? new Date(o.inProgressAt) : undefined,
+            completedAt: o.completedAt ? new Date(o.completedAt) : undefined,
+            memos: (o.memos && Array.isArray(o.memos)) ? o.memos.map((m: any) => ({ 
+              ...m, 
+              timestamp: new Date(m.timestamp) 
+            })) : []
+          })).sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+          
+          console.log('✅ [최신순 정렬] Supabase에서 데이터 로드 완료:', fetchedOrders.length, '개 주문');
+          console.log('   최신 주문:', fetchedOrders[0]?.id, fetchedOrders[0]?.roomNo, fetchedOrders[0]?.itemName);
+          setOrders(fetchedOrders);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(fetchedOrders));
+          console.log('✅ [최신순 정렬] localStorage 업데이트 완료');
+        }
+      } else {
+        console.warn('⚠️ [최신순 정렬] Supabase 데이터 로드 실패:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ [최신순 정렬] Supabase 데이터 로드 오류:', error);
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // 로그인 시 전체 주문 목록 동기화 요청
     const socket = socketRef.current;
