@@ -60,9 +60,6 @@ export interface Order {
   assignedTo?: string; // User ID
   requestChannel: string;
   memos: Memo[];
-  // Added requestNote to the interface to support creation payloads using Partial<Order>
-  // and resolve TypeScript errors in App.tsx and components/RapidOrder.tsx
-  requestNote?: string;
 }
 
 export interface FilterOptions {

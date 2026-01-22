@@ -24,7 +24,6 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
   const [selectedItems, setSelectedItems] = useState<Map<string, number>>(new Map());
   const [priority, setPriority] = useState<Priority>(Priority.NORMAL);
-  const [note, setNote] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customItemName, setCustomItemName] = useState('');
   const [isDispatching, setIsDispatching] = useState(false);
@@ -126,7 +125,6 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
         itemName: name,
         quantity: qty,
         priority,
-        requestNote: note,
         category: 'Amenities'
       });
     });
@@ -135,7 +133,6 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
     setSelectedRoom('');
     setSelectedItems(new Map());
     setPriority(Priority.NORMAL);
-    setNote('');
     setIsDispatching(false);
     dispatchTimeoutRef.current = null;
   };
@@ -543,16 +540,6 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
                 Urgent
               </button>
             </div>
-          </div>
-
-          <div className="space-y-3 flex-1 flex flex-col">
-            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest shrink-0">Notes</label>
-            <textarea
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none resize-none transition-all flex-1"
-              placeholder="Internal instructions..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
           </div>
 
           <div className="mt-auto pt-6 border-t border-slate-100 shrink-0">

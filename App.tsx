@@ -2967,20 +2967,8 @@ const App: React.FC = () => {
       // 최신 주문 목록을 사용하여 ID 생성
       const newId = generateOrderId(prev);
       
+      // 메모는 빈 배열로 초기화 (NOTES 기능 제거)
       const initialMemos: Memo[] = [];
-      if (newOrderData.requestNote && newOrderData.requestNote.trim()) {
-        // 주문 ID를 포함한 고유한 메모 ID 생성 (동일 주문의 동일 메모는 같은 ID를 가지도록)
-        const orderIdPrefix = generateOrderId(prev).split('_')[0]; // 날짜 부분만 사용
-        const memoId = `MEMO-${orderIdPrefix}-${Date.now()}-${currentUser.id}-${Math.random().toString(36).substr(2, 6)}`;
-        initialMemos.push({
-          id: memoId,
-          text: newOrderData.requestNote.trim(),
-          senderId: currentUser.id,
-          senderName: currentUser.name,
-          senderDept: currentUser.dept,
-          timestamp: now
-        });
-      }
 
       order = {
         id: newId,
