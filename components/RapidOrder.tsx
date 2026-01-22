@@ -517,13 +517,13 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
 
       {/* 3. Finalize */}
       <div className="lg:col-span-3 flex flex-col gap-4">
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex-1 flex flex-col gap-6">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex-1 flex flex-col gap-4">
           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 shrink-0">
             <Send className="w-5 h-5 text-indigo-600" />
             3. 오더하기
           </h3>
 
-          <div className="space-y-3 shrink-0">
+          <div className="space-y-2 shrink-0">
             <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Priority</label>
             <div className="flex gap-2 p-1.5 bg-slate-50 rounded-2xl border border-slate-100">
               <button
@@ -542,11 +542,11 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
             </div>
           </div>
 
-          <div className="mt-auto pt-6 border-t border-slate-100 shrink-0">
+          <div className="mt-auto pt-4 border-t border-slate-100 shrink-0">
             {/* Preview Section */}
-            <div className="mb-6">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-3 text-center">Preview</label>
-              <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100 text-center space-y-1 shadow-inner">
+            <div className="mb-4">
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-2 text-center">Preview</label>
+              <div className="bg-slate-50 rounded-[2rem] p-4 border border-slate-100 text-center space-y-1 shadow-inner">
                  {selectedRoom ? (
                     <p className="text-4xl italic uppercase tracking-tighter">
                       <span className="font-black text-slate-950">ROOM </span>
