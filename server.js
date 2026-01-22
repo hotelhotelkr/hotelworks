@@ -420,6 +420,31 @@ io.on('connection', (socket) => {
           console.log('   💾 DB 저장 완료 (STATUS_UPDATE):', payload.id);
         } else if (type === 'NEW_MEMO') {
           console.log('   💾 메모 저장 시도 (비동기):', payload.orderId);
+          const { orderId, memo } = payload;
+          
+          if (!orderId || !memo) {
+            console.warn('   ⚠️ 메모 데이터가 불완전함:', { orderId, memo });
+            return;
+          }
+          
+          // 메모를 Supabase에 저장
+          const { data, error } = await supabase
+            .from('memos')
+            .insert([{
+              id: memo.id,
+              order_id: orderId,
+              text: memo.text,
+              sender_id: memo.senderId,
+              sender_name: memo.senderName,
+              sender_dept: memo.senderDept,
+              timestamp: memo.timestamp ? new Date(memo.timestamp).toISOString() : new Date().toISOString()
+            }]);
+          
+          if (error) {
+            console.error('   ❌ 메모 저장 실패:', error);
+          } else {
+            console.log('   ✅ 메모 저장 완료:', memo.id);
+          }
         } else if (type === 'USER_ADD') {
           console.log('   💾 사용자 추가 시도 (비동기):', payload.id);
           const { data, error } = await supabase

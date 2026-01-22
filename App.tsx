@@ -3425,7 +3425,23 @@ const App: React.FC = () => {
         const targetOrder = updated.find(o => o.id === orderId);
         foundRoomNo = targetOrder ? targetOrder.roomNo : null;
       }
-      return updated;
+      
+      // created_at 기준으로 정렬 (Supabase와 동일, 최신순 유지)
+      const sorted = updated.sort((a, b) => {
+        const aTime = (a.createdAt ? new Date(a.createdAt).getTime() : a.requestedAt.getTime());
+        const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
+        return bTime - aTime; // DESC (최신순)
+      });
+      
+      // localStorage 업데이트
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sorted));
+        console.log('💾 메모 추가 후 localStorage 저장 완료 (created_at 기준 정렬)');
+      } catch (e) {
+        console.warn('⚠️ localStorage 저장 실패:', e);
+      }
+      
+      return sorted;
     });
 
     // 로컬에서 토스트 생성하지 않음 - WebSocket을 통해 모든 기기에서 알림 표시
