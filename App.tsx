@@ -2917,27 +2917,9 @@ const App: React.FC = () => {
             
             // 🚨 연결 상태 확인 및 강제 재연결
             if (!socket.connected) {
-              console.error('❌ WebSocket 연결되지 않음 - 재연결 시도');
-              try {
-                socket.connect();
-                // 재연결 대기 (최대 2초)
-                let reconnectAttempts = 0;
-                const maxAttempts = 20; // 2초 (100ms * 20)
-                while (!socket.connected && reconnectAttempts < maxAttempts) {
-                  await new Promise(resolve => setTimeout(resolve, 100));
-                  reconnectAttempts++;
-                }
-                if (!socket.connected) {
-                  console.error('❌ 재연결 실패 - 오프라인 큐에 저장');
-                  saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
-                  return;
-                }
-                console.log('✅ 재연결 성공 - 메시지 전송 계속');
-              } catch (reconnectError) {
-                console.error('❌ 재연결 실패:', reconnectError);
-                saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
-                return;
-              }
+              console.error('❌ WebSocket 연결되지 않음 - 오프라인 큐에 저장');
+              saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+              return;
             }
             
             try {
