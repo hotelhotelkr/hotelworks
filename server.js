@@ -181,7 +181,7 @@ app.post('/api/orders/sync', async (req, res) => {
         }
         
         results.created++;
-      } catch (error: any) {
+      } catch (error) {
         results.errors.push({
           orderId: order.id || 'unknown',
           error: error.message || String(error)
@@ -193,7 +193,7 @@ app.post('/api/orders/sync', async (req, res) => {
       success: true,
       results
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ 주문 동기화 오류:', error);
     res.status(500).json({
       success: false,
