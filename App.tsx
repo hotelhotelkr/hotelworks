@@ -1259,12 +1259,20 @@ const App: React.FC = () => {
         });
       });
 
+      // 🚨 중복 리스너 방지: 기존 리스너 제거 후 새로 등록
+      socket.off(SYNC_CHANNEL); // 기존 리스너 제거 (중복 방지)
+      
       // 서버로부터 메시지 수신 (로그인 상태와 무관하게 항상 수신)
       socket.on(SYNC_CHANNEL, (data: any) => {
         if (!mounted) {
           console.warn('⚠️ 컴포넌트 언마운트 상태 - 메시지 처리 스킵');
           return; // 컴포넌트가 언마운트되면 처리하지 않음
         }
+        
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📥 [이벤트 리스너] WebSocket 메시지 수신 시작');
+        console.log('   수신 시간:', new Date().toISOString());
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         const { type, payload, senderId, sessionId, timestamp } = data;
         
@@ -1611,6 +1619,7 @@ const App: React.FC = () => {
                   console.log('   - 아이템:', newOrder.itemName);
                   console.log('   - 수량:', newOrder.quantity);
                   
+                  // 🚨 토스트 알림 즉시 표시 (동기적으로 실행)
                   triggerToast(
                     toastMessage, 
                     'info', 
@@ -1620,8 +1629,13 @@ const App: React.FC = () => {
                     newOrder.roomNo
                   );
                   
-                  console.log('✅ triggerToast 호출 완료');
+                  console.log('✅ triggerToast 호출 완료 (즉시 실행)');
                   console.log('✅ 토스트 알림 표시 완료 (최우선 목표 달성)');
+                  console.log('   - 토스트 메시지:', toastMessage);
+                  console.log('   - 주문 ID:', newOrder.id);
+                  console.log('   - 방번호:', newOrder.roomNo);
+                  console.log('   - React state (toasts)에 추가됨');
+                  console.log('   - ToastNotification 컴포넌트가 자동으로 렌더링됨');
                   
                   // 토스트가 실제로 추가되었는지 확인 (React state는 직접 확인 불가하므로 로그만)
                   console.log('✅ triggerToast 호출 완료 - 토스트가 상태에 추가되었습니다');

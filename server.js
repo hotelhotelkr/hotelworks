@@ -147,9 +147,13 @@ io.on('connection', (socket) => {
       console.log('   - 브로드캐스트 시간:', new Date().toISOString());
       
       // 🚨 즉시 브로드캐스트 (DB 저장 전)
+      // io.emit은 모든 연결된 클라이언트에게 동기적으로 전송
       io.emit('hotelflow_sync', message);
       
-      console.log('   ✅ 브로드캐스트 완료 (즉시 실행)');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('✅ 브로드캐스트 완료 (즉시 실행)');
+      console.log('   전송 시간:', new Date().toISOString());
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('   전송된 클라이언트 수:', clientCount);
       console.log('   수신 시간:', new Date().toLocaleString('ko-KR'));
       console.log('   브로드캐스트 메시지 타입:', type);
