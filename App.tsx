@@ -1725,7 +1725,11 @@ const App: React.FC = () => {
                 if (exists) {
                   console.log('⚠️ 기존 주문 업데이트:', exists.id, exists.roomNo, exists.itemName);
                   const updated = prev.map(o => o.id === newOrder.id ? newOrder : o)
-                    .sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+                    .sort((a, b) => {
+                      const timeA = a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime();
+                      const timeB = b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime();
+                      return timeB - timeA;
+                    });
                   try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
                     console.log('✅ localStorage 업데이트 완료 (기존 주문)');
@@ -1738,7 +1742,11 @@ const App: React.FC = () => {
                 }
                 
                 console.log('✅ 새 주문 추가:', newOrder.id, newOrder.roomNo, newOrder.itemName);
-                const newOrders = [newOrder, ...prev].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+                const newOrders = [newOrder, ...prev].sort((a, b) => {
+                  const timeA = a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime();
+                  const timeB = b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime();
+                  return timeB - timeA;
+                });
                 
                 try {
                   localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrders));
