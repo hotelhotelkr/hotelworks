@@ -115,13 +115,19 @@ io.on('connection', (socket) => {
     // 이렇게 하면 DB 저장이 느려도 실시간 동기화가 즉시 이루어짐
     
     // 🚨 브로드캐스트 메시지 생성 (즉시 전송)
+    // 최우선 목표: 실시간 동기화 보장
     const message = {
       type,
       payload,
-      senderId,
+      senderId: senderId || null,
       sessionId: sessionId || null, // sessionId 포함 (중복 알림 방지용)
       timestamp: timestamp || new Date().toISOString()
     };
+    
+    // 🚨 sessionId가 없으면 로그 출력 (디버깅용)
+    if (!sessionId) {
+      console.warn('⚠️ sessionId가 없음 - 모든 기기에서 알림 표시됨');
+    }
     
     // 🚨 모든 연결된 클라이언트에게 즉시 브로드캐스트 (실시간 동기화 보장)
     const clientCount = io.sockets.sockets.size;

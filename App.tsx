@@ -580,7 +580,18 @@ const App: React.FC = () => {
         totalToasts: prev.length + 1
       });
       
-      return [newToast, ...prev];
+      const updated = [newToast, ...prev];
+      
+      // 🚨 최우선 목표: 토스트 알림 보장
+      // 토스트가 실제로 추가되었는지 확인 (다음 렌더링 사이클에서)
+      setTimeout(() => {
+        // React state는 직접 확인할 수 없으므로 로그만 출력
+        console.log('✅ 토스트 상태 업데이트 완료 (React state)');
+        console.log('   - ToastNotification 컴포넌트가 자동으로 렌더링합니다');
+        console.log('   - 토스트는 화면 우측 상단에 표시됩니다');
+      }, 0);
+      
+      return updated;
     });
     
     // 알림 히스토리에 추가 (최대 1000개 유지, 중복 방지)
@@ -1261,6 +1272,7 @@ const App: React.FC = () => {
       // 🚨 중복 리스너 방지: 기존 리스너 제거 후 새로 등록
       socket.off(SYNC_CHANNEL); // 기존 리스너 제거 (중복 방지)
       
+      // 🚨 최우선 목표: 실시간 동기화 및 토스트 알림 보장
       // 서버로부터 메시지 수신 (로그인 상태와 무관하게 항상 수신)
       socket.on(SYNC_CHANNEL, (data: any) => {
         if (!mounted) {
@@ -1268,9 +1280,13 @@ const App: React.FC = () => {
           return; // 컴포넌트가 언마운트되면 처리하지 않음
         }
         
+        // 🚨 최우선 목표: 실시간 동기화 및 토스트 알림 보장
+        // 메시지 수신 즉시 처리 (지연 없음)
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('📥 [이벤트 리스너] WebSocket 메시지 수신 시작');
+        console.log('📥 [이벤트 리스너] WebSocket 메시지 수신 시작 (즉시 처리)');
         console.log('   수신 시간:', new Date().toISOString());
+        console.log('   Socket ID:', socket.id);
+        console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         const { type, payload, senderId, sessionId, timestamp } = data;
@@ -1491,19 +1507,10 @@ const App: React.FC = () => {
               // 중요: 모든 의심스러운 경우에는 알림 표시 (안전한 선택)
               
               // 🚨 최우선 목표: 실시간 동기화 및 토스트 알림 보장
-              // 알림 표시 조건: 자신의 기기에서 생성한 주문만 알림 스킵
-              // 기본 원칙: 모든 의심스러운 경우에는 알림 표시 (안전한 선택)
-              // 
-              // 자신의 메시지 판단 조건:
-              // 1. senderId가 현재 사용자와 같아야 함
-              // 2. sessionId가 현재 세션과 같아야 함
-              // 3. 둘 다 없거나 다르면 → 다른 기기/사용자로 간주 → 항상 알림 표시
+              // 알림 표시 원칙: 모든 의심스러운 경우에는 알림 표시 (안전한 선택)
+              // 자신의 메시지 판단: senderId와 sessionId가 모두 완벽히 일치할 때만 스킵
               
               let isSelfMessage = false;
-              
-              // 🚨 최우선 목표: 실시간 동기화 및 토스트 알림 보장
-              // 단순하고 명확한 로직: 모든 조건이 완벽히 일치할 때만 자신의 메시지로 판단
-              // 기본 원칙: 모든 의심스러운 경우에는 알림 표시 (안전한 선택)
               
               // 자신의 메시지 판단 조건 (모두 만족해야 함):
               // 1. user가 존재해야 함
@@ -1511,15 +1518,18 @@ const App: React.FC = () => {
               // 3. sessionId가 존재하고 비어있지 않아야 함
               // 4. SESSION_ID가 존재하고 비어있지 않아야 함
               // 5. sessionId와 SESSION_ID가 같아야 함
+              // 
+              // 하나라도 조건이 맞지 않으면 → 다른 기기/사용자로 간주 → 항상 알림 표시
               
               const hasUser = !!user;
-              const hasSenderId = !!senderId;
+              const hasSenderId = !!senderId && senderId.trim() !== '';
               const senderMatches = hasUser && hasSenderId && senderId === user.id;
-              const hasSessionId = !!sessionId && sessionId !== '';
-              const hasCurrentSessionId = !!SESSION_ID && SESSION_ID !== '';
+              const hasSessionId = !!sessionId && sessionId !== '' && sessionId !== 'null' && sessionId !== 'undefined';
+              const hasCurrentSessionId = !!SESSION_ID && SESSION_ID !== '' && SESSION_ID !== 'null' && SESSION_ID !== 'undefined';
               const sessionMatches = hasSessionId && hasCurrentSessionId && sessionId === SESSION_ID;
               
               // 모든 조건이 완벽히 일치할 때만 자신의 메시지로 판단
+              // 하나라도 다르거나 없으면 → 다른 기기/사용자 → 항상 알림 표시
               isSelfMessage = hasUser && senderMatches && sessionMatches;
               
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -1567,13 +1577,15 @@ const App: React.FC = () => {
               // UI 업데이트 (모든 로그인된 사용자 - 자신의 메시지도 포함)
               // 모든 기기에서 즉시 UI 업데이트
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('🔄 UI 업데이트 시작 (즉시 실행)');
+              console.log('🔄 UI 업데이트 시작 (즉시 실행 - 최우선 목표)');
               console.log('   주문 ID:', newOrder.id);
               console.log('   방번호:', newOrder.roomNo);
               console.log('   아이템:', newOrder.itemName);
               console.log('   수량:', newOrder.quantity);
+              console.log('   현재 주문 수 (업데이트 전):', orders.length);
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
               
+              // 🚨 React 상태 업데이트 (즉시 실행)
               setOrders(prev => {
                 const exists = prev.find(o => o.id === newOrder.id);
                 if (exists) {
@@ -1586,6 +1598,7 @@ const App: React.FC = () => {
                     console.error('❌ localStorage 저장 실패:', e);
                   }
                   console.log('✅ UI 업데이트 완료 (기존 주문 업데이트)');
+                  console.log('   - 업데이트 후 주문 수:', updated.length);
                   return updated;
                 }
                 
@@ -1602,13 +1615,13 @@ const App: React.FC = () => {
                 console.log('✅ UI 업데이트 완료 (새 주문 추가)');
                 console.log('   - 업데이트 전 주문 수:', prev.length);
                 console.log('   - 업데이트 후 주문 수:', newOrders.length);
-                console.log('   - React 상태 업데이트 예정 (비동기)');
                 return newOrders;
               });
               
-              // 🚨 React 상태 업데이트 강제 (flushSync 사용하지 않음 - 성능 고려)
-              // 대신 즉시 UI 업데이트를 보장하기 위해 로그로 확인
+              // 🚨 React 상태 업데이트 완료 확인
               console.log('✅ setOrders 호출 완료 - React 상태 업데이트 예정');
+              console.log('   - React는 비동기적으로 상태를 업데이트합니다');
+              console.log('   - UI는 다음 렌더링 사이클에서 자동으로 업데이트됩니다');
               
               // 🚨 최우선 목표: 토스트 알림 보장
               // 알림 표시: 자신이 보낸 메시지가 아닐 때만 알림 표시
@@ -1628,15 +1641,20 @@ const App: React.FC = () => {
                 // 🚨 토스트 알림 강제 표시 (최우선 목표)
                 // 스크린샷 형식과 일치: "1033호(#20260110_21) 신규 요청 : 런드리 봉투 (수량: 1)"
                 try {
-                  // 주문 ID 추출 (예: #20260110_21)
-                  const orderIdPart = newOrder.id ? `(#${newOrder.id.split('_')[1] || newOrder.id.split('_').slice(1).join('_') || newOrder.id})` : '';
+                  // 주문 ID 추출 (예: 20260110_21 → #20260110_21)
+                  // 주문 ID 형식: YYYYMMDD_SEQ (예: 20260110_21)
+                  const orderIdPart = newOrder.id ? `(#${newOrder.id})` : '';
                   // 항상 수량 표시 (수량 1이어도 표시)
                   const toastMessage = `${newOrder.roomNo}호${orderIdPart} 신규 요청 : ${newOrder.itemName} (수량: ${newOrder.quantity})`;
-                  console.log('📤 triggerToast 호출:', toastMessage);
-                  console.log('   - 주문 ID:', newOrder.id);
-                  console.log('   - 방번호:', newOrder.roomNo);
-                  console.log('   - 아이템:', newOrder.itemName);
-                  console.log('   - 수량:', newOrder.quantity);
+                  
+                  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                  console.log('🔔 토스트 알림 표시 시작 (최우선 목표)');
+                  console.log('   토스트 메시지:', toastMessage);
+                  console.log('   주문 ID:', newOrder.id);
+                  console.log('   방번호:', newOrder.roomNo);
+                  console.log('   아이템:', newOrder.itemName);
+                  console.log('   수량:', newOrder.quantity);
+                  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                   
                   // 🚨 토스트 알림 즉시 표시 (동기적으로 실행)
                   triggerToast(
@@ -1655,20 +1673,14 @@ const App: React.FC = () => {
                   console.log('   - 방번호:', newOrder.roomNo);
                   console.log('   - React state (toasts)에 추가됨');
                   console.log('   - ToastNotification 컴포넌트가 자동으로 렌더링됨');
-                  
-                  // 토스트가 실제로 추가되었는지 확인 (React state는 직접 확인 불가하므로 로그만)
-                  console.log('✅ triggerToast 호출 완료 - 토스트가 상태에 추가되었습니다');
-                  console.log('   - 토스트는 React state (toasts)에 추가되었습니다');
-                  console.log('   - ToastNotification 컴포넌트가 자동으로 렌더링합니다');
-                  console.log('   - toasts 배열 길이 확인 필요 (React DevTools 사용)');
                 } catch (toastError) {
                   console.error('❌ triggerToast 호출 실패:', toastError);
                   console.error('   - 에러 상세:', toastError);
                   console.error('   - 에러 스택:', (toastError as Error).stack);
                   // 에러 발생 시에도 재시도
                   try {
-                    // 주문 ID 추출 (예: #20260110_21)
-                    const orderIdPart = newOrder.id ? `(#${newOrder.id.split('_')[1] || newOrder.id.split('_').slice(1).join('_') || newOrder.id})` : '';
+                    // 주문 ID 추출 (예: 20260110_21 → #20260110_21)
+                    const orderIdPart = newOrder.id ? `(#${newOrder.id})` : '';
                     // 항상 수량 표시 (수량 1이어도 표시)
                     const retryMessage = `${newOrder.roomNo}호${orderIdPart} 신규 요청 : ${newOrder.itemName} (수량: ${newOrder.quantity})`;
                     triggerToast(
@@ -2741,8 +2753,13 @@ const App: React.FC = () => {
               console.error('❌ WebSocket 연결되지 않음 - 재연결 시도');
               try {
                 socket.connect();
-                // 재연결 대기 (최대 1초)
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // 재연결 대기 (최대 2초)
+                let reconnectAttempts = 0;
+                const maxAttempts = 20; // 2초 (100ms * 20)
+                while (!socket.connected && reconnectAttempts < maxAttempts) {
+                  await new Promise(resolve => setTimeout(resolve, 100));
+                  reconnectAttempts++;
+                }
                 if (!socket.connected) {
                   console.error('❌ 재연결 실패 - 오프라인 큐에 저장');
                   saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
@@ -2758,7 +2775,22 @@ const App: React.FC = () => {
             
             try {
               // 🚨 메시지 전송 (연결 상태 확인 완료)
+              // 최우선 목표: 실시간 동기화 보장
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('📤 socket.emit 호출 시작 (최우선 목표)');
+              console.log('   채널:', SYNC_CHANNEL);
+              console.log('   주문 ID:', order.id);
+              console.log('   방번호:', order.roomNo);
+              console.log('   아이템:', order.itemName);
+              console.log('   수량:', order.quantity);
+              console.log('   Socket ID:', socket.id);
+              console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+              console.log('   발신자:', message.senderId);
+              console.log('   세션 ID:', message.sessionId);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              
               socket.emit(SYNC_CHANNEL, message);
+              
               console.log('✅ socket.emit 호출 완료:', order.id);
               console.log('   전송 시간:', new Date().toISOString());
               console.log('   Socket ID:', socket.id);
@@ -2766,6 +2798,7 @@ const App: React.FC = () => {
               console.log('   메시지 타입:', message.type);
               console.log('   발신자:', message.senderId);
               console.log('   세션 ID:', message.sessionId);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
               debugLog('✅ 브로드캐스트 완료:', order.id);
               
               // 전송 확인을 위한 짧은 딜레이 후 연결 상태 확인
