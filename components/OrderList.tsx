@@ -91,52 +91,18 @@ const OrderList: React.FC<OrderListProps> = ({
   };
 
   const filteredOrders = useMemo(() => {
-    const filtered = orders.filter(order => {
-    const matchesStatus = filters.status === 'ALL' || order.status === filters.status;
-    const matchesPriority = filters.priority === 'ALL' || order.priority === filters.priority;
-    const matchesRoom = !filters.roomNo || order.roomNo.includes(filters.roomNo);
-    const matchesSearch = !searchTerm || 
-      order.itemName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      order.roomNo.includes(searchTerm) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesStatus && matchesPriority && matchesRoom && matchesSearch;
-  });
-    
-    // ✅ 완벽한 최신순 정렬 로직
-    // 1. requestedAt 기준 내림차순 (최신이 위)
-    // 2. 같은 시간이면 ID 기준 내림차순 (숫자가 큰 게 위)
-    // 3. Date 변환 실패 시 안전 처리 (0으로 간주하여 맨 아래로)
-    return filtered.sort((a, b) => {
-      // 안전한 Date 변환 (실패 시 0)
-      let timeA = 0;
-      let timeB = 0;
+    // ✅ Supabase 절대 우선: App.tsx에서 받은 순서 그대로 사용
+    // ❌ 클라이언트에서 재정렬 안 함 (Supabase가 이미 최신순으로 정렬했음)
+    return orders.filter(order => {
+      const matchesStatus = filters.status === 'ALL' || order.status === filters.status;
+      const matchesPriority = filters.priority === 'ALL' || order.priority === filters.priority;
+      const matchesRoom = !filters.roomNo || order.roomNo.includes(filters.roomNo);
+      const matchesSearch = !searchTerm || 
+        order.itemName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        order.roomNo.includes(searchTerm) ||
+        order.id.toLowerCase().includes(searchTerm.toLowerCase());
       
-      try {
-        timeA = a.requestedAt instanceof Date 
-          ? a.requestedAt.getTime() 
-          : new Date(a.requestedAt).getTime();
-        if (isNaN(timeA)) timeA = 0;
-      } catch {
-        timeA = 0;
-      }
-      
-      try {
-        timeB = b.requestedAt instanceof Date 
-          ? b.requestedAt.getTime() 
-          : new Date(b.requestedAt).getTime();
-        if (isNaN(timeB)) timeB = 0;
-      } catch {
-        timeB = 0;
-      }
-      
-      // 1차 정렬: 시간 내림차순 (최신이 위)
-      if (timeB !== timeA) {
-        return timeB - timeA;
-      }
-      
-      // 2차 정렬: ID 내림차순 (같은 시간이면 ID가 큰 게 위)
-      return b.id.localeCompare(a.id);
+      return matchesStatus && matchesPriority && matchesRoom && matchesSearch;
     });
   }, [orders, filters, searchTerm]);
 
