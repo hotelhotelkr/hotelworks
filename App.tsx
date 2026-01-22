@@ -818,7 +818,7 @@ const App: React.FC = () => {
       const socket = socketRef.current;
 
       socket.on('connect', () => {
-        console.log('✅ WebSocket 연결 성공:', socket.id, '| URL:', wsUrl);
+        console.log('✅ WebSocket 연결 성공:', socket.id, '| URL:', wsUrlRef.current || getWebSocketURL());
         console.log('✅ 세션 ID:', SESSION_ID);
         setIsConnected(true);
         syncOfflineQueue();
