@@ -155,7 +155,7 @@ const debugError = (...args: any[]) => {
 const App: React.FC = () => {
   // 🚨 [최신순 정렬 수정] localStorage 데이터 버전 관리
   // 기존 localStorage 데이터가 오래되었을 수 있으므로 버전 체크
-  const ORDERS_VERSION = 'v3_20260122_2130'; // 시간별 버전 관리 (INITIAL_ORDERS 문제 해결)
+  const ORDERS_VERSION = 'v4_20260122_2235'; // 시간별 버전 관리 (UTC 시간 변환 오류 수정)
   
   // Load initial state from localStorage if available
   const [orders, setOrders] = useState<Order[]>(() => {
@@ -2958,25 +2958,14 @@ const App: React.FC = () => {
             // 문제: 사용자가 원하는 것은 Supabase Table Editor에서 한국 시간으로 보이는 것
             // 해결: 한국 시간을 그대로 UTC로 저장 (시간대 정보 없이)
             //       즉, 한국 시간 23:34를 UTC 23:34로 저장하려면 9시간을 더해야 함
-            const koreaTimeToUTC = (date: Date): string => {
-              if (!date) return new Date().toISOString();
-              // Date 객체는 내부적으로 UTC로 저장되지만, 로컬 시간대로 표시됨
-              // 한국에서 생성된 Date는 로컬 시간(한국 시간)으로 표시됨
-              // toISOString()은 UTC로 변환하므로, 한국 시간을 UTC로 저장하려면
-              // 한국 시간에서 9시간을 더해야 함
-              // 예: 한국 시간 23:34 → UTC로 저장하려면 14:34가 되어야 함
-              // 따라서 한국 시간에서 9시간을 빼면 UTC가 됨
-              const koreaOffset = 9 * 60 * 60 * 1000;
-              const utcTime = new Date(date.getTime() - koreaOffset);
-              return utcTime.toISOString();
-            };
-            
+            // Date 객체는 이미 UTC 타임스탬프를 내부적으로 저장하고 있으므로
+            // toISOString()을 직접 사용하면 올바른 UTC 시간이 나옵니다
             const payload = {
               ...order,
-              requestedAt: koreaTimeToUTC(order.requestedAt),
-              acceptedAt: order.acceptedAt ? koreaTimeToUTC(order.acceptedAt) : undefined,
-              inProgressAt: order.inProgressAt ? koreaTimeToUTC(order.inProgressAt) : undefined,
-              completedAt: order.completedAt ? koreaTimeToUTC(order.completedAt) : undefined,
+              requestedAt: order.requestedAt.toISOString(),
+              acceptedAt: order.acceptedAt?.toISOString(),
+              inProgressAt: order.inProgressAt?.toISOString(),
+              completedAt: order.completedAt?.toISOString(),
               memos: order.memos.map(m => ({
                 ...m,
                 timestamp: koreaTimeToUTC(m.timestamp)
