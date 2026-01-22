@@ -103,12 +103,40 @@ const OrderList: React.FC<OrderListProps> = ({
     return matchesStatus && matchesPriority && matchesRoom && matchesSearch;
   });
     
-    // 최신순으로 정렬 (위에서 아래로: 가장 최근 주문이 위에)
-    // requestedAt이 Date 객체가 아닐 수 있으므로 안전하게 변환
+    // ✅ 완벽한 최신순 정렬 로직
+    // 1. requestedAt 기준 내림차순 (최신이 위)
+    // 2. 같은 시간이면 ID 기준 내림차순 (숫자가 큰 게 위)
+    // 3. Date 변환 실패 시 안전 처리 (0으로 간주하여 맨 아래로)
     return filtered.sort((a, b) => {
-      const timeA = a.requestedAt instanceof Date ? a.requestedAt.getTime() : new Date(a.requestedAt).getTime();
-      const timeB = b.requestedAt instanceof Date ? b.requestedAt.getTime() : new Date(b.requestedAt).getTime();
-      return timeB - timeA;
+      // 안전한 Date 변환 (실패 시 0)
+      let timeA = 0;
+      let timeB = 0;
+      
+      try {
+        timeA = a.requestedAt instanceof Date 
+          ? a.requestedAt.getTime() 
+          : new Date(a.requestedAt).getTime();
+        if (isNaN(timeA)) timeA = 0;
+      } catch {
+        timeA = 0;
+      }
+      
+      try {
+        timeB = b.requestedAt instanceof Date 
+          ? b.requestedAt.getTime() 
+          : new Date(b.requestedAt).getTime();
+        if (isNaN(timeB)) timeB = 0;
+      } catch {
+        timeB = 0;
+      }
+      
+      // 1차 정렬: 시간 내림차순 (최신이 위)
+      if (timeB !== timeA) {
+        return timeB - timeA;
+      }
+      
+      // 2차 정렬: ID 내림차순 (같은 시간이면 ID가 큰 게 위)
+      return b.id.localeCompare(a.id);
     });
   }, [orders, filters, searchTerm]);
 
