@@ -399,6 +399,61 @@ io.on('connection', (socket) => {
           console.log('   💾 DB 저장 완료 (STATUS_UPDATE):', payload.id);
         } else if (type === 'NEW_MEMO') {
           console.log('   💾 메모 저장 시도 (비동기):', payload.orderId);
+        } else if (type === 'USER_ADD') {
+          console.log('   💾 사용자 추가 시도 (비동기):', payload.id);
+          const { data, error } = await supabase
+            .from('users')
+            .insert([{
+              id: payload.id,
+              username: payload.username,
+              password: payload.password,
+              name: payload.name,
+              dept: payload.dept,
+              role: payload.role,
+              created_at: new Date().toISOString()
+            }]);
+          
+          if (error) {
+            console.error('   ❌ 사용자 추가 실패:', error);
+          } else {
+            console.log('   ✅ 사용자 추가 완료:', payload.id);
+          }
+        } else if (type === 'USER_UPDATE') {
+          console.log('   💾 사용자 수정 시도 (비동기):', payload.id);
+          const updateData = {
+            username: payload.username,
+            name: payload.name,
+            dept: payload.dept,
+            role: payload.role
+          };
+          
+          // 비밀번호가 있으면 업데이트
+          if (payload.password) {
+            updateData.password = payload.password;
+          }
+          
+          const { data, error } = await supabase
+            .from('users')
+            .update(updateData)
+            .eq('id', payload.id);
+          
+          if (error) {
+            console.error('   ❌ 사용자 수정 실패:', error);
+          } else {
+            console.log('   ✅ 사용자 수정 완료:', payload.id);
+          }
+        } else if (type === 'USER_DELETE') {
+          console.log('   💾 사용자 삭제 시도 (비동기):', payload.userId);
+          const { data, error } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', payload.userId);
+          
+          if (error) {
+            console.error('   ❌ 사용자 삭제 실패:', error);
+          } else {
+            console.log('   ✅ 사용자 삭제 완료:', payload.userId);
+          }
         }
       } catch (error) {
         console.error('   ❌ DB 저장 오류 (비동기):', error.message);
