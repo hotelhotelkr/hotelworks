@@ -730,28 +730,28 @@ const Settings: React.FC<SettingsProps> = ({
         </section>
         )}
 
-        {/* 2. 주문 동기화 */}
+        {/* 2. 오더 동기화 */}
         <section className="mb-6">
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Cloud className="w-5 h-5 text-indigo-600" />
-            2. 주문 동기화 (Order Sync)
+            2. 오더 동기화 (Order Sync)
           </h3>
           
           <div className="space-y-3">
             <p className="text-sm text-slate-600 mb-4">
-              localStorage에 저장된 주문들을 데이터베이스로 동기화합니다.
+              localStorage에 저장된 오더들을 데이터베이스로 동기화합니다.
             </p>
             
             <button
               onClick={async () => {
                 try {
-                  setSyncStatus({ status: 'syncing', message: '동기화 중...' });
+                  setSyncStatus({ status: 'syncing', message: '오더 동기화 중...' });
                   
                   const ordersJson = localStorage.getItem('hotelflow_orders_v1');
                   if (!ordersJson) {
                     setSyncStatus({ 
                       status: 'error', 
-                      message: 'localStorage에 주문이 없습니다.' 
+                      message: 'localStorage에 오더가 없습니다.' 
                     });
                     return;
                   }
@@ -760,7 +760,7 @@ const Settings: React.FC<SettingsProps> = ({
                   if (!Array.isArray(orders) || orders.length === 0) {
                     setSyncStatus({ 
                       status: 'error', 
-                      message: '주문이 0개입니다.' 
+                      message: '오더가 0개입니다.' 
                     });
                     return;
                   }
@@ -860,9 +860,9 @@ const Settings: React.FC<SettingsProps> = ({
                   
                   // 성공 메시지 알림
                   if (result.results.created > 0) {
-                    alert(`✅ ${result.results.created}개의 주문이 데이터베이스에 저장되었습니다!\n\n이제 phpMyAdmin에서 확인할 수 있습니다.`);
+                    alert(`✅ ${result.results.created}개의 오더가 데이터베이스에 저장되었습니다!\n\n이제 Supabase에서 확인할 수 있습니다.`);
                   } else if (result.results.skipped > 0) {
-                    alert(`⏭️ 모든 주문이 이미 데이터베이스에 있습니다.\n\n(건너뜀: ${result.results.skipped}개)`);
+                    alert(`⏭️ 모든 오더가 이미 데이터베이스에 있습니다.\n\n(건너뜀: ${result.results.skipped}개)`);
                   }
                 } catch (error: any) {
                   console.error('❌ 동기화 실패:', error);
@@ -884,7 +884,7 @@ const Settings: React.FC<SettingsProps> = ({
               ) : (
                 <>
                   <Upload className="w-4 h-4" />
-                  주문 동기화 시작
+                  오더 동기화 시작
                 </>
               )}
             </button>
@@ -905,7 +905,7 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
                 {syncStatus.results && (
                   <div className="text-xs mt-2 space-y-1">
-                    <p>총 주문: {syncStatus.results.total}개</p>
+                    <p>총 오더: {syncStatus.results.total}개</p>
                     <p>✅ 생성: {syncStatus.results.created}개</p>
                     <p>⏭️ 건너뜀: {syncStatus.results.skipped}개</p>
                     {syncStatus.results.errors > 0 && (
@@ -917,7 +917,7 @@ const Settings: React.FC<SettingsProps> = ({
             )}
             
             <div className="text-xs text-slate-500 mt-2">
-              💡 localStorage에 저장된 주문 수: {(() => {
+              💡 localStorage에 저장된 오더 수: {(() => {
                 try {
                   const ordersJson = localStorage.getItem('hotelflow_orders_v1');
                   if (!ordersJson) return '0개';
@@ -939,22 +939,123 @@ const Settings: React.FC<SettingsProps> = ({
           </h3>
           
           <div className="space-y-4">
-            <button
-              onClick={clearCache}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors"
-            >
-              <RefreshCw className="w-5 h-5" />
-              <span className="font-bold">캐시 정리</span>
-            </button>
-
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-600">localStorage 사용량</span>
-                <span className="text-sm font-black text-slate-700">
-                  {formatBytes(localStorageSize)}
+            {/* localStorage 사용량 표시 - 상태별 색상 */}
+            <div className={`p-4 rounded-xl border-2 ${
+              localStorageSize < 102400 // 100 KB
+                ? 'bg-emerald-50 border-emerald-200'
+                : localStorageSize < 512000 // 500 KB
+                ? 'bg-amber-50 border-amber-200'
+                : 'bg-rose-50 border-rose-200'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-bold text-slate-700">localStorage 사용량</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    localStorageSize < 102400
+                      ? 'bg-emerald-500 animate-pulse'
+                      : localStorageSize < 512000
+                      ? 'bg-amber-500 animate-pulse'
+                      : 'bg-rose-500 animate-pulse'
+                  }`}></div>
+                  <span className={`text-sm font-black ${
+                    localStorageSize < 102400
+                      ? 'text-emerald-700'
+                      : localStorageSize < 512000
+                      ? 'text-amber-700'
+                      : 'text-rose-700'
+                  }`}>
+                    {formatBytes(localStorageSize)}
+                  </span>
+                </div>
+              </div>
+              
+              {/* 상태 표시 */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`text-xs font-black uppercase px-2 py-1 rounded ${
+                  localStorageSize < 102400
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : localStorageSize < 512000
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-rose-100 text-rose-700'
+                }`}>
+                  {localStorageSize < 102400 ? '🟢 정상' : localStorageSize < 512000 ? '🟡 주의' : '🔴 위험'}
+                </span>
+                <span className={`text-xs font-bold ${
+                  localStorageSize < 102400
+                    ? 'text-emerald-700'
+                    : localStorageSize < 512000
+                    ? 'text-amber-700'
+                    : 'text-rose-700'
+                }`}>
+                  {localStorageSize < 102400 ? '청소 불필요' : localStorageSize < 512000 ? '가끔 청소' : '지금 청소!'}
                 </span>
               </div>
+              
+              {/* 프로그레스 바 */}
+              <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 ${
+                    localStorageSize < 102400
+                      ? 'bg-emerald-500'
+                      : localStorageSize < 512000
+                      ? 'bg-amber-500'
+                      : 'bg-rose-500'
+                  }`}
+                  style={{ 
+                    width: `${Math.min((localStorageSize / 512000) * 100, 100)}%` 
+                  }}
+                ></div>
+              </div>
+              
+              {/* 기준 표 */}
+              <div className="mt-4 pt-3 border-t border-slate-200">
+                <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase">사용량 기준</p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                      <span className="font-bold text-slate-600">0-100 KB</span>
+                    </div>
+                    <span className="text-emerald-700 font-black">정상 - 청소 불필요</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                      <span className="font-bold text-slate-600">100-500 KB</span>
+                    </div>
+                    <span className="text-amber-700 font-black">주의 - 가끔 청소</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                      <span className="font-bold text-slate-600">500 KB+</span>
+                    </div>
+                    <span className="text-rose-700 font-black">위험 - 지금 청소!</span>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* 캐시 정리 버튼 - 상태별 스타일 */}
+            <button
+              onClick={clearCache}
+              className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${
+                localStorageSize < 102400
+                  ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : localStorageSize < 512000
+                  ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-2 border-amber-200'
+                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-2 border-rose-200 animate-pulse'
+              }`}
+            >
+              <RefreshCw className="w-5 h-5" />
+              <span>
+                {localStorageSize < 102400 
+                  ? '캐시 정리 (선택사항)' 
+                  : localStorageSize < 512000 
+                  ? '캐시 정리 (권장)' 
+                  : '⚠️ 캐시 정리 (필수)'}
+              </span>
+            </button>
           </div>
         </section>
 
