@@ -489,41 +489,46 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         )}
 
-        {/* 3. 데이터 관리 */}
-        <section className="mb-8">
-          <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
-            <Database className="w-5 h-5 text-indigo-600" />
-            3. 데이터 관리 (Data Management)
-          </h3>
-          
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                if (window.confirm('⚠️ 모든 주문 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다!')) {
-                  onOrdersReset();
-                  alert('✅ 모든 주문 데이터가 삭제되었습니다.');
-                }
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-rose-50 text-rose-700 rounded-xl hover:bg-rose-100 transition-colors"
-            >
-              <Trash2 className="w-5 h-5" />
-              <span className="font-bold">모든 주문 데이터 초기화</span>
-            </button>
+        {/* 3. 데이터 관리 - ADMIN 전용 */}
+        {currentUser.dept === Department.ADMIN && (
+          <section className="mb-8">
+            <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
+              <Database className="w-5 h-5 text-indigo-600" />
+              3. 데이터 관리 (Data Management)
+              <span className="ml-2 px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-black uppercase rounded">
+                ADMIN 전용
+              </span>
+            </h3>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  if (window.confirm('⚠️ 모든 주문 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다!')) {
+                    onOrdersReset();
+                    alert('✅ 모든 주문 데이터가 삭제되었습니다.');
+                  }
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-rose-50 text-rose-700 rounded-xl hover:bg-rose-100 transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
+                <span className="font-bold">모든 주문 데이터 초기화</span>
+              </button>
 
-            <button
-              onClick={() => {
-                if (window.confirm('⚠️ 알림 히스토리를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다!')) {
-                  onNotificationsReset();
-                  alert('✅ 알림 히스토리가 삭제되었습니다.');
-                }
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-rose-50 text-rose-700 rounded-xl hover:bg-rose-100 transition-colors"
-            >
-              <Trash2 className="w-5 h-5" />
-              <span className="font-bold">알림 히스토리 초기화</span>
-            </button>
-          </div>
-        </section>
+              <button
+                onClick={() => {
+                  if (window.confirm('⚠️ 알림 히스토리를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다!')) {
+                    onNotificationsReset();
+                    alert('✅ 알림 히스토리가 삭제되었습니다.');
+                  }
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-rose-50 text-rose-700 rounded-xl hover:bg-rose-100 transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
+                <span className="font-bold">알림 히스토리 초기화</span>
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* 4. 시스템 정보 (고급 설정에만 표시) */}
         {showAdvancedSettings && (
