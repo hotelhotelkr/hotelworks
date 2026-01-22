@@ -354,8 +354,6 @@ const Settings: React.FC<SettingsProps> = ({
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  // 고급 설정 표시 상태
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   
   // 주문 동기화 상태
   const [syncStatus, setSyncStatus] = useState<{
@@ -372,129 +370,34 @@ const Settings: React.FC<SettingsProps> = ({
           Settings
         </h2>
 
-        {/* 1. 연결 설정 (고급 - 숨김) */}
-        {showAdvancedSettings && (
-          <section className="mb-8">
-            <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
-              <Server className="w-5 h-5 text-amber-600" />
-              1. 연결 설정 (Connection Settings) - 고급
-            </h3>
-            
-            <div className="space-y-4 p-4 bg-amber-50 rounded-xl border-2 border-amber-200">
-              <div className="flex items-start gap-2 text-sm text-amber-800 mb-3">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold mb-1">⚠️ 고급 사용자 전용 설정</p>
-                  <p className="text-xs">
-                    • 로컬 테스트: 설정 불필요 (자동 연결)<br/>
-                    • 다른 기기 연결 시: IP:포트 입력 필요<br/>
-                    • 예: http://192.168.0.100:8000
-                  </p>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-slate-600 mb-2">
-                  WebSocket 서버 URL
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={wsUrl}
-                    onChange={(e) => setWsUrl(e.target.value)}
-                    placeholder="http://localhost:8000"
-                    className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                  <button
-                    onClick={saveWsUrl}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors"
-                  >
-                    저장
-                  </button>
-                  <button
-                    onClick={testConnection}
-                    disabled={connectionTestResult.status === 'testing'}
-                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-300 transition-colors disabled:opacity-50"
-                  >
-                    {connectionTestResult.status === 'testing' ? '테스트 중...' : '연결 테스트'}
-                  </button>
-                </div>
-                {connectionTestResult.message && (
-                  <div className={`mt-2 p-3 rounded-lg text-sm flex items-center gap-2 ${
-                    connectionTestResult.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
-                    connectionTestResult.status === 'error' ? 'bg-rose-50 text-rose-700' :
-                    'bg-blue-50 text-blue-700'
-                  }`}>
-                    {connectionTestResult.status === 'success' && <CheckCircle className="w-4 h-4" />}
-                    {connectionTestResult.status === 'error' && <XCircle className="w-4 h-4" />}
-                    {connectionTestResult.status === 'testing' && <RefreshCw className="w-4 h-4 animate-spin" />}
-                    {connectionTestResult.message}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3 p-4 bg-white rounded-xl border border-slate-200">
-                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                <span className="text-sm font-bold text-slate-700">
-                  현재 연결 상태: {isConnected ? '✅ 연결됨' : '❌ 연결 안 됨'}
-                </span>
-              </div>
+        {/* 1. 연결 상태 (간단 버전) */}
+        <section className="mb-8">
+          <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-indigo-600" />
+            1. 연결 상태 (Connection Status)
+          </h3>
+          
+          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+              <span className="text-sm font-bold text-slate-700">
+                WebSocket: {isConnected ? '✅ 연결됨' : '❌ 연결 안 됨'}
+              </span>
             </div>
-          </section>
-        )}
-
-        {/* 2. 연결 상태 (간단 버전) */}
-        {!showAdvancedSettings && (
-          <section className="mb-8">
-            <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-600" />
-              1. 연결 상태 (Connection Status)
-            </h3>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                  <span className="text-sm font-bold text-slate-700">
-                    WebSocket: {isConnected ? '✅ 연결됨' : '❌ 연결 안 됨'}
-                  </span>
-                </div>
-                {!isConnected && (
-                  <span className="text-xs text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200">
-                    서버 실행 중인지 확인하세요
-                  </span>
-                )}
-              </div>
-
-              <button
-                onClick={() => setShowAdvancedSettings(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
-              >
-                <Code className="w-4 h-4" />
-                고급 설정 표시 (다른 기기 연결 시)
-              </button>
-            </div>
-          </section>
-        )}
-
-        {showAdvancedSettings && (
-          <div className="mb-8">
-            <button
-              onClick={() => setShowAdvancedSettings(false)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
-            >
-              <EyeOff className="w-4 h-4" />
-              고급 설정 숨기기
-            </button>
+            {!isConnected && (
+              <span className="text-xs text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200">
+                서버 실행 중인지 확인하세요
+              </span>
+            )}
           </div>
-        )}
+        </section>
 
-        {/* 3. 데이터 관리 - ADMIN 전용 */}
+        {/* 2. 데이터 관리 - ADMIN 전용 */}
         {currentUser.dept === Department.ADMIN && (
           <section className="mb-8">
             <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
               <Database className="w-5 h-5 text-indigo-600" />
-              3. 데이터 관리 (Data Management)
+              2. 데이터 관리 (Data Management)
               <span className="ml-2 px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-black uppercase rounded">
                 ADMIN 전용
               </span>
@@ -530,211 +433,12 @@ const Settings: React.FC<SettingsProps> = ({
           </section>
         )}
 
-        {/* 4. 시스템 정보 (고급 설정에만 표시) */}
-        {showAdvancedSettings && (
-        <section className="mb-8">
-          <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
-            <Info className="w-5 h-5 text-amber-600" />
-            4. 시스템 정보 (System Information) - 고급
-          </h3>
-          
-          <div className="space-y-3">
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600 flex items-center gap-2">
-                  <Wifi className="w-4 h-4" />
-                  WebSocket 연결 상태
-                </span>
-                <span className={`text-sm font-black ${isConnected ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {isConnected ? '연결됨' : '연결 안 됨'}
-                </span>
-              </div>
-            </div>
 
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600 flex items-center gap-2">
-                  <HardDrive className="w-4 h-4" />
-                  로컬 저장 데이터 크기
-                </span>
-                <span className="text-sm font-black text-slate-700">
-                  {formatBytes(localStorageSize)}
-                </span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  오프라인 큐 대기 메시지
-                </span>
-                <span className="text-sm font-black text-slate-700">
-                  {offlineQueueSize}개
-                </span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600 flex items-center gap-2">
-                  <Activity className="w-4 h-4" />
-                  임시 저장 메시지
-                </span>
-                <span className="text-sm font-black text-slate-700">
-                  {pendingMessagesSize}개
-                </span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600 flex items-center gap-2">
-                  <Code className="w-4 h-4" />
-                  앱 버전
-                </span>
-                <span className="text-sm font-black text-slate-700">
-                  v1.0.0
-                </span>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600 flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  마지막 업데이트
-                </span>
-                <span className="text-sm font-black text-slate-700">
-                  {new Date().toLocaleDateString('ko-KR')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-        )}
-
-        {/* 6. 콘솔 로그 레벨 (개발자 전용 - 고급 설정에만 표시) */}
-        {showAdvancedSettings && (
-          <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-black text-slate-700 flex items-center gap-2">
-              <Code className="w-5 h-5 text-indigo-600" />
-              6. 콘솔 로그 레벨
-            </h3>
-            {!isAdmin && !debugLoggingUnlocked && (
-              <button
-                onClick={() => openPasswordModal('debug')}
-                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
-              >
-                <Lock className="w-3 h-3" />
-                잠금 해제
-              </button>
-            )}
-            {(isAdmin || debugLoggingUnlocked) && (
-              <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" />
-                접근 허용됨
-              </span>
-            )}
-          </div>
-          
-          {(isAdmin || debugLoggingUnlocked) ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <span className="text-sm font-bold text-slate-700 block mb-1">콘솔 로그 레벨</span>
-                    <span className="text-xs text-slate-500">디버깅을 위한 상세 로그 출력</span>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={debugLogging}
-                      onChange={(e) => {
-                        setDebugLogging(e.target.checked);
-                        localStorage.setItem('hotelflow_debug_logging', String(e.target.checked));
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 text-center">
-              <Lock className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-600 mb-1">관리자 전용 기능</p>
-              <p className="text-xs text-slate-500">이 기능을 사용하려면 관리자 권한이 필요합니다.</p>
-            </div>
-          )}
-        </section>
-        )}
-
-        {/* 7. WebSocket 메시지 로깅 (개발자 전용 - 고급 설정에만 표시) */}
-        {showAdvancedSettings && (
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-black text-slate-700 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-indigo-600" />
-              7. WebSocket 메시지 로깅
-            </h3>
-            {!isAdmin && !wsLoggingUnlocked && (
-              <button
-                onClick={() => openPasswordModal('ws')}
-                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
-              >
-                <Lock className="w-3 h-3" />
-                잠금 해제
-              </button>
-            )}
-            {(isAdmin || wsLoggingUnlocked) && (
-              <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" />
-                접근 허용됨
-              </span>
-            )}
-          </div>
-          
-          {(isAdmin || wsLoggingUnlocked) ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <span className="text-sm font-bold text-slate-700 block mb-1">WebSocket 메시지 로깅</span>
-                    <span className="text-xs text-slate-500">WebSocket 메시지를 콘솔에 출력</span>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={wsMessageLogging}
-                      onChange={(e) => {
-                        setWsMessageLogging(e.target.checked);
-                        localStorage.setItem('hotelflow_ws_message_logging', String(e.target.checked));
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 text-center">
-              <Lock className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-600 mb-1">관리자 전용 기능</p>
-              <p className="text-xs text-slate-500">이 기능을 사용하려면 관리자 권한이 필요합니다.</p>
-            </div>
-          )}
-        </section>
-        )}
-
-        {/* 2. 오더 동기화 */}
+        {/* 3. 오더 동기화 */}
         <section className="mb-6">
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Cloud className="w-5 h-5 text-indigo-600" />
-            2. 오더 동기화 (Order Sync)
+            3. 오더 동기화 (Order Sync)
           </h3>
           
           <div className="space-y-3">
@@ -931,11 +635,11 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </section>
 
-        {/* 3. 기타 설정 (캐시 정리만) */}
+        {/* 4. 기타 설정 (캐시 정리만) */}
         <section>
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-indigo-600" />
-            3. 기타 설정 (Other Settings)
+            4. 기타 설정 (Other Settings)
           </h3>
           
           <div className="space-y-4">
