@@ -1677,7 +1677,8 @@ const App: React.FC = () => {
                 const exists = prev.find(o => o.id === newOrder.id);
                 if (exists) {
                   console.log('⚠️ 기존 주문 업데이트:', exists.id, exists.roomNo, exists.itemName);
-                  const updated = prev.map(o => o.id === newOrder.id ? newOrder : o);
+                  const updated = prev.map(o => o.id === newOrder.id ? newOrder : o)
+                    .sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
                   try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
                     console.log('✅ localStorage 업데이트 완료 (기존 주문)');
@@ -1905,15 +1906,16 @@ const App: React.FC = () => {
                 return o;
               });
               
-              // localStorage에도 즉시 저장 (PC와 모바일 동기화 보장)
+              // 🚨 최신순 정렬 후 localStorage 저장 (PC와 모바일 동기화 보장)
+              const sortedUpdated = updated.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
               try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(sortedUpdated));
                 console.log('💾 상태 업데이트 후 localStorage 저장 완료');
               } catch (e) {
                 console.warn('⚠️ localStorage 저장 실패:', e);
               }
               
-              return updated;
+              return sortedUpdated;
             });
             
             // 🚨 알림 표시: 모든 상태 변경에 대해 알림 표시
@@ -1979,15 +1981,16 @@ const App: React.FC = () => {
                 foundRoomNo = targetOrder ? targetOrder.roomNo : null;
               }
               
-              // 🚨 localStorage도 함께 업데이트 (모든 기기에서 최신 데이터 유지)
+              // 🚨 최신순 정렬 후 localStorage 업데이트 (모든 기기에서 최신 데이터 유지)
+              const sortedUpdated = updated.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
               try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(sortedUpdated));
                 console.log('   💾 localStorage 업데이트 완료 (NEW_MEMO)');
               } catch (e) {
                 console.error('   ❌ localStorage 업데이트 실패:', e);
               }
               
-              return updated;
+              return sortedUpdated;
             });
             
             // 🚨 알림 표시: 모든 메모에 대해 알림 표시
