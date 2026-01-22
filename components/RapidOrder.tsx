@@ -118,23 +118,29 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
 
     const itemsToDispatch = Array.from(selectedItems.entries());
 
-    // 🚨 실시간 동기화를 위해 즉시 전송 (setTimeout 제거)
-    itemsToDispatch.forEach(([name, qty]) => {
-      onDispatch({
-        roomNo: selectedRoom,
-        itemName: name,
-        quantity: qty,
-        priority,
-        category: 'Amenities'
-      });
+    // 🚨 여러 아이템 동시 생성 시 ID 충돌 방지: 순차적으로 생성
+    // 각 주문이 이전 주문을 포함한 상태에서 ID 생성되도록 보장
+    itemsToDispatch.forEach(([name, qty], index) => {
+      // 각 주문마다 약간의 지연을 두어 ID 충돌 방지 (1ms씩)
+      setTimeout(() => {
+        onDispatch({
+          roomNo: selectedRoom,
+          itemName: name,
+          quantity: qty,
+          priority,
+          category: 'Amenities'
+        });
+      }, index * 1); // 1ms씩 지연하여 순차적 생성 보장
     });
 
-    // 상태 초기화는 즉시 수행 (실시간 동기화 보장)
-    setSelectedRoom('');
-    setSelectedItems(new Map());
-    setPriority(Priority.NORMAL);
-    setIsDispatching(false);
-    dispatchTimeoutRef.current = null;
+    // 상태 초기화는 모든 주문 생성 후 수행
+    setTimeout(() => {
+      setSelectedRoom('');
+      setSelectedItems(new Map());
+      setPriority(Priority.NORMAL);
+      setIsDispatching(false);
+      dispatchTimeoutRef.current = null;
+    }, itemsToDispatch.length * 1 + 10); // 모든 주문 생성 후 초기화
   };
 
   const handleRoomSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

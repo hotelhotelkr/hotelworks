@@ -2964,11 +2964,26 @@ const App: React.FC = () => {
         return prev; // 상태 변경 없이 반환
       }
       
-      // 최신 주문 목록을 사용하여 ID 생성
-      const newId = generateOrderId(prev);
+      // 🚨 여러 아이템 동시 생성 시 ID 충돌 방지
+      // 현재 상태에서 이미 생성된 주문들을 고려하여 고유 ID 생성
+      // 같은 시간에 생성되는 주문들을 구분하기 위해 밀리초와 랜덤 값 사용
+      const existingIds = new Set(prev.map(o => o.id));
+      let newId = generateOrderId(prev);
+      let attempts = 0;
+      // ID 충돌 방지: 최대 10번 시도
+      while (existingIds.has(newId) && attempts < 10) {
+        const nowMs = Date.now();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const randomSuffix = Math.floor(Math.random() * 1000);
+        newId = `${dateStr}_${nowMs % 100000}_${randomSuffix}`;
+        attempts++;
+      }
       
       // 메모는 빈 배열로 초기화 (NOTES 기능 제거)
       const initialMemos: Memo[] = [];
+
+      // 🚨 각 주문마다 고유한 타임스탬프 사용 (동시 생성 시 구분)
+      const uniqueNow = new Date(now.getTime() + attempts);
 
       order = {
         id: newId,
@@ -2979,7 +2994,8 @@ const App: React.FC = () => {
         quantity: newOrderData.quantity || 1,
         priority: newOrderData.priority || Priority.NORMAL,
         status: OrderStatus.REQUESTED,
-        requestedAt: now,
+        requestedAt: uniqueNow,
+        createdAt: uniqueNow, // createdAt도 고유하게 설정
         createdBy: currentUser.id,
         requestChannel: newOrderData.requestChannel || 'Phone',
         memos: initialMemos
