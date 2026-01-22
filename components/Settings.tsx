@@ -371,7 +371,7 @@ const Settings: React.FC<SettingsProps> = ({
         </h2>
 
         {/* 연결 상태 */}
-        <section className="mb-8">
+        <section className="mb-8 pb-8 border-b border-slate-200">
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-indigo-600" />
             연결 상태 (Connection Status)
@@ -394,7 +394,7 @@ const Settings: React.FC<SettingsProps> = ({
 
         {/* 데이터 관리 - ADMIN 전용 */}
         {currentUser.dept === Department.ADMIN && (
-          <section className="mb-8">
+          <section className="mb-8 pb-8 border-b border-slate-200">
             <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
               <Database className="w-5 h-5 text-rose-600" />
               데이터 관리 (Data Management)
@@ -435,13 +435,38 @@ const Settings: React.FC<SettingsProps> = ({
 
 
         {/* 오더 동기화 */}
-        <section className="mb-6">
+        <section className="mb-8 pb-8 border-b border-slate-200">
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Cloud className="w-5 h-5 text-indigo-600" />
             오더 동기화 (Order Sync)
           </h3>
           
           <div className="space-y-4">
+            {/* 설명 카드 */}
+            <div className="p-4 bg-amber-50 rounded-xl border-2 border-amber-200">
+              <div className="flex items-start gap-2 mb-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-amber-900 mb-2">언제 사용하나요?</p>
+                  <ul className="text-xs text-amber-800 space-y-1">
+                    <li>✅ 오더가 수파베이스에 저장 안됐을 때</li>
+                    <li>✅ 서버 오류로 데이터 누락이 의심될 때</li>
+                    <li>✅ 개발자가 복구를 요청했을 때</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 pt-3 border-t border-amber-300">
+                <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-amber-900 mb-1">주의사항</p>
+                  <p className="text-xs text-amber-800">
+                    ⚠️ <span className="font-bold">정상 작동 중에는 사용하지 마세요!</span><br/>
+                    오더는 자동으로 저장되므로 불필요한 동기화는 서버에 부담을 줄 수 있어요.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* 오더 수 표시 카드 */}
             <div className="p-4 bg-slate-50 rounded-xl border-2 border-slate-200">
               <div className="flex items-center justify-between mb-2">
@@ -463,7 +488,7 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
               <p className="text-xs text-slate-500">
-                💡 브라우저에 저장된 오더를 Supabase로 백업할 수 있어요
+                💡 브라우저에 저장된 오더를 Supabase로 백업합니다
               </p>
             </div>
             
