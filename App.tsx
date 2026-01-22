@@ -2940,6 +2940,10 @@ const App: React.FC = () => {
     const itemName = newOrderData.itemName || '';
     const now = new Date();
     
+    // 🚨 최적화: 주문 객체를 먼저 생성 (WebSocket 전송 준비)
+    let order: Order | null = null;
+    let shouldSend = false;
+    
     // 함수형 업데이트를 사용하여 최신 상태에서 중복 체크 및 주문 생성
     setOrders(prev => {
       // 중복 주문 방지: 같은 방번호, 같은 아이템, 같은 사용자가 최근 2초 이내에 생성한 주문이 있는지 확인
@@ -2963,42 +2967,43 @@ const App: React.FC = () => {
       // 최신 주문 목록을 사용하여 ID 생성
       const newId = generateOrderId(prev);
       
-    const initialMemos: Memo[] = [];
+      const initialMemos: Memo[] = [];
       if (newOrderData.requestNote && newOrderData.requestNote.trim()) {
         // 주문 ID를 포함한 고유한 메모 ID 생성 (동일 주문의 동일 메모는 같은 ID를 가지도록)
         const orderIdPrefix = generateOrderId(prev).split('_')[0]; // 날짜 부분만 사용
         const memoId = `MEMO-${orderIdPrefix}-${Date.now()}-${currentUser.id}-${Math.random().toString(36).substr(2, 6)}`;
-      initialMemos.push({
+        initialMemos.push({
           id: memoId,
           text: newOrderData.requestNote.trim(),
-        senderId: currentUser.id,
-        senderName: currentUser.name,
-        senderDept: currentUser.dept,
+          senderId: currentUser.id,
+          senderName: currentUser.name,
+          senderDept: currentUser.dept,
           timestamp: now
-      });
-    }
+        });
+      }
 
-    const order: Order = {
-      id: newId,
+      order = {
+        id: newId,
         roomNo: roomNo,
-      guestName: newOrderData.guestName || '',
-      category: newOrderData.category || 'Amenities',
+        guestName: newOrderData.guestName || '',
+        category: newOrderData.category || 'Amenities',
         itemName: itemName,
-      quantity: newOrderData.quantity || 1,
-      priority: newOrderData.priority || Priority.NORMAL,
-      status: OrderStatus.REQUESTED,
+        quantity: newOrderData.quantity || 1,
+        priority: newOrderData.priority || Priority.NORMAL,
+        status: OrderStatus.REQUESTED,
         requestedAt: now,
-      createdBy: currentUser.id,
-      requestChannel: newOrderData.requestChannel || 'Phone',
-      memos: initialMemos
-    };
+        createdBy: currentUser.id,
+        requestChannel: newOrderData.requestChannel || 'Phone',
+        memos: initialMemos
+      };
 
       debugLog('📝 새 주문 생성:', order.id, order.roomNo, order.itemName, order.quantity);
       
       // 중복 체크 (같은 ID가 이미 있는지 확인)
-      const exists = prev.find(o => o.id === order.id);
+      const exists = prev.find(o => o.id === order!.id);
       if (exists) {
         debugWarn('⚠️ 주문 ID 중복:', order.id, '기존 주문 유지');
+        order = null;
         return prev;
       }
       
@@ -3008,251 +3013,148 @@ const App: React.FC = () => {
         const bTime = (b.createdAt ? new Date(b.createdAt).getTime() : b.requestedAt.getTime());
         return bTime - aTime; // DESC (최신순)
       });
+      
+      // localStorage 즉시 저장 (실시간 동기화 보장)
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrders));
+        debugLog('💾 localStorage 즉시 저장 완료:', order.id);
+      } catch (e) {
+        console.warn('⚠️ localStorage 저장 실패:', e);
+      }
+      
       debugLog('✅ 주문 상태 업데이트 완료:', order.id, '총 주문 수:', newOrders.length);
       debugLog('   - 방번호:', order.roomNo);
       debugLog('   - 아이템:', order.itemName);
       debugLog('   - 수량:', order.quantity);
       debugLog('   - 상태:', order.status);
       
-      // 🚨 로컬 알림 제거: WebSocket 알림만 사용하여 중복 방지
-      // 모든 기기(생성한 기기 포함)에서 WebSocket을 통해 알림을 받음
-      
-      // 🚨 브로드캐스트는 즉시 수행 (실시간 동기화 보장)
-      // setTimeout 제거: 실시간 동기화를 위해 즉시 전송
+      shouldSend = true; // WebSocket 전송 플래그
+      return newOrders;
+    });
+    
+    // 🚨 WebSocket 전송은 setOrders 외부에서 즉시 실행 (실시간 동기화 보장)
+    // 메모 포함 오더도 즉시 전송하여 지연 없음
+    if (order && shouldSend) {
       const socket = socketRef.current;
       
       // 오프라인 큐에 저장하는 함수
       const saveToOfflineQueue = (type: string, payload: any, senderId: string) => {
-          try {
-            const existing = localStorage.getItem(OFFLINE_QUEUE_KEY);
-            const queue = existing ? JSON.parse(existing) : [];
-            
-            const message = {
-              type,
-              payload: {
-                ...payload,
-                requestedAt: payload.requestedAt ? toKoreaISO(payload.requestedAt) : undefined,
-                acceptedAt: payload.acceptedAt ? toKoreaISO(payload.acceptedAt) : undefined,
-                inProgressAt: payload.inProgressAt ? toKoreaISO(payload.inProgressAt) : undefined,
-                completedAt: payload.completedAt ? toKoreaISO(payload.completedAt) : undefined,
-                memos: payload.memos?.map((m: any) => ({
-                  ...m,
-                  timestamp: m.timestamp?.toISOString()
-                })) || []
-              },
-              senderId,
-              sessionId: SESSION_ID,
-              timestamp: new Date().toISOString()
-            };
-            
-            // 🚨 중복 체크: 같은 타입 + 같은 ID의 메시지가 이미 큐에 있으면 스킵
-            const messageId = payload.id || payload.orderId;
-            const isDuplicate = queue.some((m: any) => 
-              m.type === type && 
-              (m.payload.id === messageId || m.payload.orderId === messageId)
-            );
-            
-            if (isDuplicate) {
-              debugLog('⏭️ 오프라인 큐 중복 스킵:', type, messageId);
-              return;
-            }
-            
-            queue.push(message);
-            // 최대 500개까지만 저장 (메모리 효율)
-            const trimmed = queue.slice(-500);
-            localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(trimmed));
-            debugLog('💾 오프라인 큐 저장:', type, messageId, '| 크기:', trimmed.length);
-          } catch (e) {
-            console.error('❌ 오프라인 큐 저장 실패:', e);
-            // localStorage quota 초과 시 큐 초기화
-            if (e instanceof Error && e.name === 'QuotaExceededError') {
-              console.warn('⚠️ localStorage 용량 초과, 오프라인 큐 초기화');
-              localStorage.removeItem(OFFLINE_QUEUE_KEY);
-            }
-          }
-        };
-
-        if (!socket) {
-          console.warn('⚠️ WebSocket 소켓이 없음, 오프라인 큐에 저장');
-          saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
-          return;
-        }
-
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('📤 주문 전송 시작');
-        console.log('   주문 ID:', order.id);
-        console.log('   방번호:', order.roomNo);
-        console.log('   아이템:', order.itemName);
-        console.log('   수량:', order.quantity);
-        console.log('   발신자:', currentUser.id, `(${currentUser.name})`);
-        console.log('   세션 ID:', SESSION_ID);
-        console.log('   Socket ID:', socket.id);
-        console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
-        console.log('   WebSocket URL:', wsUrlRef.current || getWebSocketURL());
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        
-        if (socket.connected) {
-          debugLog('📤 주문 브로드캐스트:', order.id, '| 방:', order.roomNo, '| 아이템:', order.itemName);
+        try {
+          const existing = localStorage.getItem(OFFLINE_QUEUE_KEY);
+          const queue = existing ? JSON.parse(existing) : [];
           
-          try {
-            // 한국 시간을 UTC로 변환하여 전송
-            // order.requestedAt은 브라우저의 로컬 시간대(한국)로 생성됨
-            // 하지만 JavaScript Date는 내부적으로 UTC로 저장되므로,
-            // toISOString()은 이미 UTC로 변환합니다.
-            // 
-            // Supabase Table Editor에서 한국 시간으로 보이게 하려면:
-            // - 한국 시간을 UTC로 변환하여 저장해야 함
-            // - 예: 한국 시간 23:34 → UTC 14:34로 저장
-            // - Supabase Table Editor에서 조회 시: UTC 14:34 → 한국 시간 23:34로 표시
-            // 
-            // 하지만 실제로는 toISOString()이 이미 UTC로 변환하므로,
-            // 추가 변환이 필요 없습니다.
-            // 
-            // 문제: 사용자가 원하는 것은 Supabase Table Editor에서 한국 시간으로 보이는 것
-            // 해결: 한국 시간을 그대로 UTC로 저장 (시간대 정보 없이)
-            //       즉, 한국 시간 23:34를 UTC 23:34로 저장하려면 9시간을 더해야 함
-            // 한국 시간(KST) 그대로 ISO 문자열로 변환하여 저장
-            const payload = {
-              ...order,
-              requestedAt: toKoreaISO(order.requestedAt),
-              acceptedAt: order.acceptedAt ? toKoreaISO(order.acceptedAt) : undefined,
-              inProgressAt: order.inProgressAt ? toKoreaISO(order.inProgressAt) : undefined,
-              completedAt: order.completedAt ? toKoreaISO(order.completedAt) : undefined,
-              memos: order.memos.map(m => ({
+          const message = {
+            type,
+            payload: {
+              ...payload,
+              requestedAt: payload.requestedAt ? toKoreaISO(payload.requestedAt) : undefined,
+              acceptedAt: payload.acceptedAt ? toKoreaISO(payload.acceptedAt) : undefined,
+              inProgressAt: payload.inProgressAt ? toKoreaISO(payload.inProgressAt) : undefined,
+              completedAt: payload.completedAt ? toKoreaISO(payload.completedAt) : undefined,
+              memos: payload.memos?.map((m: any) => ({
                 ...m,
-                timestamp: koreaTimeToUTC(m.timestamp)
-              }))
-            };
-            
-            const message = {
-              type: 'NEW_ORDER',
-              payload,
-              senderId: currentUser.id,
-              sessionId: SESSION_ID,
-              timestamp: new Date().toISOString()
-            };
-            
-            console.log('📨 전송할 메시지:', JSON.stringify(message, null, 2));
-            
-            // 메시지 전송 (실시간 동기화)
-            console.log('📤 socket.emit 호출 시작');
-            console.log('   채널:', SYNC_CHANNEL);
-            console.log('   메시지 타입:', message.type);
-            console.log('   주문 ID:', message.payload.id);
-            console.log('   Socket ID:', socket.id);
-            console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
-            
-            // 🚨 연결 상태 확인 및 강제 재연결
-            if (!socket.connected) {
-              console.error('❌ WebSocket 연결되지 않음 - 오프라인 큐에 저장');
-              saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
-              return;
-            }
-            
-            try {
-              // 🚨 메시지 전송 (연결 상태 확인 완료)
-              // 최우선 목표: 실시간 동기화 보장
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('📤 socket.emit 호출 시작 (최우선 목표)');
-              console.log('   채널:', SYNC_CHANNEL);
-              console.log('   주문 ID:', order.id);
-              console.log('   방번호:', order.roomNo);
-              console.log('   아이템:', order.itemName);
-              console.log('   수량:', order.quantity);
-              console.log('   Socket ID:', socket.id);
-              console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
-              console.log('   발신자:', message.senderId);
-              console.log('   세션 ID:', message.sessionId);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              
-              // 🚨 메시지 전송 (최우선 목표: 실시간 동기화 보장)
-              socket.emit(SYNC_CHANNEL, message);
-              
-              console.log('✅ socket.emit 호출 완료:', order.id);
-              console.log('   전송 시간:', new Date().toISOString());
-              console.log('   Socket ID:', socket.id);
-              console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
-              console.log('   메시지 타입:', message.type);
-              console.log('   발신자:', message.senderId);
-              console.log('   세션 ID:', message.sessionId);
-              console.log('   채널:', SYNC_CHANNEL);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              
-              // 🚨 전송 후 즉시 확인
-              if (!socket.connected) {
-                console.error('❌ 메시지 전송 후 연결 끊김 감지!');
-                console.error('   - 재연결 필요');
-                console.error('   - 오프라인 큐에 저장됨');
-                saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
-              } else {
-                console.log('✅ 메시지 전송 후 연결 상태 확인: 정상');
-              }
-              
-              debugLog('✅ 브로드캐스트 완료:', order.id);
-              
-              // 전송 확인을 위한 짧은 딜레이 후 연결 상태 확인
-              setTimeout(() => {
-                if (!socket.connected) {
-                  console.error('❌ 메시지 전송 후 WebSocket 연결 끊김 감지');
-                  console.error('   - 재연결 시도 필요');
-                  console.error('   - 오프라인 큐에 저장됨');
-                  // 오프라인 큐에 저장 (전송 실패 가능성)
-                  saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
-                } else {
-                  console.log('✅ 메시지 전송 후 WebSocket 연결 유지 확인');
-                }
-              }, 100);
-            } catch (emitError) {
-              console.error('❌ socket.emit 호출 실패:', emitError);
-              console.error('   - Socket ID:', socket.id);
-              console.error('   - 연결 상태:', socket.connected);
-              console.error('   - 에러 상세:', emitError);
-              // 오프라인 큐에 저장
-              saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
-            }
-          } catch (error) {
-            console.error('❌ 브로드캐스트 전송 실패:', error);
-            console.error('   - Socket ID:', socket.id);
-            console.error('   - 연결 상태:', socket.connected);
-            console.error('   - 에러 상세:', error);
-            // 오프라인 큐에 저장
-            saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+                timestamp: m.timestamp?.toISOString()
+              })) || []
+            },
+            senderId,
+            sessionId: SESSION_ID,
+            timestamp: new Date().toISOString()
+          };
+          
+          // 🚨 중복 체크: 같은 타입 + 같은 ID의 메시지가 이미 큐에 있으면 스킵
+          const messageId = payload.id || payload.orderId;
+          const isDuplicate = queue.some((m: any) => 
+            m.type === type && 
+            (m.payload.id === messageId || m.payload.orderId === messageId)
+          );
+          
+          if (isDuplicate) {
+            debugLog('⏭️ 오프라인 큐 중복 스킵:', type, messageId);
+            return;
           }
-        } else {
-          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.error('❌ WebSocket 연결되지 않음!');
-          console.error('   주문 ID:', order.id);
-          console.error('   방번호:', order.roomNo);
-          console.error('   Socket ID:', socket.id);
-          console.error('   연결 상태:', socket.connected);
-          console.error('   WebSocket URL:', wsUrlRef.current || getWebSocketURL());
-          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           
-          // 오프라인 큐에 저장
-          saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
-          console.warn('💾 오프라인 큐에 저장됨. 연결 후 자동 전송됩니다.');
-          
-          // 연결 시도 (강제 재연결)
-          console.log('🔄 WebSocket 재연결 시도');
-          try {
-            socket.connect();
-            // 재연결 대기 후 다시 시도
-            setTimeout(() => {
-              if (socket.connected) {
-                console.log('✅ 재연결 성공, 주문 재전송 시도');
-                // 재전송 로직은 syncOfflineQueue에서 처리됨
-                syncOfflineQueue();
-              } else {
-                console.error('❌ 재연결 실패, 오프라인 큐에 유지');
-              }
-            }, 2000);
-          } catch (reconnectError) {
-            console.error('❌ 재연결 시도 실패:', reconnectError);
+          queue.push(message);
+          // 최대 500개까지만 저장 (메모리 효율)
+          const trimmed = queue.slice(-500);
+          localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(trimmed));
+          debugLog('💾 오프라인 큐 저장:', type, messageId, '| 크기:', trimmed.length);
+        } catch (e) {
+          console.error('❌ 오프라인 큐 저장 실패:', e);
+          // localStorage quota 초과 시 큐 초기화
+          if (e instanceof Error && e.name === 'QuotaExceededError') {
+            console.warn('⚠️ localStorage 용량 초과, 오프라인 큐 초기화');
+            localStorage.removeItem(OFFLINE_QUEUE_KEY);
           }
         }
+      };
+
+      if (!socket) {
+        console.warn('⚠️ WebSocket 소켓이 없음, 오프라인 큐에 저장');
+        saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+        return;
+      }
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📤 주문 전송 시작 (즉시 실행)');
+      console.log('   주문 ID:', order.id);
+      console.log('   방번호:', order.roomNo);
+      console.log('   아이템:', order.itemName);
+      console.log('   수량:', order.quantity);
+      console.log('   메모 포함:', order.memos.length > 0 ? 'YES' : 'NO');
+      console.log('   발신자:', currentUser.id, `(${currentUser.name})`);
+      console.log('   세션 ID:', SESSION_ID);
+      console.log('   Socket ID:', socket.id);
+      console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       
-      return newOrders;
-    });
+      if (socket.connected) {
+        debugLog('📤 주문 브로드캐스트 (즉시 실행):', order.id, '| 방:', order.roomNo, '| 아이템:', order.itemName);
+        
+        try {
+          // 한국 시간을 UTC로 변환하여 전송
+          const payload = {
+            ...order,
+            requestedAt: toKoreaISO(order.requestedAt),
+            acceptedAt: order.acceptedAt ? toKoreaISO(order.acceptedAt) : undefined,
+            inProgressAt: order.inProgressAt ? toKoreaISO(order.inProgressAt) : undefined,
+            completedAt: order.completedAt ? toKoreaISO(order.completedAt) : undefined,
+            memos: order.memos.map(m => ({
+              ...m,
+              timestamp: koreaTimeToUTC(m.timestamp)
+            }))
+          };
+          
+          const message = {
+            type: 'NEW_ORDER',
+            payload,
+            senderId: currentUser.id,
+            sessionId: SESSION_ID,
+            timestamp: new Date().toISOString()
+          };
+          
+          // 🚨 메시지 즉시 전송 (실시간 동기화 보장)
+          socket.emit(SYNC_CHANNEL, message);
+          
+          console.log('✅ socket.emit 호출 완료 (즉시 실행):', order.id);
+          console.log('   전송 시간:', new Date().toISOString());
+          console.log('   메모 포함:', order.memos.length > 0 ? 'YES' : 'NO');
+          debugLog('✅ 브로드캐스트 완료 (즉시 실행):', order.id);
+        } catch (error) {
+          console.error('❌ 브로드캐스트 전송 실패:', error);
+          saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+        }
+      } else {
+        console.warn('⚠️ WebSocket 연결되지 않음, 오프라인 큐에 저장');
+        saveToOfflineQueue('NEW_ORDER', order, currentUser.id);
+        
+        // 연결 시도
+        try {
+          socket.connect();
+        } catch (reconnectError) {
+          console.error('❌ 재연결 시도 실패:', reconnectError);
+        }
+      }
+    }
   };
 
   const handleUpdateStatus = (orderId: string, nextStatus: OrderStatus, note?: string) => {
