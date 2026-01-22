@@ -5,9 +5,6 @@ async function initDatabase() {
   try {
     console.log('📊 Supabase 데이터베이스 초기화 시작...');
     
-    // 스키마 파일은 Supabase Dashboard의 SQL Editor에서 실행해야 합니다
-    console.log('💡 참고: database/schema.supabase.sql 파일을 Supabase Dashboard의 SQL Editor에서 실행하세요.');
-    
     // 테이블 존재 여부 확인
     const tables = ['orders', 'memos', 'users'];
     const tableChecks = await Promise.all(
