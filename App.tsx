@@ -817,6 +817,13 @@ const App: React.FC = () => {
 
       const socket = socketRef.current;
 
+      // 🚨 디버깅: 모든 WebSocket 이벤트 로깅
+      const originalEmit = socket.emit.bind(socket);
+      socket.emit = function(...args: any[]) {
+        console.log('📤 [WebSocket] emit 호출:', args[0], args[1] ? JSON.stringify(args[1]).substring(0, 100) : '');
+        return originalEmit(...args);
+      };
+
       socket.on('connect', () => {
         console.log('✅ WebSocket 연결 성공:', socket.id, '| URL:', wsUrlRef.current || getWebSocketURL());
         console.log('✅ 세션 ID:', SESSION_ID);
