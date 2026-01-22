@@ -542,38 +542,36 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
             </div>
           </div>
 
-          <div className="mt-auto pt-4 border-t border-slate-100 shrink-0">
-            {/* Preview Section */}
-            <div className="mb-4">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-2 text-center">Preview</label>
-              <div className="bg-slate-50 rounded-[2rem] p-4 border border-slate-100 text-center space-y-1 shadow-inner">
-                 {selectedRoom ? (
-                    <p className="text-4xl italic uppercase tracking-tighter">
-                      <span className="font-black text-slate-950">ROOM </span>
-                      <span className="font-black text-red-700">{selectedRoom}</span>
-                    </p>
-                 ) : (
-                    <p className="text-xs text-slate-300 italic font-bold uppercase tracking-widest">Room not selected</p>
-                 )}
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                   {selectedItems.size} {selectedItems.size === 1 ? 'ITEM' : 'ITEMS'} IN QUEUE
-                 </p>
-              </div>
+          {/* Preview Section */}
+          <div className="shrink-0">
+            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-2 text-center">Preview</label>
+            <div className="bg-slate-50 rounded-[2rem] p-4 border border-slate-100 text-center space-y-1 shadow-inner">
+               {selectedRoom ? (
+                  <p className="text-4xl italic uppercase tracking-tighter">
+                    <span className="font-black text-slate-950">ROOM </span>
+                    <span className="font-black text-red-700">{selectedRoom}</span>
+                  </p>
+               ) : (
+                  <p className="text-xs text-slate-300 italic font-bold uppercase tracking-widest">Room not selected</p>
+               )}
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                 {selectedItems.size} {selectedItems.size === 1 ? 'ITEM' : 'ITEMS'} IN QUEUE
+               </p>
             </div>
-
-            <button
-              onClick={handleDispatch}
-              disabled={!selectedRoom || selectedItems.size === 0 || isDispatching}
-              className={`
-                w-full py-7 rounded-[2.5rem] font-black text-2xl uppercase tracking-[0.1em] flex items-center justify-center gap-4 transition-all
-                ${(!selectedRoom || selectedItems.size === 0 || isDispatching) 
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed grayscale' 
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-2xl shadow-indigo-200 active:scale-[0.95] ring-8 ring-indigo-500/10'}
-              `}
-            >
-              {isDispatching ? '처리 중...' : 'HK에 요청하기'}
-            </button>
           </div>
+
+          <button
+            onClick={handleDispatch}
+            disabled={!selectedRoom || selectedItems.size === 0 || isDispatching}
+            className={`
+              w-full py-7 rounded-[2.5rem] font-black text-2xl uppercase tracking-[0.1em] flex items-center justify-center gap-4 transition-all shrink-0
+              ${(!selectedRoom || selectedItems.size === 0 || isDispatching) 
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed grayscale' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-2xl shadow-indigo-200 active:scale-[0.95] ring-8 ring-indigo-500/10'}
+            `}
+          >
+            {isDispatching ? '처리 중...' : 'HK에 요청하기'}
+          </button>
         </div>
       </div>
     </div>
