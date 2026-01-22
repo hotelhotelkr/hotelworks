@@ -370,11 +370,11 @@ const Settings: React.FC<SettingsProps> = ({
           Settings
         </h2>
 
-        {/* 1. 연결 상태 (간단 버전) */}
+        {/* 연결 상태 */}
         <section className="mb-8">
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-indigo-600" />
-            1. 연결 상태 (Connection Status)
+            연결 상태 (Connection Status)
           </h3>
           
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
@@ -392,14 +392,14 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </section>
 
-        {/* 2. 데이터 관리 - ADMIN 전용 */}
+        {/* 데이터 관리 - ADMIN 전용 */}
         {currentUser.dept === Department.ADMIN && (
           <section className="mb-8">
             <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
-              <Database className="w-5 h-5 text-indigo-600" />
-              2. 데이터 관리 (Data Management)
+              <Database className="w-5 h-5 text-rose-600" />
+              데이터 관리 (Data Management)
               <span className="ml-2 px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-black uppercase rounded">
-                ADMIN 전용
+                🔒 ADMIN 전용
               </span>
             </h3>
             
@@ -434,11 +434,11 @@ const Settings: React.FC<SettingsProps> = ({
         )}
 
 
-        {/* 3. 오더 동기화 */}
+        {/* 오더 동기화 */}
         <section className="mb-6">
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Cloud className="w-5 h-5 text-indigo-600" />
-            3. 오더 동기화 (Order Sync)
+            오더 동기화 (Order Sync)
           </h3>
           
           <div className="space-y-4">
@@ -643,11 +643,11 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </section>
 
-        {/* 4. 기타 설정 (캐시 정리만) */}
+        {/* 기타 설정 (캐시 정리) */}
         <section>
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-indigo-600" />
-            4. 기타 설정 (Other Settings)
+            <Zap className="w-5 h-5 text-amber-600" />
+            캐시 관리 (Cache Management)
           </h3>
           
           <div className="space-y-4">
