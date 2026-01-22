@@ -156,7 +156,7 @@ app.post('/api/orders/sync', async (req, res) => {
     const results = {
       created: 0,
       skipped: 0,
-      errors: [] as Array<{ orderId: string; error: string }>
+      errors: [] // Array<{ orderId: string; error: string }>
     };
     
     for (const order of orders) {
