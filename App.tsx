@@ -1280,12 +1280,22 @@ const App: React.FC = () => {
         
         // 🚨 항상 출력 (실시간 동기화 문제 디버깅용)
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('📥 WebSocket 메시지 수신:', type);
-        console.log('   발신자:', senderId, '| 세션:', sessionId || 'null');
-        console.log('   현재 사용자:', user ? `${user.name} (${user.id})` : '로그아웃');
+        console.log('📥 WebSocket 메시지 수신 (즉시 처리)');
+        console.log('   메시지 타입:', type);
+        console.log('   발신자:', senderId || 'null', '| 세션:', sessionId || 'null');
+        console.log('   현재 사용자:', user ? `${user.name} (${user.id}, ${user.dept})` : '로그아웃');
         console.log('   현재 세션:', SESSION_ID);
         console.log('   Socket ID:', socket.id);
         console.log('   연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+        console.log('   수신 시간:', new Date().toISOString());
+        if (type === 'NEW_ORDER') {
+          console.log('   주문 정보:', {
+            id: payload?.id,
+            roomNo: payload?.roomNo,
+            itemName: payload?.itemName,
+            quantity: payload?.quantity
+          });
+        }
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         // currentUserRef를 통해 최신 로그인 상태 확인
@@ -1438,9 +1448,14 @@ const App: React.FC = () => {
 
         // 🚨 로그인 상태: UI 업데이트 + 알림 표시 (모든 로그인된 사용자)
         // 중요: 로그인 상태에서만 UI 업데이트 및 알림 표시
-        console.log('🔐 로그인 상태 - UI 업데이트 및 알림 표시 시작');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔐 로그인 상태 - UI 업데이트 및 알림 표시 시작 (즉시 실행)');
         console.log('   메시지 타입:', type);
-        console.log('   현재 사용자:', user?.name, `(${user?.id})`);
+        console.log('   현재 사용자:', user?.name, `(${user?.id}, ${user?.dept})`);
+        console.log('   발신자:', senderId || 'null');
+        console.log('   세션 ID (수신):', sessionId || 'null');
+        console.log('   세션 ID (현재):', SESSION_ID);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         switch (type) {
           case 'NEW_ORDER': {
@@ -1588,8 +1603,13 @@ const App: React.FC = () => {
                 console.log('✅ UI 업데이트 완료 (새 주문 추가)');
                 console.log('   - 업데이트 전 주문 수:', prev.length);
                 console.log('   - 업데이트 후 주문 수:', newOrders.length);
+                console.log('   - React 상태 업데이트 예정 (비동기)');
                 return newOrders;
               });
+              
+              // 🚨 React 상태 업데이트 강제 (flushSync 사용하지 않음 - 성능 고려)
+              // 대신 즉시 UI 업데이트를 보장하기 위해 로그로 확인
+              console.log('✅ setOrders 호출 완료 - React 상태 업데이트 예정');
               
               // 🚨 최우선 목표: 토스트 알림 보장
               // 알림 표시: 자신이 보낸 메시지가 아닐 때만 알림 표시
@@ -2053,14 +2073,17 @@ const App: React.FC = () => {
       mounted = false;
       // 컴포넌트 언마운트 시에만 연결 해제 (로그아웃 시에는 해제하지 않음)
       if (socketRef.current) {
-        debugLog('🧹 WebSocket 연결 정리 (컴포넌트 언마운트)');
-        socketRef.current.off(SYNC_CHANNEL);
+        console.log('🧹 WebSocket 연결 정리 (컴포넌트 언마운트)');
+        console.log('   - 이벤트 리스너 제거:', SYNC_CHANNEL);
+        socketRef.current.off(SYNC_CHANNEL); // 모든 SYNC_CHANNEL 리스너 제거
+        socketRef.current.removeAllListeners(); // 모든 리스너 제거 (안전)
         socketRef.current.disconnect();
         socketRef.current = null;
         setIsConnected(false);
+        console.log('✅ WebSocket 연결 정리 완료');
       }
     };
-  }, [triggerToast, syncOfflineQueue]); // triggerToast와 syncOfflineQueue를 의존성에 추가
+  }, []); // 🚨 의존성 배열 비움 - 이벤트 리스너는 한 번만 등록 (중복 방지)
 
   // PC와 모바일에서 동일하게 동작: 네트워크 상태 변화 감지 및 자동 재연결
   useEffect(() => {
