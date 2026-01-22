@@ -107,7 +107,9 @@ WebSocket 서버도 `hotelworks.kr`의 서브도메인으로 연결:
 
 ### 4. Nginx 리버스 프록시 설정 (같은 도메인 사용 시)
 
-```nginx
+```bash
+# Nginx 설정은 Vercel/Render를 사용하므로 필요하지 않습니다.
+# 필요시 자체 서버 구축 시 참고용:
 server {
     listen 80;
     listen [::]:80;
