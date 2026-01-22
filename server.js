@@ -62,6 +62,81 @@ app.get('/health', async (req, res) => {
   });
 });
 
+// 모든 주문 가져오기 (로그인 시 Supabase에서 최신 데이터 로드)
+app.get('/api/orders', async (req, res) => {
+  try {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📥 [최신순 정렬] /api/orders GET 요청 수신');
+    console.log('   요청 시간:', new Date().toISOString());
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Supabase에서 모든 주문 가져오기 (최신순 정렬)
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('requested_at', { ascending: false }); // 최신순 정렬
+    
+    if (error) {
+      console.error('❌ [최신순 정렬] Supabase 주문 조회 실패:', error);
+      throw error;
+    }
+    
+    console.log('✅ [최신순 정렬] Supabase에서 주문 조회 완료:', orders?.length || 0, '개');
+    if (orders && orders.length > 0) {
+      console.log('   최신 주문 (맨 위):', {
+        id: orders[0].id,
+        roomNo: orders[0].room_no,
+        itemName: orders[0].item_name,
+        requestedAt: orders[0].requested_at
+      });
+    }
+    
+    // 클라이언트가 기대하는 형식으로 변환
+    const formattedOrders = (orders || []).map(o => ({
+      id: o.id,
+      roomNo: o.room_no,
+      guestName: o.guest_name || '',
+      category: o.category,
+      itemName: o.item_name,
+      quantity: o.quantity,
+      priority: o.priority,
+      status: o.status,
+      requestedAt: o.requested_at,
+      acceptedAt: o.accepted_at || undefined,
+      inProgressAt: o.in_progress_at || undefined,
+      completedAt: o.completed_at || undefined,
+      createdBy: o.created_by,
+      assignedTo: o.assigned_to || undefined,
+      requestChannel: o.request_channel,
+      memos: (o.memos || []).map(m => ({
+        id: m.id,
+        text: m.text,
+        senderId: m.sender_id,
+        senderName: m.sender_name,
+        senderDept: m.sender_dept,
+        timestamp: m.timestamp
+      }))
+    }));
+    
+    console.log('✅ [최신순 정렬] 응답 전송 완료:', formattedOrders.length, '개 주문');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    res.json({
+      success: true,
+      orders: formattedOrders,
+      count: formattedOrders.length
+    });
+  } catch (error) {
+    console.error('❌ [최신순 정렬] /api/orders 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '주문 조회 실패',
+      orders: [],
+      count: 0
+    });
+  }
+});
+
 // 주문 동기화 엔드포인트 (오프라인 큐 동기화용)
 app.post('/api/orders/sync', async (req, res) => {
   try {
