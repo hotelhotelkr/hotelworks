@@ -125,8 +125,16 @@ io.on('connection', (socket) => {
     
     // 🚨 모든 연결된 클라이언트에게 즉시 브로드캐스트 (실시간 동기화 보장)
     const clientCount = io.sockets.sockets.size;
-    console.log(`   📡 브로드캐스트 시작 (즉시 실행) - ${clientCount}개 클라이언트에게 전송`);
-    console.log(`   📡 브로드캐스트 메시지:`, JSON.stringify(message, null, 2));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📡 브로드캐스트 시작 (즉시 실행) - ${clientCount}개 클라이언트에게 전송`);
+    console.log(`   메시지 타입: ${type}`);
+    console.log(`   발신자: ${senderId || 'null'}`);
+    console.log(`   세션 ID: ${sessionId || 'null'}`);
+    console.log(`   연결된 클라이언트 수: ${clientCount}`);
+    if (type === 'NEW_ORDER') {
+      console.log(`   주문 정보: ${payload?.roomNo}호 ${payload?.itemName} (수량: ${payload?.quantity})`);
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     try {
       // 🚨 io.emit은 모든 연결된 클라이언트(발신자 포함)에게 전송

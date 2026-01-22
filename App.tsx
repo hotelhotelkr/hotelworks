@@ -1479,33 +1479,50 @@ const App: React.FC = () => {
               
               let isSelfMessage = false;
               
-              // 🚨 단순하고 명확한 로직: 모든 조건이 완벽히 일치할 때만 자신의 메시지로 판단
-              if (
-                user && 
-                senderId && 
-                senderId === user.id && 
-                sessionId && 
-                sessionId !== '' && 
-                SESSION_ID && 
-                SESSION_ID !== '' && 
-                sessionId === SESSION_ID
-              ) {
-                // 모든 조건이 완벽히 일치 → 자신의 기기
-                isSelfMessage = true;
+              // 🚨 최우선 목표: 실시간 동기화 및 토스트 알림 보장
+              // 단순하고 명확한 로직: 모든 조건이 완벽히 일치할 때만 자신의 메시지로 판단
+              // 기본 원칙: 모든 의심스러운 경우에는 알림 표시 (안전한 선택)
+              
+              // 자신의 메시지 판단 조건 (모두 만족해야 함):
+              // 1. user가 존재해야 함
+              // 2. senderId가 존재하고 user.id와 같아야 함
+              // 3. sessionId가 존재하고 비어있지 않아야 함
+              // 4. SESSION_ID가 존재하고 비어있지 않아야 함
+              // 5. sessionId와 SESSION_ID가 같아야 함
+              
+              const hasUser = !!user;
+              const hasSenderId = !!senderId;
+              const senderMatches = hasUser && hasSenderId && senderId === user.id;
+              const hasSessionId = !!sessionId && sessionId !== '';
+              const hasCurrentSessionId = !!SESSION_ID && SESSION_ID !== '';
+              const sessionMatches = hasSessionId && hasCurrentSessionId && sessionId === SESSION_ID;
+              
+              // 모든 조건이 완벽히 일치할 때만 자신의 메시지로 판단
+              isSelfMessage = hasUser && senderMatches && sessionMatches;
+              
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('🔍 isSelfMessage 판단 과정:');
+              console.log('   - user 존재:', hasUser, `(${user?.id || 'null'})`);
+              console.log('   - senderId 존재:', hasSenderId, `(${senderId || 'null'})`);
+              console.log('   - senderId 일치:', senderMatches);
+              console.log('   - sessionId 존재:', hasSessionId, `(${sessionId || 'null'})`);
+              console.log('   - SESSION_ID 존재:', hasCurrentSessionId, `(${SESSION_ID || 'null'})`);
+              console.log('   - sessionId 일치:', sessionMatches);
+              console.log('   - 최종 isSelfMessage:', isSelfMessage);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              
+              if (isSelfMessage) {
                 console.log('✅ 자신의 메시지 확인: sessionId와 senderId가 모두 일치');
-                console.log('   - sessionId:', sessionId);
-                console.log('   - senderId:', senderId);
-                console.log('   - 현재 사용자:', user.id);
+                console.log('   - 알림 스킵 (자신의 기기에서 생성한 주문)');
               } else {
                 // 하나라도 다르거나 없으면 → 다른 기기/사용자 → 항상 알림 표시
-                isSelfMessage = false;
                 console.log('✅ 다른 기기/사용자의 메시지 - 알림 표시');
-                console.log('   - 현재 사용자:', user?.id || 'null');
-                console.log('   - 발신자:', senderId || 'null');
-                console.log('   - sessionId (수신):', sessionId || 'null/undefined');
-                console.log('   - sessionId (현재):', SESSION_ID || 'null/undefined');
                 if (user && senderId && senderId === user.id) {
                   console.log('   - senderId는 같지만 sessionId가 다르므로 다른 기기로 간주');
+                } else if (user && senderId && senderId !== user.id) {
+                  console.log('   - 다른 사용자의 메시지');
+                } else {
+                  console.log('   - 사용자 정보 또는 발신자 정보가 없음');
                 }
               }
               
