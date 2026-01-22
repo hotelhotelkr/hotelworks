@@ -3017,12 +3017,12 @@ const App: React.FC = () => {
       // 🚨 로컬 알림 제거: WebSocket 알림만 사용하여 중복 방지
       // 모든 기기(생성한 기기 포함)에서 WebSocket을 통해 알림을 받음
       
-      // 브로드캐스트는 비동기로 수행 (상태 업데이트 후)
-      setTimeout(() => {
-        const socket = socketRef.current;
-        
-        // 오프라인 큐에 저장하는 함수
-        const saveToOfflineQueue = (type: string, payload: any, senderId: string) => {
+      // 🚨 브로드캐스트는 즉시 수행 (실시간 동기화 보장)
+      // setTimeout 제거: 실시간 동기화를 위해 즉시 전송
+      const socket = socketRef.current;
+      
+      // 오프라인 큐에 저장하는 함수
+      const saveToOfflineQueue = (type: string, payload: any, senderId: string) => {
           try {
             const existing = localStorage.getItem(OFFLINE_QUEUE_KEY);
             const queue = existing ? JSON.parse(existing) : [];
@@ -3250,7 +3250,6 @@ const App: React.FC = () => {
             console.error('❌ 재연결 시도 실패:', reconnectError);
           }
         }
-      }, 0);
       
       return newOrders;
     });

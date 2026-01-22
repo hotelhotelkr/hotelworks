@@ -119,27 +119,25 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
 
     const itemsToDispatch = Array.from(selectedItems.entries());
 
-    itemsToDispatch.forEach(([name, qty], index) => {
-      setTimeout(() => {
-        onDispatch({
-          roomNo: selectedRoom,
-          itemName: name,
-          quantity: qty,
-          priority,
-          requestNote: note,
-          category: 'Amenities'
-        });
-      }, index * 50);
+    // 🚨 실시간 동기화를 위해 즉시 전송 (setTimeout 제거)
+    itemsToDispatch.forEach(([name, qty]) => {
+      onDispatch({
+        roomNo: selectedRoom,
+        itemName: name,
+        quantity: qty,
+        priority,
+        requestNote: note,
+        category: 'Amenities'
+      });
     });
 
-    dispatchTimeoutRef.current = setTimeout(() => {
-      setSelectedRoom('');
-      setSelectedItems(new Map());
-      setPriority(Priority.NORMAL);
-      setNote('');
-      setIsDispatching(false);
-      dispatchTimeoutRef.current = null;
-    }, itemsToDispatch.length * 50 + 200);
+    // 상태 초기화는 즉시 수행 (실시간 동기화 보장)
+    setSelectedRoom('');
+    setSelectedItems(new Map());
+    setPriority(Priority.NORMAL);
+    setNote('');
+    setIsDispatching(false);
+    dispatchTimeoutRef.current = null;
   };
 
   const handleRoomSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
