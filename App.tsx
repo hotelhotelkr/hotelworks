@@ -823,6 +823,21 @@ const App: React.FC = () => {
         setIsConnected(true);
         syncOfflineQueue();
         
+        // 🚨 연결 성공 후 이벤트 리스너 재등록 (안전장치)
+        // 중요: 연결이 끊겼다가 다시 연결될 때 리스너가 사라질 수 있음
+        console.log('🔌 연결 성공 후 이벤트 리스너 재등록 확인');
+        const existingListeners = socket.listeners(SYNC_CHANNEL).length;
+        console.log('   - 현재 등록된 리스너 수:', existingListeners);
+        if (existingListeners === 0) {
+          console.warn('⚠️ 리스너가 없음 - 재등록 시도');
+          try {
+            socket.on(SYNC_CHANNEL, messageHandler);
+            console.log('✅ 리스너 재등록 완료');
+          } catch (error) {
+            console.error('❌ 리스너 재등록 실패:', error);
+          }
+        }
+        
         // WebSocket 연결 후 localStorage 주문들을 DB로 동기화
         if (currentUserRef.current) {
           setTimeout(() => {
@@ -893,6 +908,23 @@ const App: React.FC = () => {
         console.log('   - 재연결 시간:', new Date().toISOString());
         console.log('   - Socket ID:', socket.id);
         setIsConnected(true);
+        
+        // 🚨 재연결 후 이벤트 리스너 재등록 (중요!)
+        // 재연결 시 리스너가 사라질 수 있으므로 반드시 재등록
+        console.log('🔌 재연결 후 이벤트 리스너 재등록');
+        const existingListeners = socket.listeners(SYNC_CHANNEL).length;
+        console.log('   - 현재 등록된 리스너 수:', existingListeners);
+        if (existingListeners === 0) {
+          console.warn('⚠️ 리스너가 없음 - 재등록 시도');
+          try {
+            socket.on(SYNC_CHANNEL, messageHandler);
+            console.log('✅ 리스너 재등록 완료');
+          } catch (error) {
+            console.error('❌ 리스너 재등록 실패:', error);
+          }
+        } else {
+          console.log('✅ 리스너가 이미 등록되어 있음');
+        }
         
         // 오프라인 큐에 저장된 메시지들을 모두 전송
         syncOfflineQueue();
@@ -1272,12 +1304,15 @@ const App: React.FC = () => {
 
       // 🚨 중복 리스너 방지: 모든 리스너 제거 후 새로 등록
       // 중요: socket.off()만으로는 부족할 수 있으므로 removeAllListeners() 사용
-      socket.removeAllListeners(SYNC_CHANNEL); // 모든 SYNC_CHANNEL 리스너 제거
-      socket.off(SYNC_CHANNEL); // 추가 안전장치
+      const existingListeners = socket.listeners(SYNC_CHANNEL).length;
+      if (existingListeners > 0) {
+        console.log(`🧹 기존 리스너 제거 중 (${existingListeners}개 발견)`);
+        socket.removeAllListeners(SYNC_CHANNEL); // 모든 SYNC_CHANNEL 리스너 제거
+        socket.off(SYNC_CHANNEL); // 추가 안전장치
+        console.log('✅ 기존 리스너 제거 완료');
+      }
       
       console.log('🔌 WebSocket 이벤트 리스너 등록 시작');
-      console.log('   - 기존 리스너 제거 완료');
-      console.log('   - 새 리스너 등록 중...');
       console.log('   - 채널:', SYNC_CHANNEL);
       console.log('   - Socket ID:', socket.id);
       console.log('   - 연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
@@ -2090,27 +2125,45 @@ const App: React.FC = () => {
       
       // 🚨 이벤트 리스너 등록 (한 번만)
       // 최우선 목표: 실시간 동기화 및 토스트 알림 보장
-      socket.on(SYNC_CHANNEL, messageHandler);
+      // 중요: socket.on()은 항상 리스너를 추가하므로, removeAllListeners() 후에 호출해야 함
+      try {
+        socket.on(SYNC_CHANNEL, messageHandler);
+        console.log('✅ socket.on() 호출 완료');
+      } catch (error) {
+        console.error('❌ socket.on() 호출 실패:', error);
+      }
       
+      // 🚨 리스너 등록 즉시 확인 (디버깅용)
+      const listenerCount = socket.listeners(SYNC_CHANNEL).length;
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('✅ WebSocket 이벤트 리스너 등록 완료');
       console.log('   - 채널:', SYNC_CHANNEL);
       console.log('   - 핸들러:', 'messageHandler');
       console.log('   - Socket ID:', socket.id);
       console.log('   - 연결 상태:', socket.connected ? '✅ 연결됨' : '❌ 연결 안 됨');
+      console.log('   - 등록된 리스너 수:', listenerCount);
       console.log('   - 리스너 등록 시간:', new Date().toISOString());
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       
-      // 🚨 리스너 등록 확인 (디버깅용)
-      const listenerCount = socket.listeners(SYNC_CHANNEL).length;
-      console.log('   - 등록된 리스너 수:', listenerCount);
       if (listenerCount > 1) {
         console.warn('⚠️ 리스너가 중복 등록되었을 수 있습니다!');
       } else if (listenerCount === 1) {
         console.log('✅ 리스너가 정상적으로 1개만 등록되었습니다');
       } else {
         console.error('❌ 리스너가 등록되지 않았습니다!');
+        console.error('   - 이는 심각한 문제입니다. 실시간 동기화가 작동하지 않을 수 있습니다.');
+        console.error('   - socket.on()을 다시 시도합니다...');
+        try {
+          socket.on(SYNC_CHANNEL, messageHandler);
+          const retryCount = socket.listeners(SYNC_CHANNEL).length;
+          console.log('   - 재시도 후 리스너 수:', retryCount);
+        } catch (retryError) {
+          console.error('   - 재시도 실패:', retryError);
+        }
       }
+      
+      // 🚨 테스트: 리스너가 실제로 작동하는지 확인
+      console.log('🔍 리스너 작동 테스트: 서버에서 메시지를 보내면 위의 messageHandler가 호출되어야 합니다.');
 
     } catch (error) {
       console.warn('⚠️ WebSocket 초기화 실패:', error);
