@@ -443,6 +443,74 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
   }, [orders]);
 
+  // 🚨 알림 패널이 열릴 때 실시간 동기화 보장
+  // toasts 상태가 변경될 때마다 notificationHistory와 동기화
+  useEffect(() => {
+    if (toasts.length === 0) return;
+    
+    // 현재 활성 알림(toasts)이 notificationHistory에 없는 경우 추가
+    setNotificationHistory(prev => {
+      const existingIds = new Set(prev.map(t => t.id));
+      const newToasts = toasts.filter(t => !existingIds.has(t.id));
+      
+      if (newToasts.length === 0) {
+        return prev; // 새로운 알림이 없으면 변경 없음
+      }
+      
+      // 새로운 알림을 히스토리에 추가 (최대 1000개 유지)
+      const updated = [...newToasts, ...prev].slice(0, 1000);
+      
+      // localStorage에 저장
+      try {
+        localStorage.setItem('hotelflow_notifications', JSON.stringify(updated.map(t => ({
+          ...t,
+          timestamp: t.timestamp.toISOString()
+        }))));
+        console.log('✅ 알림 히스토리 실시간 동기화 완료:', newToasts.length, '개 새 알림 추가');
+      } catch (e) {
+        console.warn('⚠️ 알림 히스토리 저장 실패:', e);
+      }
+      
+      return updated;
+    });
+  }, [toasts]);
+
+  // 🚨 알림 패널이 열릴 때 실시간 동기화 확인
+  useEffect(() => {
+    if (!notificationPanelOpen) return;
+    
+    console.log('🔔 알림 패널 열림 - 실시간 동기화 확인');
+    console.log('   - 현재 활성 알림 수:', toasts.length);
+    console.log('   - 알림 히스토리 수:', notificationHistory.length);
+    console.log('   - WebSocket 연결 상태:', isConnected);
+    
+    // 알림 패널이 열릴 때 현재 toasts와 notificationHistory 동기화
+    if (toasts.length > 0) {
+      setNotificationHistory(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        const newToasts = toasts.filter(t => !existingIds.has(t.id));
+        
+        if (newToasts.length === 0) {
+          return prev;
+        }
+        
+        const updated = [...newToasts, ...prev].slice(0, 1000);
+        
+        try {
+          localStorage.setItem('hotelflow_notifications', JSON.stringify(updated.map(t => ({
+            ...t,
+            timestamp: t.timestamp.toISOString()
+          }))));
+          console.log('✅ 알림 패널 열림 시 동기화 완료:', newToasts.length, '개 새 알림 추가');
+        } catch (e) {
+          console.warn('⚠️ 알림 히스토리 저장 실패:', e);
+        }
+        
+        return updated;
+      });
+    }
+  }, [notificationPanelOpen, toasts, isConnected]);
+
   // Helper to generate the custom Order ID (YYYYMMDD_N)
   const generateOrderId = useCallback((currentOrders: Order[]) => {
     const now = new Date();
