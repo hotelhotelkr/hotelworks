@@ -371,7 +371,7 @@ const Settings: React.FC<SettingsProps> = ({
         </h2>
 
         {/* 연결 상태 */}
-        <section className="mb-8 pb-8 border-b border-slate-200">
+        <section className="mb-8 pb-8 border-b-2 border-red-600">
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-indigo-600" />
             연결 상태 (Connection Status)
@@ -394,7 +394,7 @@ const Settings: React.FC<SettingsProps> = ({
 
         {/* 데이터 관리 - ADMIN 전용 */}
         {currentUser.dept === Department.ADMIN && (
-          <section className="mb-8 pb-8 border-b border-slate-200">
+          <section className="mb-8 pb-8 border-b-2 border-red-600">
             <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
               <Database className="w-5 h-5 text-rose-600" />
               데이터 관리 (Data Management)
@@ -435,7 +435,7 @@ const Settings: React.FC<SettingsProps> = ({
 
 
         {/* 오더 동기화 */}
-        <section className="mb-8 pb-8 border-b border-slate-200">
+        <section className="mb-8 pb-8 border-b-2 border-red-600">
           <h3 className="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
             <Cloud className="w-5 h-5 text-indigo-600" />
             오더 동기화 (Order Sync)
@@ -449,7 +449,7 @@ const Settings: React.FC<SettingsProps> = ({
                 <div>
                   <p className="text-sm font-bold text-amber-900 mb-2">언제 사용하나요?</p>
                   <ul className="text-xs text-amber-800 space-y-1">
-                    <li>✅ 오더가 수파베이스에 저장 안됐을 때</li>
+                    <li>✅ 오더가 데이터 센터(수파베이스)에 저장 안됐을 때</li>
                     <li>✅ 서버 오류로 데이터 누락이 의심될 때</li>
                     <li>✅ 개발자가 복구를 요청했을 때</li>
                   </ul>
@@ -488,7 +488,7 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
               <p className="text-xs text-slate-500">
-                💡 브라우저에 저장된 오더를 Supabase로 백업합니다
+                💡 브라우저에 저장된 오더를 데이터 센터(수파베이스)로 백업합니다
               </p>
             </div>
             
