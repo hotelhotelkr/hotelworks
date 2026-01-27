@@ -2836,8 +2836,13 @@ const App: React.FC = () => {
     // 🚨 [최신순 정렬 수정] Supabase에서 최신 주문 데이터 가져오기
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🔄 [최신순 정렬] Supabase에서 최신 데이터 가져오기 시작...');
+    
+    let supabaseDataLoaded = false; // API 호출 성공 여부 추적
+    
     try {
       const apiUrl = getApiBaseUrl();
+      console.log('📡 API URL:', apiUrl);
+      
       const response = await fetch(`${apiUrl}/api/orders`, {
         method: 'GET',
         headers: {
@@ -2890,17 +2895,22 @@ const App: React.FC = () => {
           // 🚨 Supabase 데이터 로드 플래그 설정 (all_orders_response 핸들러가 무시하도록)
           localStorage.setItem('hotelflow_supabase_data_loaded', 'true');
           console.log('✅ Supabase 데이터 로드 플래그 설정 완료 (all_orders_response 무시)');
+          
+          supabaseDataLoaded = true; // 성공 표시
+        } else {
+          console.warn('⚠️ Supabase 응답 형식 오류:', data);
         }
       } else {
-        console.warn('⚠️ Supabase 데이터 로드 실패:', response.status);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.warn('⚠️ Supabase 데이터 로드 실패:', response.status, errorText);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [최신순 정렬] Supabase 데이터 로드 오류:', error);
+      console.error('   오류 상세:', error.message);
     }
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    // 로그인 시 사용자 목록 동기화 요청만 수행
-    // 주문 목록은 이미 Supabase에서 최신순으로 로드되었으므로 request_all_orders 불필요
+    // WebSocket 연결 확인 및 동기화 요청
     const socket = socketRef.current;
     if (socket && socket.connected) {
       // 사용자 목록 동기화 요청
@@ -2911,6 +2921,40 @@ const App: React.FC = () => {
         });
         console.log('📤 WebSocket 메시지 전송 - request_all_users (로그인)');
       }, 500);
+      
+      // 🚨 API 호출 실패 시 WebSocket으로 주문 목록 요청 (Fallback)
+      if (!supabaseDataLoaded) {
+        console.log('🔄 API 호출 실패 → WebSocket으로 주문 목록 요청 (Fallback)');
+        setTimeout(() => {
+          // Supabase 데이터 로드 플래그를 설정하지 않음 (WebSocket 응답을 받아야 함)
+          localStorage.removeItem('hotelflow_supabase_data_loaded');
+          
+          socket.emit('request_all_orders', {
+            senderId: user.id,
+            timestamp: new Date().toISOString()
+          });
+          console.log('📤 WebSocket 메시지 전송 - request_all_orders (Fallback)');
+          
+          // 사용자에게 알림
+          triggerToast(
+            'API 연결 실패. WebSocket으로 주문 목록을 동기화합니다...',
+            'info',
+            user.dept,
+            'UPDATE'
+          );
+        }, 1000); // 사용자 목록 요청 후 1초 뒤 실행
+      }
+    } else {
+      // WebSocket이 연결되지 않은 경우
+      if (!supabaseDataLoaded) {
+        console.error('❌ API 호출 실패 + WebSocket 미연결 → 주문 목록을 가져올 수 없음');
+        triggerToast(
+          '주문 목록을 불러올 수 없습니다. 네트워크 연결을 확인해주세요.',
+          'error',
+          user.dept,
+          'ALERT'
+        );
+      }
     }
 
     // localStorage 주문들을 DB로 자동 동기화 (백그라운드)
