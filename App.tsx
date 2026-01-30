@@ -70,6 +70,37 @@ const DEFAULT_PASSWORDS: Record<string, string> = {
  */
 const SESSION_ID = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+// 삭제된 직원 ID 목록 (all_users_response 병합 시 재추가 방지)
+const DELETED_USER_IDS_KEY = 'hotelflow_deleted_user_ids';
+function getDeletedUserIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_USER_IDS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+function addDeletedUserId(id: string): void {
+  const set = getDeletedUserIds();
+  set.add(id);
+  try {
+    localStorage.setItem(DELETED_USER_IDS_KEY, JSON.stringify([...set]));
+  } catch (e) {
+    console.warn('⚠️ 삭제된 사용자 ID 저장 실패:', e);
+  }
+}
+function removeDeletedUserId(id: string): void {
+  const set = getDeletedUserIds();
+  set.delete(id);
+  try {
+    localStorage.setItem(DELETED_USER_IDS_KEY, JSON.stringify([...set]));
+  } catch (e) {
+    console.warn('⚠️ 삭제된 사용자 ID 제거 실패:', e);
+  }
+}
+
 /**
  * 한국 시간(KST) 유틸리티 함수
  * - 모든 사용자가 한국에 있으므로 한국 시간(KST) 기준으로 작동
@@ -315,7 +346,15 @@ const App: React.FC = () => {
               } catch (e) {
                 console.warn('⚠️ 초기 비밀번호 설정 실패:', e);
               }
-              
+
+              const deletedIdsMig = getDeletedUserIds();
+              const migratedFiltered = deletedIdsMig.size > 0 ? migrated.filter((u: User) => !deletedIdsMig.has(u.id)) : migrated;
+              if (migratedFiltered.length < migrated.length) {
+                try {
+                  localStorage.setItem('hotelflow_users_v1', JSON.stringify(migratedFiltered));
+                } catch (_) {}
+                return migratedFiltered;
+              }
               return migrated;
             }
             
@@ -339,13 +378,27 @@ const App: React.FC = () => {
             } catch (e) {
               console.warn('⚠️ 초기 비밀번호 설정 실패:', e);
             }
-            
+
+            // 삭제된 직원은 목록에서 제외 (동기화로 다시 들어온 경우 대비)
+            const deletedIds = getDeletedUserIds();
+            if (deletedIds.size > 0) {
+              const filtered = parsed.filter((u: User) => !deletedIds.has(u.id));
+              if (filtered.length < parsed.length) {
+                try {
+                  localStorage.setItem('hotelflow_users_v1', JSON.stringify(filtered));
+                } catch (_) {}
+                return filtered;
+              }
+            }
             return parsed;
           }
-          return USERS;
+          const deletedIdsInit = getDeletedUserIds();
+          const defaultFiltered = deletedIdsInit.size > 0 ? USERS.filter(u => !deletedIdsInit.has(u.id)) : USERS;
+          return defaultFiltered;
         } catch (e) {
           console.warn('Failed to parse users from localStorage:', e);
-          return USERS;
+          const d = getDeletedUserIds();
+          return d.size > 0 ? USERS.filter(u => !d.has(u.id)) : USERS;
         }
       }
       // USERS가 반환되는 경우도 초기 비밀번호 설정
@@ -368,11 +421,12 @@ const App: React.FC = () => {
       } catch (e) {
         console.warn('⚠️ 초기 비밀번호 설정 실패:', e);
       }
-      
-      return USERS;
+      const d2 = getDeletedUserIds();
+      return d2.size > 0 ? USERS.filter(u => !d2.has(u.id)) : USERS;
     } catch (e) {
       console.warn('Failed to access localStorage for users:', e);
-      return USERS;
+      const d3 = getDeletedUserIds();
+      return d3.size > 0 ? USERS.filter(u => !d3.has(u.id)) : USERS;
     }
   });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -1261,6 +1315,15 @@ const App: React.FC = () => {
           console.warn('⚠️ 잘못된 users 응답 데이터');
           return;
         }
+
+        // 삭제된 직원은 동기화 시 다시 추가하지 않음 (다른 클라이언트 캐시로 인한 재등장 방지)
+        const deletedIds = getDeletedUserIds();
+        const receivedFiltered = deletedIds.size > 0
+          ? receivedUsers.filter((u: any) => !deletedIds.has(u.id))
+          : receivedUsers;
+        if (receivedFiltered.length < receivedUsers.length) {
+          console.log('   🚫 삭제된 직원 제외:', receivedUsers.length - receivedFiltered.length, '명 (동기화 시 재추가 방지)');
+        }
         
         // 수신한 사용자 목록에서 비밀번호 저장 및 초기 비밀번호 설정
         try {
@@ -1268,7 +1331,7 @@ const App: React.FC = () => {
           const passwords = saved ? JSON.parse(saved) : {};
           let passwordsUpdated = false;
           
-          receivedUsers.forEach((u: any) => {
+          receivedFiltered.forEach((u: any) => {
             if (u.password && u.id) {
               // 수신한 비밀번호 저장
               passwords[u.id] = u.password;
@@ -1298,8 +1361,8 @@ const App: React.FC = () => {
             userMap.set(u.id, userWithoutPassword as User);
           });
           
-          // 수신한 사용자 목록 추가/업데이트 (더 최신 데이터로)
-          receivedUsers.forEach((u: any) => {
+          // 수신한 사용자 목록 추가/업데이트 (삭제된 직원 제외된 목록 사용)
+          receivedFiltered.forEach((u: any) => {
             const { password, ...userWithoutPassword } = u;
             userMap.set(u.id, userWithoutPassword as User);
           });
@@ -1599,6 +1662,7 @@ const App: React.FC = () => {
               case 'USER_ADD': {
                 // 로그아웃 상태에서도 사용자 추가 처리
                 try {
+                  removeDeletedUserId(payload.id);
                   const saved = localStorage.getItem('hotelflow_users_v1');
                   const users = saved ? JSON.parse(saved) : [];
                   const exists = users.find((u: User) => u.id === payload.id);
@@ -1643,6 +1707,7 @@ const App: React.FC = () => {
               case 'USER_DELETE': {
                 // 로그아웃 상태에서도 사용자 삭제 처리
                 try {
+                  addDeletedUserId(payload.userId);
                   const saved = localStorage.getItem('hotelflow_users_v1');
                   const users = saved ? JSON.parse(saved) : [];
                   const updated = users.filter((u: User) => u.id !== payload.userId);
@@ -2223,7 +2288,7 @@ const App: React.FC = () => {
                 console.log('⚠️ 사용자가 이미 존재함:', payload.id, isSelfMessage ? '(자신이 보낸 메시지)' : '(다른 사용자)');
                 return prev;
               }
-              
+              removeDeletedUserId(payload.id);
               console.log('✅ 새 사용자 추가 중:', payload.name, {
                 isSelfMessage: isSelfMessage ? '자신이 보낸 메시지' : '다른 사용자',
                 loginStatus: user ? '로그인 상태' : '로그아웃 상태',
@@ -2340,6 +2405,8 @@ const App: React.FC = () => {
               }
               
               const updated = prev.filter(u => u.id !== payload.userId);
+              // 삭제된 ID 기록 (all_users_response 병합 시 재추가 방지)
+              addDeletedUserId(payload.userId);
               // localStorage에 저장 (앱 재시작 시에도 유지)
               try {
                 localStorage.setItem('hotelflow_users_v1', JSON.stringify(updated));
@@ -3705,6 +3772,7 @@ const App: React.FC = () => {
   }, [triggerToast]);
 
   const handleDeleteUser = useCallback((userId: string) => {
+    addDeletedUserId(userId);
     // 비밀번호도 삭제
     try {
       const saved = localStorage.getItem('hotelflow_user_passwords_v1');
