@@ -78,18 +78,6 @@ const OrderList: React.FC<OrderListProps> = ({
     onOpenMemo(order);
   };
 
-  // 완료 상태로 변경 시 메모 입력 처리
-  const handleCompleteWithNote = (orderId: string) => {
-    try {
-      const note = prompt("메모 (선택):");
-      const finalNote = (note !== null && note.trim()) ? note.trim() : undefined;
-      onUpdateStatus(orderId, OrderStatus.COMPLETED, finalNote);
-    } catch (error) {
-      console.error('Error updating status:', error);
-      onUpdateStatus(orderId, OrderStatus.COMPLETED);
-    }
-  };
-
   const filteredOrders = useMemo(() => {
     // ✅ Supabase 절대 우선: App.tsx에서 받은 순서 그대로 사용
     // ❌ 클라이언트에서 재정렬 안 함 (Supabase가 이미 최신순으로 정렬했음)
@@ -204,7 +192,7 @@ const OrderList: React.FC<OrderListProps> = ({
                       <div className="bg-slate-900 text-white text-xs rounded-lg px-3 py-2.5 shadow-lg" style={{ whiteSpace: 'normal', maxWidth: '100%' }}>
                         <span className="font-bold text-indigo-300">접수:</span> 오더를 수락합니다 (HK) | 
                         <span className="font-bold text-blue-300 ml-2">진행중:</span> 오더를 시작합니다 | 
-                        <span className="font-bold text-emerald-300 ml-2">완료:</span> 오더를 완료합니다 (메모 쓰기 가능) | 
+                        <span className="font-bold text-emerald-300 ml-2">완료:</span> 오더를 완료합니다 | 
                         <span className="font-bold text-slate-300 ml-2">다시 시작:</span> 완료된 오더를 다시합니다 | 
                         <span className="font-bold text-rose-300 ml-2">취소:</span> 오더를 취소합니다 (FD만 가능)
                         <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
@@ -334,13 +322,7 @@ const OrderList: React.FC<OrderListProps> = ({
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      try {
-                                        const note = prompt("메모 (선택):");
-                                        const finalNote = (note !== null && note.trim()) ? note.trim() : undefined;
-                                        onUpdateStatus(order.id, OrderStatus.COMPLETED, finalNote);
-                                      } catch (error) {
-                                        onUpdateStatus(order.id, OrderStatus.COMPLETED);
-                                      }
+                                      onUpdateStatus(order.id, OrderStatus.COMPLETED);
                                     }}
                                     className="text-[10px] sm:text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-3 sm:px-4 py-2.5 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[44px] sm:min-h-[36px]"
                                   >
@@ -364,7 +346,7 @@ const OrderList: React.FC<OrderListProps> = ({
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      handleCompleteWithNote(order.id);
+                                      onUpdateStatus(order.id, OrderStatus.COMPLETED);
                                     }}
                                     className="text-[10px] sm:text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-3 sm:px-4 py-2.5 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[44px] sm:min-h-[36px]"
                                   >
@@ -379,7 +361,7 @@ const OrderList: React.FC<OrderListProps> = ({
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    handleCompleteWithNote(order.id);
+                                    onUpdateStatus(order.id, OrderStatus.COMPLETED);
                                   }}
                                   className="text-[10px] sm:text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[40px] sm:min-h-[36px]"
                                 >
@@ -545,7 +527,7 @@ const OrderList: React.FC<OrderListProps> = ({
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                handleCompleteWithNote(order.id);
+                                onUpdateStatus(order.id, OrderStatus.COMPLETED);
                               }}
                               className="text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[44px]"
                             >
@@ -568,7 +550,7 @@ const OrderList: React.FC<OrderListProps> = ({
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                handleCompleteWithNote(order.id);
+                                onUpdateStatus(order.id, OrderStatus.COMPLETED);
                               }}
                               className="text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[44px]"
                             >
@@ -582,7 +564,7 @@ const OrderList: React.FC<OrderListProps> = ({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              handleCompleteWithNote(order.id);
+                              onUpdateStatus(order.id, OrderStatus.COMPLETED);
                             }}
                             className="text-xs font-black uppercase tracking-widest bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 min-h-[44px]"
                           >
