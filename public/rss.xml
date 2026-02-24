@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>HotelWorks｜호텔웍스</title>
+    <link>https://hotelworks.kr</link>
+    <description>프론트–하우스키핑 오더를 실시간·상태 기반으로 관리하고, 기록·통계·엑셀까지 한 번에 제공하는 호텔 운영 시스템입니다.</description>
+    <language>ko</language>
+    <lastBuildDate>Tue, 24 Feb 2026 00:00:00 +0900</lastBuildDate>
+    <atom:link href="https://hotelworks.kr/rss.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>HotelWorks｜호텔웍스</title>
+      <link>https://hotelworks.kr</link>
+      <description>프론트–하우스키핑 오더를 실시간·상태 기반으로 관리하고, 기록·통계·엑셀까지 한 번에 제공하는 호텔 운영 시스템입니다.</description>
+      <pubDate>Tue, 24 Feb 2026 00:00:00 +0900</pubDate>
+      <guid>https://hotelworks.kr</guid>
+    </item>
+  </channel>
+</rss>
