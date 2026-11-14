@@ -37,8 +37,7 @@ const NoteModal = lazy(() => import('./components/NoteModal'));
 const Login = lazy(() => import('./components/Login'));
 const AdminStaffManager = lazy(() => import('./components/AdminStaffManager'));
 const Settings = lazy(() => import('./components/Settings'));
-// MemoHistory 컴포넌트는 아직 구현되지 않았으므로 주석 처리
-// const MemoHistory = lazy(() => import('./components/MemoHistory'));
+const MemoHistory = lazy(() => import('./components/MemoHistory'));
 const ToastNotification = lazy(() => import('./components/ToastNotification'));
 
 // Toast 타입은 types.ts에서 import
@@ -130,7 +129,7 @@ const toKoreaISO = (date: Date): string => {
  * WebSocket 서버 URL 동적 감지
  * - 환경 변수(VITE_WS_SERVER_URL) 최우선 사용
  * - localStorage 저장된 URL 사용
- * - 프로덕션(hotelworks.kr): Render 서버 사용 (wss://hotelworks-websocket.onrender.com)
+ * - 프로덕션(hotelworks.kr): Render 서버 사용 (wss://hotelworks-backend.onrender.com)
  * - 로컬 환경: 자동으로 포트 3001 사용
  * - PC와 모바일 모두 같은 서버에 연결
  */
@@ -165,7 +164,7 @@ const getWebSocketURL = (): string => {
     // 🏨 프로덕션 도메인: hotelworks.kr → Render 서버 사용
     if (host === 'hotelworks.kr' || host === 'www.hotelworks.kr') {
       // Render 서버 URL 사용 (환경 변수가 없을 때)
-      const renderUrl = 'wss://hotelworks-websocket.onrender.com';
+      const renderUrl = 'wss://hotelworks-backend.onrender.com';
       console.log('🔌 [3순위] 프로덕션 WebSocket URL (Render):', renderUrl);
       return renderUrl;
     }
@@ -1370,8 +1369,8 @@ const App: React.FC = () => {
           const merged = Array.from(userMap.values());
           
           // 병합된 사용자 목록이 이전과 다르면 localStorage에 저장
-          const prevIds = new Set(prev.map(u => u.id).sort());
-          const mergedIds = new Set(merged.map(u => u.id).sort());
+          const prevIds = new Set<string>(prev.map(u => u.id).sort());
+          const mergedIds = new Set<string>(merged.map(u => u.id).sort());
           const idsChanged = prevIds.size !== mergedIds.size || 
             !Array.from(prevIds).every(id => mergedIds.has(id));
           
@@ -3236,7 +3235,7 @@ const App: React.FC = () => {
             completedAt: order.completedAt ? toKoreaISO(order.completedAt) : undefined,
             memos: order.memos.map(m => ({
               ...m,
-              timestamp: koreaTimeToUTC(m.timestamp)
+              timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
             }))
           };
           
@@ -4180,14 +4179,12 @@ const App: React.FC = () => {
                     onOpenMemo={(order) => setMemoOrder(order)}
                   />
                 } />
-                {/* MemoHistory 컴포넌트는 아직 구현되지 않았으므로 주석 처리
                 <Route path="/memos" element={
                   <MemoHistory 
                     orders={orders}
                     onOpenMemo={(order) => setMemoOrder(order)}
                   />
                 } />
-                */}
                 <Route path="/staff" element={
                   currentUser && currentUser.dept === Department.ADMIN ? (
                     <AdminStaffManager 

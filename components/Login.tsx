@@ -133,8 +133,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           if (Array.isArray(parsed) && parsed.length > 0) {
             setLocalUsers(prev => {
               // 이전 목록과 다를 때만 업데이트 (불필요한 리렌더링 방지)
-              const prevIds = new Set(prev.map(u => u.id).sort());
-              const newIds = new Set(parsed.map((u: User) => u.id).sort());
+              const prevIds = new Set<string>(prev.map(u => u.id).sort());
+              const newIds = new Set<string>(parsed.map((u: User) => u.id).sort());
               const changed = prev.length !== parsed.length || 
                              !Array.from(prevIds).every(id => newIds.has(id));
               if (changed) {

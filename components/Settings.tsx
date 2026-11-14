@@ -228,7 +228,7 @@ const Settings: React.FC<SettingsProps> = ({
         
         // 프로덕션 도메인: hotelworks.kr → Render 서버 사용
         if (host === 'hotelworks.kr' || host === 'www.hotelworks.kr') {
-          return 'wss://hotelworks-websocket.onrender.com';
+          return 'wss://hotelworks-backend.onrender.com';
         }
         
         // 개발 환경

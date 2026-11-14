@@ -85,7 +85,7 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
   }, [isSearching, allFilteredRoomsByFloor, selectedFloor, filteredRooms, floors]);
 
   const toggleItem = (name: string) => {
-    const next = new Map(selectedItems);
+    const next = new Map<string, number>(selectedItems);
     if (next.has(name)) {
       next.delete(name);
     } else {
@@ -95,7 +95,7 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
   };
 
   const updateQty = (name: string, delta: number) => {
-    const next = new Map(selectedItems);
+    const next = new Map<string, number>(selectedItems);
     const current = next.get(name) || 0;
     const newVal = Math.max(1, current + delta);
     next.set(name, newVal);
@@ -479,7 +479,7 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && customItemName.trim()) {
                         const trimmedName = customItemName.trim();
-                        const next = new Map(selectedItems);
+                        const next = new Map<string, number>(selectedItems);
                         next.set(trimmedName, 1);
                         setSelectedItems(next);
                         setCustomItemName('');
@@ -497,7 +497,7 @@ const RapidOrder: React.FC<RapidOrderProps> = ({ onDispatch }) => {
                       onClick={() => {
                         if (customItemName.trim()) {
                           const trimmedName = customItemName.trim();
-                          const next = new Map(selectedItems);
+                          const next = new Map<string, number>(selectedItems);
                           next.set(trimmedName, 1);
                           setSelectedItems(next);
                           setCustomItemName('');
