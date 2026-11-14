@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Building2, Key, User as UserIcon, Lock, AlertCircle } from 'lucide-react';
+import { Building2, Key, User as UserIcon, Lock, AlertCircle, Play, X } from 'lucide-react';
 import { User, Department, Role } from '../types';
 
 interface LoginProps {
@@ -117,11 +117,27 @@ const saveTemporaryUser = (user: User, password: string): void => {
   }
 };
 
+// 사용법 영상 (public/manual 폴더의 정적 파일)
+const MANUAL_VIDEO_URL = '/manual/hotelworks-manual.mp4';
+const MANUAL_POSTER_URL = '/manual/hotelworks-manual-poster.jpg';
+const MANUAL_VIDEO_LENGTH = '2분 45초';
+
 const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [localUsers, setLocalUsers] = React.useState<any[]>([]);
+  const [showManual, setShowManual] = useState(false);
+
+  // 사용법 영상 창: Esc 키로 닫기
+  React.useEffect(() => {
+    if (!showManual) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowManual(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showManual]);
 
   // localStorage에서 사용자 목록 동기화 (실시간 동기화를 위해 더 자주 확인)
   React.useEffect(() => {
@@ -416,9 +432,46 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
             <h2 className="text-4xl font-bold leading-tight mb-4">
               Operational Excellence,<br />Simplified.
             </h2>
-            <p className="text-indigo-100 text-lg mb-8 md:mb-0">
+            <p className="text-indigo-100 text-lg">
               Authorized access only. Please provide your credentials to enter the operational dashboard.
             </p>
+          </div>
+
+          {/* 사용법 영상: PC는 표지 카드, 휴대폰·태블릿은 한 줄 버튼. 영상 파일은 누를 때만 불러옴 */}
+          <div className="relative z-10 mt-6 mb-8 lg:my-8">
+            <button
+              type="button"
+              onClick={() => setShowManual(true)}
+              className="hidden lg:block group w-full text-left rounded-2xl overflow-hidden bg-indigo-900/40 ring-1 ring-white/20 shadow-xl hover:ring-white/60 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <div className="relative aspect-video">
+                <img
+                  src={MANUAL_POSTER_URL}
+                  alt="호텔웍스 사용법 영상 표지"
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-indigo-950/30 group-hover:bg-indigo-950/10 transition-colors flex items-center justify-center">
+                  <span className="w-14 h-14 rounded-full bg-white text-indigo-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    <Play className="w-6 h-6 ml-0.5 fill-current" />
+                  </span>
+                </div>
+              </div>
+              <div className="px-4 py-3 flex items-center justify-between">
+                <span className="text-sm font-bold">사용법 영상 보기</span>
+                <span className="text-xs font-bold text-indigo-200">{MANUAL_VIDEO_LENGTH}</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowManual(true)}
+              className="lg:hidden inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 ring-1 ring-white/30 text-sm font-bold hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <Play className="w-4 h-4 fill-current" />
+              사용법 영상 보기
+              <span className="text-indigo-200 font-semibold">{MANUAL_VIDEO_LENGTH}</span>
+            </button>
           </div>
 
           <div className="relative z-10 flex items-center gap-4 text-xs font-bold text-indigo-200 uppercase tracking-widest">
@@ -501,6 +554,37 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
           </div>
         </div>
       </div>
+
+      {/* 사용법 영상 재생 창 */}
+      {showManual && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8"
+          onClick={() => setShowManual(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="호텔웍스 사용법 영상"
+        >
+          <div className="relative w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setShowManual(false)}
+              aria-label="영상 닫기"
+              className="absolute -top-12 right-0 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <video
+              src={MANUAL_VIDEO_URL}
+              poster={MANUAL_POSTER_URL}
+              controls
+              autoPlay
+              playsInline
+              preload="metadata"
+              className="w-full aspect-video rounded-2xl bg-black shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
