@@ -120,7 +120,6 @@ const saveTemporaryUser = (user: User, password: string): void => {
 // 사용법 영상 (public/manual 폴더의 정적 파일)
 const MANUAL_VIDEO_URL = '/manual/hotelworks-manual.mp4';
 const MANUAL_POSTER_URL = '/manual/hotelworks-manual-poster.jpg';
-const MANUAL_VIDEO_LENGTH = '2분 45초';
 
 const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
   const [username, setUsername] = useState('');
@@ -466,11 +465,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
             <button
               type="button"
               onClick={() => setShowManual(true)}
-              className="lg:hidden inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 ring-1 ring-white/30 text-sm font-bold hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="lg:hidden flex sm:inline-flex w-full sm:w-auto items-center justify-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-white/15 ring-1 ring-white/30 text-base font-bold hover:bg-white/25 active:bg-white/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              <Play className="w-4 h-4 fill-current" />
+              <span className="w-8 h-8 rounded-full bg-white text-indigo-600 flex items-center justify-center shadow">
+                <Play className="w-4 h-4 ml-0.5 fill-current" />
+              </span>
               사용법 영상 보기
-              <span className="text-indigo-200 font-semibold">{MANUAL_VIDEO_LENGTH}</span>
             </button>
           </div>
 
