@@ -459,7 +459,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
               </div>
               <div className="px-4 py-3 flex items-center justify-between">
                 <span className="text-sm font-bold">사용법 영상 보기</span>
-                <span className="text-xs font-bold text-indigo-200">{MANUAL_VIDEO_LENGTH}</span>
+                <span className="text-xs font-bold text-indigo-200">호텔웍스 | HotelWorks</span>
               </div>
             </button>
 
