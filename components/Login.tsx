@@ -417,28 +417,28 @@ const Login: React.FC<LoginProps> = ({ onLogin, availableUsers }) => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
       <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden">
         {/* Left Side: Brand/Welcome */}
-        <div className="bg-indigo-600 p-12 text-white flex flex-col justify-between relative overflow-hidden">
+        <div className="bg-indigo-600 p-8 lg:p-10 text-white flex flex-col justify-between relative overflow-hidden">
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl"></div>
           
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg">
                 <Building2 className="w-7 h-7 text-indigo-600" />
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight">HotelWorks</h1>
             </div>
-            
-            <h2 className="text-4xl font-bold leading-tight mb-4">
+
+            <h2 className="text-3xl font-bold leading-tight mb-3">
               Operational Excellence,<br />Simplified.
             </h2>
-            <p className="text-indigo-100 text-lg">
+            <p className="text-indigo-100 text-base">
               Authorized access only. Please provide your credentials to enter the operational dashboard.
             </p>
           </div>
 
           {/* 사용법 영상: PC는 표지 카드, 휴대폰·태블릿은 한 줄 버튼. 영상 파일은 누를 때만 불러옴 */}
-          <div className="relative z-10 mt-6 mb-8 lg:my-8">
+          <div className="relative z-10 mt-5 mb-7 lg:my-6">
             <button
               type="button"
               onClick={() => setShowManual(true)}
